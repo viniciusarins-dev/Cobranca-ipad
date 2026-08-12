@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/check-overdue",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-dispatch",
+      "schedule": "*/15 12-21 * * 1-5"
     }
   ]
 }

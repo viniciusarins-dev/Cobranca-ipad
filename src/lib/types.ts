@@ -8,6 +8,8 @@ export type InstallmentStatus = "pendente" | "pago" | "atrasado";
 
 export type WhatsAppProviderName = "evolution" | "zapi" | "twilio" | "wppconnect";
 
+export type WeeklyChargeStatus = "PENDENTE" | "PAGO" | "CANCELADO";
+
 export interface Client {
   id: string;
   name: string;
@@ -56,6 +58,26 @@ export interface MessageSettings {
   auth_token: string | null;
   message_template: string;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Agendamento de disparo semanal de cobrança via WhatsApp para contratos
+ * com periodicity 'semanal'. O status é sincronizado automaticamente a
+ * partir do status do contrato (pagamento continua sendo controlado
+ * manualmente pelos toggles de parcela) e é revalidado em tempo real
+ * imediatamente antes de qualquer envio.
+ */
+export interface WeeklyCharge {
+  id: string;
+  contract_id: string;
+  client_id: string;
+  status: WeeklyChargeStatus;
+  dia_semana_disparo: number; // ISO 8601: 1=segunda ... 5=sexta
+  proximo_disparo: string;
+  last_dispatch_at: string | null;
+  dispatch_count: number;
   created_at: string;
   updated_at: string;
 }

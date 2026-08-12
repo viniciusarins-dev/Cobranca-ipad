@@ -53,16 +53,26 @@ export async function GET(request: NextRequest) {
   }
 
   // 3. Envia lembrete de cobrança para parcelas em atraso que ainda não
-  //    receberam lembrete hoje (inclui as recém marcadas + as já atrasadas)
+  //    receberam lembrete hoje (inclui as recém marcadas + as já atrasadas).
+  //    Contratos com periodicidade 'semanal' são excluídos: eles já são
+  //    cobrados pela fila dedicada em /api/cron/weekly-dispatch (com
+  //    delay randômico, spintax e trava de horário anti-banimento) — enviar
+  //    por aqui também duplicaria mensagens no mesmo dia.
   const { data: dueForReminder } = await supabase
     .from("installments")
-    .select("id, reminder_sent_at")
+    .select("id, reminder_sent_at, contract:contracts(periodicity)")
     .eq("status", "atrasado");
 
   let sent = 0;
   let failed = 0;
 
-  for (const installment of dueForReminder ?? []) {
+  for (const installment of (dueForReminder ?? []) as unknown as Array<{
+    id: string;
+    reminder_sent_at: string | null;
+    contract: { periodicity: string } | null;
+  }>) {
+    if (installment.contract?.periodicity === "semanal") continue;
+
     const alreadyRemindedToday =
       installment.reminder_sent_at && installment.reminder_sent_at.slice(0, 10) === today;
     if (alreadyRemindedToday) continue;

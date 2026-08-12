@@ -7,20 +7,23 @@ disparo automático/manual de cobranças via WhatsApp.
 ## Stack
 
 - **Frontend**: Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 + componentes estilo shadcn/ui (Radix UI) + Lucide Icons
-- **Backend/Banco**: Supabase (PostgreSQL) — tabelas `clients`, `contracts`, `installments`, `message_settings`, `message_logs`
-- **Automação**: Vercel Cron chamando `/api/cron/check-overdue` diariamente
+- **Backend/Banco**: Supabase (PostgreSQL) — tabelas `clients`, `contracts`, `installments`, `message_settings`, `message_logs`, `weekly_charges`
+- **Automação**: Vercel Cron chamando `/api/cron/check-overdue` (diário) e `/api/cron/weekly-dispatch` (fila semanal com anti-banimento)
 - **WhatsApp**: módulo com adapters para Evolution API, Z-API, Twilio e WPPConnect (`src/lib/whatsapp`)
 
 ## Estrutura do projeto
 
 ```
-supabase/migrations/0001_init.sql   # schema do banco (clients, contracts, installments, message_settings, message_logs)
+supabase/migrations/
+  0001_init.sql                     # schema do banco (clients, contracts, installments, message_settings, message_logs)
+  0002_weekly_dispatch.sql          # tabela weekly_charges (agendamento semanal)
 src/
   app/
     page.tsx                        # Dashboard — tabela de clientes/contratos com busca e filtros
     contracts/[id]/page.tsx         # Detalhe do contrato + grid de parcelas
     settings/page.tsx               # Configuração da API de WhatsApp
-    api/cron/check-overdue/route.ts # Job diário: marca parcelas atrasadas e dispara cobranças
+    api/cron/check-overdue/route.ts    # Job diário: marca parcelas atrasadas e dispara cobranças (não-semanais)
+    api/cron/weekly-dispatch/route.ts  # Fila de cobrança semanal (Evolution API) com anti-banimento
     actions.ts                      # Server actions (CRUD, toggle de status, envio de lembrete)
   components/
     clients-table.tsx               # Tabela com busca + abas (Todos/Ativos/Inadimplentes/Quitados)
@@ -30,7 +33,8 @@ src/
     ui/                             # Componentes base (botão, input, tabela, dialog, etc.)
   lib/
     installments.ts                 # Cálculo das datas/valores de cada parcela
-    whatsapp/                       # Adapters de envio (Evolution, Z-API, Twilio, WPPConnect)
+    whatsapp/                       # Adapters de envio (Evolution, Z-API, Twilio, WPPConnect), spintax, healthcheck
+    scheduling/                     # Trava de horário, fila e disparo de cobrança semanal
     supabase/                       # Clients do Supabase (browser, server, service role)
     types.ts, validations.ts        # Tipos e schemas (zod)
 ```
@@ -40,7 +44,8 @@ src/
 ### 1. Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. No SQL Editor, rode o conteúdo de `supabase/migrations/0001_init.sql`.
+2. No SQL Editor, rode o conteúdo de `supabase/migrations/0001_init.sql` e, em seguida,
+   `supabase/migrations/0002_weekly_dispatch.sql`, na ordem.
 3. Habilite autenticação por e-mail/senha (Auth) e crie o usuário administrador que vai operar
    o app — as políticas de RLS liberam acesso total para qualquer usuário autenticado (MVP
    single-tenant). Para múltiplos operadores/permissões, ajuste as policies antes de produção.
@@ -97,6 +102,43 @@ O job:
 Fora da Vercel, qualquer scheduler (cron do servidor, GitHub Actions, Supabase Edge Functions
 com `pg_cron`, etc.) pode chamar o mesmo endpoint HTTP com o header `Authorization: Bearer
 <CRON_SECRET>`.
+
+### 6. Cobrança semanal automática (Evolution API)
+
+Contratos com periodicidade **Semanal** ganham automaticamente, ao serem cadastrados, um
+registro em `weekly_charges` — o dia da semana do disparo (`dia_semana_disparo`) é herdado da
+data do 1º vencimento (sábado/domingo são ajustados para sexta/segunda) e `proximo_disparo`
+começa nessa mesma data. O pagamento continua controlado manualmente pelos toggles de parcela
+já existentes: quando o contrato fica **Quitado** ou **Cancelado**, o `status` da cobrança
+semanal é sincronizado automaticamente para `PAGO`/`CANCELADO` e o disparo é abortado.
+
+A fila roda em `/api/cron/weekly-dispatch` (`src/lib/scheduling/`) e, a cada execução:
+
+1. **Trava de horário** — só processa de segunda a sexta, das 09:00 às 18:00 (horário de
+   Brasília). Fora disso, encerra sem fazer nada.
+2. **Healthcheck da Evolution API** — confere se a instância configurada está com o status
+   `open` antes de iniciar qualquer envio do dia; se não estiver conectada, aborta o lote.
+3. **Seleção do dia** — busca em `weekly_charges` quem está `PENDENTE`, com
+   `dia_semana_disparo` igual a hoje e `proximo_disparo` já vencido.
+4. **Para cada cliente da fila**:
+   - Refaz o `SELECT` do status **em tempo real**, imediatamente antes de enviar — se alguém
+     marcou a parcela como paga ou o contrato como cancelado enquanto a fila rodava, o disparo
+     é abortado para aquele cliente.
+   - Monta a mensagem a partir do template configurado em Ajustes, varia o texto (saudação por
+     horário + frase de encerramento aleatória, além de suporte a spintax `{opção 1|opção 2}`
+     no próprio template) para reduzir repetição.
+   - Envia, registra em `message_logs` e avança `proximo_disparo` em +7 dias.
+   - Aguarda um **delay aleatório de 60 a 120 segundos** antes do próximo cliente da fila.
+
+> **Limite de tempo de execução:** o delay anti-banimento (60-120s por cliente) pode facilmente
+> ultrapassar o tempo máximo de uma function serverless. A fila processa em lote respeitando um
+> orçamento de tempo e o que sobrar continua pendente (`proximo_disparo` no passado), sendo
+> retomado automaticamente na próxima chamada do cron — o processamento é idempotente. O
+> `vercel.json` já agenda `weekly-dispatch` a cada 15 minutos dentro do horário comercial, mas
+> **crons com frequência menor que diária exigem plano Vercel Pro** (o plano Hobby só permite
+> 1 execução por dia); nesse caso, ajuste a expressão cron para uma execução diária e dimensione
+> a carteira de clientes semanais de acordo, ou rode a fila por fora da Vercel (servidor próprio,
+> GitHub Actions, etc.) chamando o mesmo endpoint HTTP.
 
 ## Próximos passos sugeridos
 

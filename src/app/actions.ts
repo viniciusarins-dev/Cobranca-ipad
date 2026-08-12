@@ -1,13 +1,22 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getISODay, parseISO } from "date-fns";
 
 import { createClient } from "@/lib/supabase/server";
 import { generateInstallments } from "@/lib/installments";
 import { sendCollectionReminder } from "@/lib/whatsapp";
 import { messageSettingsSchema, transactionSchema, type TransactionInput, type MessageSettingsInput } from "@/lib/validations";
-import type { ContractStatus, InstallmentStatus } from "@/lib/types";
+import type { ContractStatus, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
 import { onlyDigits } from "@/lib/utils";
+
+/** ISO 8601 (1=segunda ... 7=domingo), com fins de semana ajustados para o dia útil mais próximo. */
+function toBusinessWeekday(date: string): number {
+  const isoWeekday = getISODay(parseISO(date));
+  if (isoWeekday === 6) return 5; // sábado -> sexta
+  if (isoWeekday === 7) return 1; // domingo -> segunda
+  return isoWeekday;
+}
 
 export interface ActionResult {
   ok: boolean;
@@ -89,8 +98,39 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     return { ok: false, error: installmentsError.message };
   }
 
+  if (data.periodicity === "semanal") {
+    const { error: weeklyChargeError } = await supabase.from("weekly_charges").insert({
+      contract_id: contract.id,
+      client_id: clientId,
+      dia_semana_disparo: toBusinessWeekday(data.firstDueDate),
+      proximo_disparo: data.firstDueDate,
+      status: "PENDENTE",
+    });
+    if (weeklyChargeError) {
+      return { ok: false, error: weeklyChargeError.message };
+    }
+  }
+
   revalidatePath("/");
   return { ok: true, contractId: contract.id };
+}
+
+/**
+ * Mantém `weekly_charges.status` sincronizado com o status do contrato.
+ * O pagamento continua sendo controlado manualmente pelos toggles de
+ * parcela — isto apenas reflete esse controle no campo que a fila de
+ * disparo semanal checa em tempo real antes de cada envio.
+ */
+async function syncWeeklyChargeStatus(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  contractId: string,
+  contractStatus: ContractStatus,
+) {
+  let weeklyStatus: WeeklyChargeStatus = "PENDENTE";
+  if (contractStatus === "quitado") weeklyStatus = "PAGO";
+  else if (contractStatus === "cancelado") weeklyStatus = "CANCELADO";
+
+  await supabase.from("weekly_charges").update({ status: weeklyStatus }).eq("contract_id", contractId);
 }
 
 async function recalculateContractStatus(supabase: Awaited<ReturnType<typeof createClient>>, contractId: string) {
@@ -109,6 +149,7 @@ async function recalculateContractStatus(supabase: Awaited<ReturnType<typeof cre
   }
 
   await supabase.from("contracts").update({ status }).eq("id", contractId);
+  await syncWeeklyChargeStatus(supabase, contractId, status);
 }
 
 export async function updateInstallmentStatus(
