@@ -1,0 +1,24 @@
+{
+  "name": "Cobrança iPad — Gestão de Empréstimos e Vendas",
+  "short_name": "Cobrança iPad",
+  "description": "Gerencie clientes, empréstimos e vendas de iPhone parceladas com cobrança automática via WhatsApp.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#1c1a3d",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
