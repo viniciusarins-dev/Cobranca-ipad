@@ -76,7 +76,7 @@ export function NewTransactionDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button size="lg">
+        <Button variant="glow" size="lg">
           <PlusIcon />
           Novo Cadastro
         </Button>

@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import {
   CONTRACT_STATUS_LABELS,
@@ -19,10 +21,36 @@ const INSTALLMENT_VARIANT: Record<InstallmentStatus, "success" | "warning" | "de
   atrasado: "destructive",
 };
 
+/** Ponto pulsante (estilo uiverse.io) para chamar atenção a status críticos. */
+function PulseDot() {
+  return (
+    <span
+      aria-hidden
+      className="pulse-glow inline-block size-1.5 rounded-full bg-destructive"
+      style={
+        {
+          "--pulse-glow-start": "color-mix(in oklch, var(--destructive), transparent 45%)",
+          "--pulse-glow-end": "color-mix(in oklch, var(--destructive), transparent 100%)",
+        } as CSSProperties
+      }
+    />
+  );
+}
+
 export function ContractStatusBadge({ status }: { status: ContractStatus }) {
-  return <Badge variant={CONTRACT_VARIANT[status]}>{CONTRACT_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge variant={CONTRACT_VARIANT[status]}>
+      {status === "inadimplente" && <PulseDot />}
+      {CONTRACT_STATUS_LABELS[status]}
+    </Badge>
+  );
 }
 
 export function InstallmentStatusBadge({ status }: { status: InstallmentStatus }) {
-  return <Badge variant={INSTALLMENT_VARIANT[status]}>{INSTALLMENT_STATUS_LABELS[status]}</Badge>;
+  return (
+    <Badge variant={INSTALLMENT_VARIANT[status]}>
+      {status === "atrasado" && <PulseDot />}
+      {INSTALLMENT_STATUS_LABELS[status]}
+    </Badge>
+  );
 }

@@ -4,7 +4,8 @@ import { ArrowLeftIcon, MessageCircleIcon } from "lucide-react";
 
 import { InstallmentsGrid } from "@/components/installments-grid";
 import { ContractStatusBadge } from "@/components/status-badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { createClient } from "@/lib/supabase/server";
 import {
   CONTRACT_TYPE_LABELS,
@@ -44,7 +45,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
         Voltar para clientes
       </Link>
 
-      <Card>
+      <SpotlightCard>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-xl">{contract.client.name}</CardTitle>
@@ -92,7 +93,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             </div>
           </dl>
         </CardContent>
-      </Card>
+      </SpotlightCard>
 
       <div>
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Parcelas</h2>

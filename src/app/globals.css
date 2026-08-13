@@ -30,6 +30,9 @@
   --ring: oklch(0.32 0.14 265);
 }
 
+/* Modo escuro manual (classe .dark em <html>, para um futuro seletor de tema)
+   e automático (segue a preferência do sistema, já que ainda não há um
+   seletor de tema na UI) — ambos aplicam os mesmos tokens. */
 .dark {
   --background: oklch(0.16 0.01 265);
   --foreground: oklch(0.96 0 0);
@@ -54,6 +57,34 @@
   --border: oklch(0.3 0.01 265);
   --input: oklch(0.3 0.01 265);
   --ring: oklch(0.75 0.12 265);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: oklch(0.16 0.01 265);
+    --foreground: oklch(0.96 0 0);
+    --card: oklch(0.2 0.01 265);
+    --card-foreground: oklch(0.96 0 0);
+    --popover: oklch(0.2 0.01 265);
+    --popover-foreground: oklch(0.96 0 0);
+    --primary: oklch(0.75 0.12 265);
+    --primary-foreground: oklch(0.16 0.01 265);
+    --secondary: oklch(0.26 0.01 265);
+    --secondary-foreground: oklch(0.96 0 0);
+    --muted: oklch(0.26 0.01 265);
+    --muted-foreground: oklch(0.68 0.01 265);
+    --accent: oklch(0.3 0.03 265);
+    --accent-foreground: oklch(0.96 0 0);
+    --destructive: oklch(0.65 0.2 27);
+    --destructive-foreground: oklch(0.16 0.01 265);
+    --success: oklch(0.65 0.15 145);
+    --success-foreground: oklch(0.16 0.01 265);
+    --warning: oklch(0.78 0.15 75);
+    --warning-foreground: oklch(0.2 0.02 75);
+    --border: oklch(0.3 0.01 265);
+    --input: oklch(0.3 0.01 265);
+    --ring: oklch(0.75 0.12 265);
+  }
 }
 
 @theme inline {
@@ -102,5 +133,164 @@
   textarea,
   button {
     font-size: 16px;
+  }
+}
+
+/* ============================================================
+ * Efeitos visuais (inspirados em uiverse.io / reactbits.dev)
+ * ============================================================ */
+
+/* Aurora background: blobs de gradiente com deriva lenta, atrás do app */
+@keyframes aurora-drift-1 {
+  0%,
+  100% {
+    transform: translate(-10%, -10%) scale(1);
+  }
+  50% {
+    transform: translate(10%, 5%) scale(1.15);
+  }
+}
+@keyframes aurora-drift-2 {
+  0%,
+  100% {
+    transform: translate(5%, 10%) scale(1.1);
+  }
+  50% {
+    transform: translate(-15%, -5%) scale(0.95);
+  }
+}
+@keyframes aurora-drift-3 {
+  0%,
+  100% {
+    transform: translate(-5%, 8%) scale(0.95);
+  }
+  50% {
+    transform: translate(12%, -10%) scale(1.1);
+  }
+}
+
+.aurora-blob-1 {
+  animation: aurora-drift-1 22s ease-in-out infinite;
+}
+.aurora-blob-2 {
+  animation: aurora-drift-2 26s ease-in-out infinite;
+}
+.aurora-blob-3 {
+  animation: aurora-drift-3 30s ease-in-out infinite;
+}
+
+/* Shiny text: brilho varrendo o texto (uiverse.io "shine" effect) */
+@keyframes shiny-text-sweep {
+  0% {
+    background-position: 150% center;
+  }
+  100% {
+    background-position: -50% center;
+  }
+}
+
+.shiny-text {
+  display: inline-block;
+  background-image: linear-gradient(
+    100deg,
+    var(--shiny-text-base, currentColor) 35%,
+    var(--shiny-text-shine, oklch(0.95 0.05 265)) 50%,
+    var(--shiny-text-base, currentColor) 65%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shiny-text-sweep 3.5s linear infinite;
+}
+
+/* Spotlight card: brilho radial seguindo o cursor (reactbits SpotlightCard) */
+.card-spotlight {
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  --spotlight-color: color-mix(in oklch, var(--primary), transparent 55%);
+  position: relative;
+  isolation: isolate;
+}
+.card-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle 380px at var(--mouse-x) var(--mouse-y), var(--spotlight-color), transparent 80%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.card-spotlight:hover::before,
+.card-spotlight:focus-within::before {
+  opacity: 1;
+}
+.card-spotlight > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Glow button: gradiente animado + brilho externo (uiverse.io glow buttons) */
+@keyframes glow-button-sheen {
+  to {
+    background-position: 200% center;
+  }
+}
+
+.btn-glow {
+  position: relative;
+  background: linear-gradient(
+    100deg,
+    var(--primary) 0%,
+    color-mix(in oklch, var(--primary), white 28%) 45%,
+    var(--primary) 100%
+  );
+  background-size: 220% auto;
+  animation: glow-button-sheen 4s ease-in-out infinite alternate;
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 8%),
+    0 0 0 1px color-mix(in oklch, var(--primary), transparent 70%),
+    0 10px 28px -6px color-mix(in oklch, var(--primary), transparent 25%);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.15s ease;
+}
+.btn-glow:hover {
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 10%),
+    0 0 0 1px color-mix(in oklch, var(--primary), transparent 55%),
+    0 12px 36px -4px color-mix(in oklch, var(--primary), transparent 10%);
+}
+.btn-glow:active {
+  transform: scale(0.98);
+}
+
+/* Pulse glow: anel pulsante para status que exigem atenção (uiverse.io).
+   O componente que usa esta classe define --pulse-glow-start/--pulse-glow-end
+   (mesma cor, com e sem opacidade) via style inline. */
+@keyframes pulse-glow-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--pulse-glow-start, oklch(0.58 0.22 27 / 55%));
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 6px var(--pulse-glow-end, oklch(0.58 0.22 27 / 0%));
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow-ring 2s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob-1,
+  .aurora-blob-2,
+  .aurora-blob-3,
+  .shiny-text,
+  .btn-glow,
+  .pulse-glow {
+    animation: none;
   }
 }

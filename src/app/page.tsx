@@ -1,5 +1,6 @@
 import { ClientsTable } from "@/components/clients-table";
 import { NewTransactionDialog } from "@/components/new-transaction-dialog";
+import { ShinyText } from "@/components/ui/shiny-text";
 import { createClient } from "@/lib/supabase/server";
 import type { ContractWithClient } from "@/lib/types";
 
@@ -18,6 +19,7 @@ export default async function DashboardPage() {
     <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
+          <ShinyText className="text-xs font-semibold uppercase tracking-widest">Cobrança iPad</ShinyText>
           <h1 className="text-2xl font-semibold tracking-tight">Clientes</h1>
           <p className="text-sm text-muted-foreground">
             Empréstimos e vendas de iPhone parceladas — visão geral e status de cobrança.

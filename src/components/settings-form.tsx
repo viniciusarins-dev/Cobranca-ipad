@@ -153,7 +153,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
       </Card>
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={isSubmitting} size="lg">
+        <Button type="submit" variant="glow" disabled={isSubmitting} size="lg">
           {isSubmitting ? "Salvando..." : "Salvar configuração"}
         </Button>
       </div>

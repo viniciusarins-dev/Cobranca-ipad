@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SearchIcon } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractStatusBadge } from "@/components/status-badge";
@@ -61,7 +62,7 @@ export function ClientsTable({ contracts }: { contracts: ContractWithClient[] })
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card">
+      <SpotlightCard className="overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -123,7 +124,7 @@ export function ClientsTable({ contracts }: { contracts: ContractWithClient[] })
             ))}
           </TableBody>
         </Table>
-      </div>
+      </SpotlightCard>
     </div>
   );
 }
