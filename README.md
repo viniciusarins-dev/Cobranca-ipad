@@ -140,6 +140,31 @@ A fila roda em `/api/cron/weekly-dispatch` (`src/lib/scheduling/`) e, a cada exe
 > a carteira de clientes semanais de acordo, ou rode a fila por fora da Vercel (servidor próprio,
 > GitHub Actions, etc.) chamando o mesmo endpoint HTTP.
 
+### 7. Consulta de dados cadastrais (telefone → CPF/CNPJ, CEP, endereço)
+
+O app tem um conector **genérico e configurável** para buscar CPF/CNPJ, CEP e endereço a partir
+do telefone do cliente — útil para localizar devedores na tela de novo cadastro (botão de lupa
+ao lado do campo de telefone).
+
+> **Não existe base pública/gratuita para esse tipo de busca no Brasil.** É necessário contratar
+> um provedor de dados cadastrais (ex: Big Data Corp, Assertiva, Direct Data, SintegraWS) e usar
+> a consulta com base legal adequada na LGPD — em cobrança, normalmente o art. 7º, X (proteção ao
+> crédito). O app não embute nem simula nenhuma fonte de dados: sem um provedor configurado, a
+> consulta retorna o erro "Nenhum provedor de consulta cadastral configurado."
+
+Configure em **Configurações** (`/settings`), seção "Consulta de dados cadastrais":
+
+- **URL da API** — endpoint do provedor contratado, com `{phone}` no lugar onde o telefone (só
+  dígitos) deve entrar (na URL para GET, ou no corpo para POST).
+- **Autenticação** — chave de API e o header em que ela deve ser enviada (ex: `Authorization`
+  com prefixo `Bearer`, ou `apikey` sem prefixo — depende do provedor).
+- **Mapeamento da resposta** — caminho (dot-path) de cada campo dentro do JSON de retorno da API
+  (ex: `data.cpf`, `resultado.0.endereco.cep`), já que cada provedor tem um formato próprio.
+
+Os dados retornados preenchem os campos "CPF/CNPJ", "CEP" e "Endereço" do formulário de novo
+cadastro e são salvos no cliente (tabela `clients`); nada é armazenado além do que o formulário
+grava.
+
 ## Próximos passos sugeridos
 
 - Tela de login (Supabase Auth) protegendo as rotas do app.

@@ -15,6 +15,9 @@ export const transactionSchema = z.object({
     .max(60, "Máximo de 60 parcelas."),
   periodicity: z.enum(["semanal", "quinzenal", "mensal"]),
   firstDueDate: z.string().min(10, "Informe a data do primeiro vencimento."),
+  clientDocument: z.string().trim().optional().or(z.literal("")),
+  clientCep: z.string().trim().optional().or(z.literal("")),
+  clientAddress: z.string().trim().optional().or(z.literal("")),
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
@@ -30,3 +33,24 @@ export const messageSettingsSchema = z.object({
 });
 
 export type MessageSettingsInput = z.infer<typeof messageSettingsSchema>;
+
+export const lookupSettingsSchema = z.object({
+  provider: z.enum(["generic_rest"]),
+  baseUrl: z.string().trim().min(1, "Informe a URL da API de consulta."),
+  method: z.enum(["GET", "POST"]),
+  apiKey: z.string().trim().optional().or(z.literal("")),
+  authHeader: z.string().trim().optional().or(z.literal("")),
+  authScheme: z.string().trim().optional().or(z.literal("")),
+  bodyTemplate: z.string().trim().optional().or(z.literal("")),
+  documentField: z.string().trim().optional().or(z.literal("")),
+  documentTypeField: z.string().trim().optional().or(z.literal("")),
+  nameField: z.string().trim().optional().or(z.literal("")),
+  cepField: z.string().trim().optional().or(z.literal("")),
+  addressField: z.string().trim().optional().or(z.literal("")),
+});
+
+export type LookupSettingsInput = z.infer<typeof lookupSettingsSchema>;
+
+export const phoneLookupSchema = z.object({
+  phone: z.string().trim().min(10, "Informe um telefone válido."),
+});

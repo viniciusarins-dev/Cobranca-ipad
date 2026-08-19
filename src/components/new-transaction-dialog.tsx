@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PlusIcon } from "lucide-react";
+import { Loader2Icon, PlusIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -23,12 +23,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { splitAmount } from "@/lib/installments";
 import { formatCurrency } from "@/lib/utils";
 import { transactionSchema, type TransactionInput } from "@/lib/validations";
-import { createTransaction } from "@/app/actions";
+import { createTransaction, lookupPhoneAction } from "@/app/actions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function NewTransactionDialog() {
   const [open, setOpen] = useState(false);
+  const [isLookingUp, setIsLookingUp] = useState(false);
   const router = useRouter();
 
   const {
@@ -36,6 +37,7 @@ export function NewTransactionDialog() {
     control,
     handleSubmit,
     watch,
+    setValue,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<TransactionInput>({
@@ -47,6 +49,26 @@ export function NewTransactionDialog() {
       firstDueDate: today(),
     },
   });
+
+  async function handleLookup() {
+    const phone = watch("clientPhone");
+    if (!phone || phone.trim().length < 10) {
+      toast.error("Informe um telefone válido antes de buscar.");
+      return;
+    }
+    setIsLookingUp(true);
+    const result = await lookupPhoneAction(phone);
+    setIsLookingUp(false);
+    if (!result.ok || !result.data) {
+      toast.error(result.error ?? "Erro ao consultar telefone.");
+      return;
+    }
+    if (result.data.document) setValue("clientDocument", result.data.document);
+    if (result.data.cep) setValue("clientCep", result.data.cep);
+    if (result.data.address) setValue("clientAddress", result.data.address);
+    if (result.data.name && !watch("clientName")) setValue("clientName", result.data.name);
+    toast.success("Dados encontrados e preenchidos.");
+  }
 
   const totalAmount = Number(watch("totalAmount")) || 0;
   const installmentsCount = Number(watch("installmentsCount")) || 1;
@@ -98,14 +120,43 @@ export function NewTransactionDialog() {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="clientPhone">Telefone / WhatsApp</Label>
-              <Input id="clientPhone" placeholder="(11) 91234-5678" {...register("clientPhone")} />
+              <div className="flex gap-2">
+                <Input id="clientPhone" placeholder="(11) 91234-5678" {...register("clientPhone")} />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Buscar CPF/CNPJ, CEP e endereço pelo telefone"
+                  onClick={handleLookup}
+                  disabled={isLookingUp}
+                >
+                  {isLookingUp ? <Loader2Icon className="animate-spin" /> : <SearchIcon />}
+                </Button>
+              </div>
               {errors.clientPhone && <p className="text-xs text-destructive">{errors.clientPhone.message}</p>}
             </div>
           </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="clientEmail">E-mail (opcional)</Label>
-            <Input id="clientEmail" type="email" placeholder="cliente@email.com" {...register("clientEmail")} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="clientEmail">E-mail (opcional)</Label>
+              <Input id="clientEmail" type="email" placeholder="cliente@email.com" {...register("clientEmail")} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="clientDocument">CPF/CNPJ (opcional)</Label>
+              <Input id="clientDocument" placeholder="000.000.000-00" {...register("clientDocument")} />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="clientCep">CEP (opcional)</Label>
+              <Input id="clientCep" placeholder="00000-000" {...register("clientCep")} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="clientAddress">Endereço (opcional)</Label>
+              <Input id="clientAddress" placeholder="Rua, número, bairro, cidade" {...register("clientAddress")} />
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

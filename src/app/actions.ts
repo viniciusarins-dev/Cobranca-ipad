@@ -6,8 +6,17 @@ import { getISODay, parseISO } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { generateInstallments } from "@/lib/installments";
 import { sendCollectionReminder } from "@/lib/whatsapp";
-import { messageSettingsSchema, transactionSchema, type TransactionInput, type MessageSettingsInput } from "@/lib/validations";
-import type { ContractStatus, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
+import { lookupClientData } from "@/lib/lookup";
+import {
+  messageSettingsSchema,
+  transactionSchema,
+  lookupSettingsSchema,
+  phoneLookupSchema,
+  type TransactionInput,
+  type MessageSettingsInput,
+  type LookupSettingsInput,
+} from "@/lib/validations";
+import type { ContractStatus, InstallmentStatus, PhoneLookupData, WeeklyChargeStatus } from "@/lib/types";
 import { onlyDigits } from "@/lib/utils";
 
 /** ISO 8601 (1=segunda ... 7=domingo), com fins de semana ajustados para o dia útil mais próximo. */
@@ -44,6 +53,16 @@ export async function createTransaction(input: TransactionInput): Promise<Action
 
     if (existing) {
       clientId = existing.id;
+      if (data.clientDocument || data.clientCep || data.clientAddress) {
+        await supabase
+          .from("clients")
+          .update({
+            ...(data.clientDocument ? { document: data.clientDocument } : {}),
+            ...(data.clientCep ? { cep: data.clientCep } : {}),
+            ...(data.clientAddress ? { address: data.clientAddress } : {}),
+          })
+          .eq("id", clientId);
+      }
     } else {
       const { data: newClient, error: clientError } = await supabase
         .from("clients")
@@ -51,6 +70,9 @@ export async function createTransaction(input: TransactionInput): Promise<Action
           name: data.clientName,
           phone: phoneDigits,
           email: data.clientEmail || null,
+          document: data.clientDocument || null,
+          cep: data.clientCep || null,
+          address: data.clientAddress || null,
         })
         .select("id")
         .single();
@@ -246,4 +268,60 @@ export async function sendTestMessage(phone: string): Promise<ActionResult> {
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Erro ao enviar mensagem de teste." };
   }
+}
+
+export interface LookupActionResult {
+  ok: boolean;
+  error?: string;
+  data?: PhoneLookupData;
+}
+
+/**
+ * Consulta CPF/CNPJ, CEP e endereço a partir de um telefone, usando o
+ * conector configurado em Configurações > Consulta de dados. Não persiste
+ * nada por si só — o formulário decide se salva o resultado no cliente.
+ */
+export async function lookupPhoneAction(phone: string): Promise<LookupActionResult> {
+  const parsed = phoneLookupSchema.safeParse({ phone });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Telefone inválido." };
+  }
+
+  const supabase = await createClient();
+  const result = await lookupClientData(supabase, parsed.data.phone);
+  return result.ok ? { ok: true, data: result.data } : { ok: false, error: result.error };
+}
+
+export async function saveLookupSettings(input: LookupSettingsInput): Promise<ActionResult> {
+  const parsed = lookupSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  await supabase.from("lookup_settings").update({ is_active: false }).eq("is_active", true);
+
+  const { error } = await supabase.from("lookup_settings").insert({
+    provider: data.provider,
+    base_url: data.baseUrl,
+    method: data.method,
+    api_key: data.apiKey || null,
+    auth_header: data.authHeader || null,
+    auth_scheme: data.authScheme || null,
+    body_template: data.bodyTemplate || null,
+    document_field: data.documentField || null,
+    document_type_field: data.documentTypeField || null,
+    name_field: data.nameField || null,
+    cep_field: data.cepField || null,
+    address_field: data.addressField || null,
+    is_active: true,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/settings");
+  return { ok: true };
 }

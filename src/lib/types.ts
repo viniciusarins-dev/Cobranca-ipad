@@ -10,12 +10,20 @@ export type WhatsAppProviderName = "evolution" | "zapi" | "twilio" | "wppconnect
 
 export type WeeklyChargeStatus = "PENDENTE" | "PAGO" | "CANCELADO";
 
+export type LookupProviderName = "generic_rest";
+
+export type DocumentType = "cpf" | "cnpj";
+
 export interface Client {
   id: string;
   name: string;
   phone: string;
   email: string | null;
   notes: string | null;
+  document: string | null;
+  document_type: DocumentType | null;
+  cep: string | null;
+  address: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -91,6 +99,39 @@ export interface MessageLog {
   sent_at: string;
 }
 
+/**
+ * Configuração do conector de consulta cadastral (telefone -> CPF/CNPJ/CEP/
+ * endereço). Genérico e configurável: aponta para a API do provedor de
+ * dados que a operação contratar (ex: Big Data Corp, Assertiva, Direct
+ * Data), sem acoplar o código a um fornecedor específico.
+ */
+export interface LookupSettings {
+  id: string;
+  provider: LookupProviderName;
+  base_url: string | null;
+  method: "GET" | "POST";
+  api_key: string | null;
+  auth_header: string | null;
+  auth_scheme: string | null;
+  body_template: string | null;
+  document_field: string | null;
+  document_type_field: string | null;
+  name_field: string | null;
+  cep_field: string | null;
+  address_field: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PhoneLookupData {
+  document: string | null;
+  documentType: DocumentType | null;
+  name: string | null;
+  cep: string | null;
+  address: string | null;
+}
+
 export interface ClientWithContracts extends Client {
   contracts: Contract[];
 }
@@ -132,4 +173,8 @@ export const WHATSAPP_PROVIDER_LABELS: Record<WhatsAppProviderName, string> = {
   zapi: "Z-API",
   twilio: "Twilio",
   wppconnect: "WPPConnect",
+};
+
+export const LOOKUP_PROVIDER_LABELS: Record<LookupProviderName, string> = {
+  generic_rest: "API REST genérica (configurável)",
 };
