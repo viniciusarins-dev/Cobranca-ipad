@@ -19,14 +19,21 @@ supabase/migrations/
   0002_weekly_dispatch.sql          # tabela weekly_charges (agendamento semanal)
   0003_meta_whatsapp_provider.sql   # provider "meta" + colunas template_name/template_language
 src/
+  middleware.ts                     # Protege rotas: sem sessão -> /login; com sessão -> fora de /login
   app/
-    page.tsx                        # Dashboard — tabela de clientes/contratos com busca e filtros
-    contracts/[id]/page.tsx         # Detalhe do contrato + grid de parcelas
-    settings/page.tsx               # Configuração da API de WhatsApp
+    (app)/                          # Grupo de rotas autenticadas (não afeta a URL)
+      layout.tsx                    # Busca o usuário logado e monta o AppNav
+      page.tsx                      # Dashboard — tabela de clientes/contratos com busca e filtros
+      contracts/[id]/page.tsx       # Detalhe do contrato + grid de parcelas
+      settings/page.tsx             # Configuração da API de WhatsApp
+    login/page.tsx                  # Tela de login (sem cadastro público — ver seção 1)
     api/cron/check-overdue/route.ts    # Job diário: marca parcelas atrasadas e dispara cobranças (não-semanais)
     api/cron/weekly-dispatch/route.ts  # Fila de cobrança semanal (Evolution API) com anti-banimento
     actions.ts                      # Server actions (CRUD, toggle de status, envio de lembrete)
+    auth-actions.ts                 # Server actions de login/logout
   components/
+    app-nav.tsx                     # Barra superior fixa (nav + botão de sair)
+    login-form.tsx                  # Formulário de login
     clients-table.tsx               # Tabela com busca + abas (Todos/Ativos/Inadimplentes/Quitados)
     new-transaction-dialog.tsx      # Formulário de novo empréstimo/venda
     installments-grid.tsx           # Grid de parcelas com toggle de status e botão de lembrete
@@ -36,7 +43,7 @@ src/
     installments.ts                 # Cálculo das datas/valores de cada parcela
     whatsapp/                       # Adapters de envio (Meta, Evolution, Z-API, Twilio, WPPConnect), spintax, healthchecks
     scheduling/                     # Trava de horário, fila e disparo de cobrança semanal
-    supabase/                       # Clients do Supabase (browser, server, service role)
+    supabase/                       # Clients do Supabase (browser, server, middleware, service role)
     types.ts, validations.ts        # Tipos e schemas (zod)
 ```
 
@@ -47,11 +54,20 @@ src/
 1. Crie um projeto em [supabase.com](https://supabase.com).
 2. No SQL Editor, rode as migrations em `supabase/migrations/` na ordem numérica (`0001`, `0002`,
    `0003`, ...).
-3. Habilite autenticação por e-mail/senha (Auth) e crie o usuário administrador que vai operar
-   o app — as políticas de RLS liberam acesso total para qualquer usuário autenticado (MVP
-   single-tenant). Para múltiplos operadores/permissões, ajuste as policies antes de produção.
-4. Copie `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY`
+3. Em **Authentication → Providers**, confirme que "Email" está habilitado (é o padrão).
+4. Em **Authentication → Users → Add user**, crie o usuário administrador (e-mail + senha) que vai
+   operar o app. Marque "Auto Confirm User" para não precisar confirmar por e-mail. **Não existe
+   tela de cadastro público no app** — isso é intencional: as policies de RLS liberam acesso total
+   a qualquer usuário autenticado (é uma ferramenta single-tenant, para um único operador), então
+   um cadastro aberto exporia os dados financeiros dos clientes a qualquer pessoa que se
+   registrasse. Para adicionar mais operadores, crie mais usuários da mesma forma; para múltiplos
+   operadores com permissões diferentes, ajuste as policies de RLS antes de produção.
+5. Copie `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY`
    em Project Settings → API.
+
+> **Esqueceu a senha?** Não há fluxo de "esqueci minha senha" na tela de login ainda. Enquanto
+> isso, redefina a senha diretamente em **Authentication → Users**, clicando no usuário e usando
+> a opção de redefinir senha.
 
 ### 2. Variáveis de ambiente
 
@@ -182,7 +198,8 @@ semanal automatizado. A cada execução:
 
 ## Próximos passos sugeridos
 
-- Tela de login (Supabase Auth) protegendo as rotas do app.
+- Fluxo de "esqueci minha senha" self-service na tela de login (hoje é feito manualmente pelo
+  Supabase Dashboard — veja a seção 1).
 - Edição/exclusão de clientes e contratos.
 - Histórico de mensagens enviadas (`message_logs`) na UI.
 - Relatórios (total a receber, inadimplência por período).

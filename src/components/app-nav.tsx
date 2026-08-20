@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SettingsIcon, SmartphoneIcon, UsersIcon } from "lucide-react";
+import { LogOutIcon, SettingsIcon, SmartphoneIcon, UsersIcon } from "lucide-react";
 
+import { signOut } from "@/app/auth-actions";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -11,7 +12,7 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Configurações", icon: SettingsIcon, exact: false },
 ] as const;
 
-export function AppNav() {
+export function AppNav({ userEmail }: { userEmail: string | null }) {
   const pathname = usePathname();
 
   return (
@@ -24,27 +25,42 @@ export function AppNav() {
           <span className="hidden text-base font-bold tracking-tight sm:inline">Cobrança iPad</span>
         </Link>
 
-        <nav className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
-          {NAV_ITEMS.map((item) => {
-            const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors sm:px-4",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-[0_0_16px_-4px_var(--primary)]"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-                )}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <nav className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+            {NAV_ITEMS.map((item) => {
+              const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors sm:px-4",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-[0_0_16px_-4px_var(--primary)]"
+                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-4" />
+                  <span className="hidden sm:inline">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {userEmail && (
+            <form action={signOut}>
+              <button
+                type="submit"
+                title={`Sair (${userEmail})`}
+                className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-muted-foreground transition-colors hover:text-destructive"
               >
-                <Icon className="size-4" />
-                <span className="hidden sm:inline">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+                <LogOutIcon className="size-4" />
+                <span className="sr-only">Sair</span>
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </header>
   );
