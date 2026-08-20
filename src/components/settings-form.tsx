@@ -7,8 +7,9 @@ import { Loader2Icon, SendIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -94,7 +95,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
-      <Card>
+      <SpotlightCard>
         <CardHeader>
           <CardTitle>Provedor de WhatsApp</CardTitle>
           <CardDescription>
@@ -134,9 +135,9 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
             ))}
           </div>
         </CardContent>
-      </Card>
+      </SpotlightCard>
 
-      <Card>
+      <SpotlightCard>
         <CardHeader>
           <CardTitle>Template da mensagem</CardTitle>
           <CardDescription>
@@ -150,7 +151,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
             <p className="mt-1.5 text-xs text-destructive">{errors.messageTemplate.message}</p>
           )}
         </CardContent>
-      </Card>
+      </SpotlightCard>
 
       <div className="flex justify-end">
         <Button type="submit" variant="glow" disabled={isSubmitting} size="lg">
@@ -158,7 +159,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
         </Button>
       </div>
 
-      <Card>
+      <SpotlightCard>
         <CardHeader>
           <CardTitle>Testar envio</CardTitle>
           <CardDescription>Salve a configuração acima antes de testar.</CardDescription>
@@ -178,7 +179,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
             Enviar teste
           </Button>
         </CardContent>
-      </Card>
+      </SpotlightCard>
     </form>
   );
 }

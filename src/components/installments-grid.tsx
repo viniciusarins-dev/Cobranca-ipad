@@ -44,7 +44,8 @@ function InstallmentRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-opacity sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-4 backdrop-blur-xl transition-opacity sm:flex-row sm:items-center sm:justify-between",
+        installment.status === "atrasado" && "border-destructive/30",
         isPending && "opacity-60",
       )}
     >
@@ -76,7 +77,7 @@ function InstallmentRow({
               className={cn(
                 "rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed",
                 installment.status === status
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-linear-to-br from-primary to-accent-cyan text-primary-foreground shadow-[0_0_12px_-4px_var(--primary)]"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
@@ -87,7 +88,7 @@ function InstallmentRow({
 
         <Button
           type="button"
-          variant="outline"
+          variant={installment.status === "atrasado" ? "glow" : "outline"}
           size="sm"
           disabled={installment.status === "pago" || isSending}
           onClick={handleSendReminder}

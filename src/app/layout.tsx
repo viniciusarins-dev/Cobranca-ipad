@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AppNav } from "@/components/app-nav";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -34,7 +35,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#1c1a3d",
+  themeColor: "#0e0c1a",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <AuroraBackground />
+        <AppNav />
         {children}
         <Toaster />
       </body>
