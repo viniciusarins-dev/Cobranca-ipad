@@ -6,17 +6,8 @@ import { getISODay, parseISO } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { generateInstallments } from "@/lib/installments";
 import { sendCollectionReminder } from "@/lib/whatsapp";
-import { lookupClientData } from "@/lib/lookup";
-import {
-  messageSettingsSchema,
-  transactionSchema,
-  lookupSettingsSchema,
-  phoneLookupSchema,
-  type TransactionInput,
-  type MessageSettingsInput,
-  type LookupSettingsInput,
-} from "@/lib/validations";
-import type { ContractStatus, InstallmentStatus, PhoneLookupData, WeeklyChargeStatus } from "@/lib/types";
+import { messageSettingsSchema, transactionSchema, type TransactionInput, type MessageSettingsInput } from "@/lib/validations";
+import type { ContractStatus, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
 import { onlyDigits } from "@/lib/utils";
 
 /** ISO 8601 (1=segunda ... 7=domingo), com fins de semana ajustados para o dia útil mais próximo. */
@@ -270,58 +261,36 @@ export async function sendTestMessage(phone: string): Promise<ActionResult> {
   }
 }
 
-export interface LookupActionResult {
+export interface CepLookupResult {
   ok: boolean;
   error?: string;
-  data?: PhoneLookupData;
+  address?: string;
 }
 
 /**
- * Consulta CPF/CNPJ, CEP e endereço a partir de um telefone, usando o
- * conector configurado em Configurações > Consulta de dados. Não persiste
- * nada por si só — o formulário decide se salva o resultado no cliente.
+ * Preenche o endereço a partir do CEP usando o ViaCEP (viacep.com.br) —
+ * API pública e gratuita dos Correios, sem necessidade de cadastro ou
+ * chave de API. Só funciona nesse sentido (CEP -> endereço); não existe
+ * fonte pública/gratuita para localizar CPF/CNPJ a partir de telefone.
  */
-export async function lookupPhoneAction(phone: string): Promise<LookupActionResult> {
-  const parsed = phoneLookupSchema.safeParse({ phone });
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Telefone inválido." };
+export async function lookupCepAction(cep: string): Promise<CepLookupResult> {
+  const digits = onlyDigits(cep);
+  if (digits.length !== 8) {
+    return { ok: false, error: "Informe um CEP válido (8 dígitos)." };
   }
 
-  const supabase = await createClient();
-  const result = await lookupClientData(supabase, parsed.data.phone);
-  return result.ok ? { ok: true, data: result.data } : { ok: false, error: result.error };
-}
-
-export async function saveLookupSettings(input: LookupSettingsInput): Promise<ActionResult> {
-  const parsed = lookupSettingsSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    if (!response.ok) {
+      return { ok: false, error: `Falha ao consultar CEP (HTTP ${response.status}).` };
+    }
+    const data = await response.json();
+    if (data.erro) {
+      return { ok: false, error: "CEP não encontrado." };
+    }
+    const address = [data.logradouro, data.bairro, data.localidade, data.uf].filter(Boolean).join(", ");
+    return { ok: true, address };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Erro ao consultar CEP." };
   }
-  const data = parsed.data;
-  const supabase = await createClient();
-
-  await supabase.from("lookup_settings").update({ is_active: false }).eq("is_active", true);
-
-  const { error } = await supabase.from("lookup_settings").insert({
-    provider: data.provider,
-    base_url: data.baseUrl,
-    method: data.method,
-    api_key: data.apiKey || null,
-    auth_header: data.authHeader || null,
-    auth_scheme: data.authScheme || null,
-    body_template: data.bodyTemplate || null,
-    document_field: data.documentField || null,
-    document_type_field: data.documentTypeField || null,
-    name_field: data.nameField || null,
-    cep_field: data.cepField || null,
-    address_field: data.addressField || null,
-    is_active: true,
-  });
-
-  if (error) {
-    return { ok: false, error: error.message };
-  }
-
-  revalidatePath("/settings");
-  return { ok: true };
 }

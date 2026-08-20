@@ -23,13 +23,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { splitAmount } from "@/lib/installments";
 import { formatCurrency } from "@/lib/utils";
 import { transactionSchema, type TransactionInput } from "@/lib/validations";
-import { createTransaction, lookupPhoneAction } from "@/app/actions";
+import { createTransaction, lookupCepAction } from "@/app/actions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function NewTransactionDialog() {
   const [open, setOpen] = useState(false);
-  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [isLookingUpCep, setIsLookingUpCep] = useState(false);
   const router = useRouter();
 
   const {
@@ -50,24 +50,21 @@ export function NewTransactionDialog() {
     },
   });
 
-  async function handleLookup() {
-    const phone = watch("clientPhone");
-    if (!phone || phone.trim().length < 10) {
-      toast.error("Informe um telefone válido antes de buscar.");
+  async function handleCepLookup() {
+    const cep = watch("clientCep");
+    if (!cep || cep.replace(/\D/g, "").length !== 8) {
+      toast.error("Informe um CEP válido (8 dígitos).");
       return;
     }
-    setIsLookingUp(true);
-    const result = await lookupPhoneAction(phone);
-    setIsLookingUp(false);
-    if (!result.ok || !result.data) {
-      toast.error(result.error ?? "Erro ao consultar telefone.");
+    setIsLookingUpCep(true);
+    const result = await lookupCepAction(cep);
+    setIsLookingUpCep(false);
+    if (!result.ok) {
+      toast.error(result.error ?? "Erro ao consultar CEP.");
       return;
     }
-    if (result.data.document) setValue("clientDocument", result.data.document);
-    if (result.data.cep) setValue("clientCep", result.data.cep);
-    if (result.data.address) setValue("clientAddress", result.data.address);
-    if (result.data.name && !watch("clientName")) setValue("clientName", result.data.name);
-    toast.success("Dados encontrados e preenchidos.");
+    if (result.address) setValue("clientAddress", result.address);
+    toast.success("Endereço preenchido a partir do CEP.");
   }
 
   const totalAmount = Number(watch("totalAmount")) || 0;
@@ -120,19 +117,7 @@ export function NewTransactionDialog() {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="clientPhone">Telefone / WhatsApp</Label>
-              <div className="flex gap-2">
-                <Input id="clientPhone" placeholder="(11) 91234-5678" {...register("clientPhone")} />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  title="Buscar CPF/CNPJ, CEP e endereço pelo telefone"
-                  onClick={handleLookup}
-                  disabled={isLookingUp}
-                >
-                  {isLookingUp ? <Loader2Icon className="animate-spin" /> : <SearchIcon />}
-                </Button>
-              </div>
+              <Input id="clientPhone" placeholder="(11) 91234-5678" {...register("clientPhone")} />
               {errors.clientPhone && <p className="text-xs text-destructive">{errors.clientPhone.message}</p>}
             </div>
           </div>
@@ -151,7 +136,19 @@ export function NewTransactionDialog() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="clientCep">CEP (opcional)</Label>
-              <Input id="clientCep" placeholder="00000-000" {...register("clientCep")} />
+              <div className="flex gap-2">
+                <Input id="clientCep" placeholder="00000-000" {...register("clientCep")} />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  title="Preencher endereço pelo CEP (ViaCEP, gratuito)"
+                  onClick={handleCepLookup}
+                  disabled={isLookingUpCep}
+                >
+                  {isLookingUpCep ? <Loader2Icon className="animate-spin" /> : <SearchIcon />}
+                </Button>
+              </div>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="clientAddress">Endereço (opcional)</Label>
