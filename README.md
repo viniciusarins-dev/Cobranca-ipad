@@ -140,21 +140,6 @@ A fila roda em `/api/cron/weekly-dispatch` (`src/lib/scheduling/`) e, a cada exe
 > a carteira de clientes semanais de acordo, ou rode a fila por fora da Vercel (servidor próprio,
 > GitHub Actions, etc.) chamando o mesmo endpoint HTTP.
 
-### 7. Dados cadastrais do cliente (CPF/CNPJ, CEP, endereço)
-
-O formulário de novo cadastro tem campos opcionais para CPF/CNPJ, CEP e endereço, preenchidos
-manualmente e salvos no cliente (tabela `clients`).
-
-O campo de CEP tem um botão de busca que preenche o endereço automaticamente usando o
-[ViaCEP](https://viacep.com.br) — API pública e **100% gratuita** dos Correios, sem cadastro nem
-chave de API.
-
-> **Busca reversa telefone → CPF/CNPJ não foi implementada** porque não existe, no Brasil, uma
-> fonte pública e gratuita para esse tipo de consulta: só é possível através de provedores pagos
-> de dados cadastrais (ex: Big Data Corp, Assertiva, Direct Data), com contrato e base legal na
-> LGPD (em cobrança, normalmente o art. 7º, X — proteção ao crédito). Se no futuro fizer sentido
-> contratar um desses provedores, essa integração pode ser adicionada como um passo separado.
-
 ## Próximos passos sugeridos
 
 - Tela de login (Supabase Auth) protegendo as rotas do app.

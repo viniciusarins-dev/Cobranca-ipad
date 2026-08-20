@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2Icon, PlusIcon, SearchIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -23,13 +23,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { splitAmount } from "@/lib/installments";
 import { formatCurrency } from "@/lib/utils";
 import { transactionSchema, type TransactionInput } from "@/lib/validations";
-import { createTransaction, lookupCepAction } from "@/app/actions";
+import { createTransaction } from "@/app/actions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function NewTransactionDialog() {
   const [open, setOpen] = useState(false);
-  const [isLookingUpCep, setIsLookingUpCep] = useState(false);
   const router = useRouter();
 
   const {
@@ -37,7 +36,6 @@ export function NewTransactionDialog() {
     control,
     handleSubmit,
     watch,
-    setValue,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<TransactionInput>({
@@ -49,23 +47,6 @@ export function NewTransactionDialog() {
       firstDueDate: today(),
     },
   });
-
-  async function handleCepLookup() {
-    const cep = watch("clientCep");
-    if (!cep || cep.replace(/\D/g, "").length !== 8) {
-      toast.error("Informe um CEP válido (8 dígitos).");
-      return;
-    }
-    setIsLookingUpCep(true);
-    const result = await lookupCepAction(cep);
-    setIsLookingUpCep(false);
-    if (!result.ok) {
-      toast.error(result.error ?? "Erro ao consultar CEP.");
-      return;
-    }
-    if (result.address) setValue("clientAddress", result.address);
-    toast.success("Endereço preenchido a partir do CEP.");
-  }
 
   const totalAmount = Number(watch("totalAmount")) || 0;
   const installmentsCount = Number(watch("installmentsCount")) || 1;
@@ -122,38 +103,9 @@ export function NewTransactionDialog() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="clientEmail">E-mail (opcional)</Label>
-              <Input id="clientEmail" type="email" placeholder="cliente@email.com" {...register("clientEmail")} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="clientDocument">CPF/CNPJ (opcional)</Label>
-              <Input id="clientDocument" placeholder="000.000.000-00" {...register("clientDocument")} />
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-1.5">
-              <Label htmlFor="clientCep">CEP (opcional)</Label>
-              <div className="flex gap-2">
-                <Input id="clientCep" placeholder="00000-000" {...register("clientCep")} />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  title="Preencher endereço pelo CEP (ViaCEP, gratuito)"
-                  onClick={handleCepLookup}
-                  disabled={isLookingUpCep}
-                >
-                  {isLookingUpCep ? <Loader2Icon className="animate-spin" /> : <SearchIcon />}
-                </Button>
-              </div>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="clientAddress">Endereço (opcional)</Label>
-              <Input id="clientAddress" placeholder="Rua, número, bairro, cidade" {...register("clientAddress")} />
-            </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="clientEmail">E-mail (opcional)</Label>
+            <Input id="clientEmail" type="email" placeholder="cliente@email.com" {...register("clientEmail")} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

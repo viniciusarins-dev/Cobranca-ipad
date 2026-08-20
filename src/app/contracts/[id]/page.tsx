@@ -91,24 +91,6 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               <dt className="text-muted-foreground">1º vencimento</dt>
               <dd className="font-medium">{formatDate(contract.first_due_date)}</dd>
             </div>
-            {contract.client.document && (
-              <div>
-                <dt className="text-muted-foreground">CPF/CNPJ</dt>
-                <dd className="font-medium">{contract.client.document}</dd>
-              </div>
-            )}
-            {contract.client.cep && (
-              <div>
-                <dt className="text-muted-foreground">CEP</dt>
-                <dd className="font-medium">{contract.client.cep}</dd>
-              </div>
-            )}
-            {contract.client.address && (
-              <div className="col-span-2 sm:col-span-4">
-                <dt className="text-muted-foreground">Endereço</dt>
-                <dd className="font-medium">{contract.client.address}</dd>
-              </div>
-            )}
           </dl>
         </CardContent>
       </SpotlightCard>

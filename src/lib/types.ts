@@ -10,18 +10,12 @@ export type WhatsAppProviderName = "evolution" | "zapi" | "twilio" | "wppconnect
 
 export type WeeklyChargeStatus = "PENDENTE" | "PAGO" | "CANCELADO";
 
-export type DocumentType = "cpf" | "cnpj";
-
 export interface Client {
   id: string;
   name: string;
   phone: string;
   email: string | null;
   notes: string | null;
-  document: string | null;
-  document_type: DocumentType | null;
-  cep: string | null;
-  address: string | null;
   created_at: string;
   updated_at: string;
 }

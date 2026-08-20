@@ -44,16 +44,6 @@ export async function createTransaction(input: TransactionInput): Promise<Action
 
     if (existing) {
       clientId = existing.id;
-      if (data.clientDocument || data.clientCep || data.clientAddress) {
-        await supabase
-          .from("clients")
-          .update({
-            ...(data.clientDocument ? { document: data.clientDocument } : {}),
-            ...(data.clientCep ? { cep: data.clientCep } : {}),
-            ...(data.clientAddress ? { address: data.clientAddress } : {}),
-          })
-          .eq("id", clientId);
-      }
     } else {
       const { data: newClient, error: clientError } = await supabase
         .from("clients")
@@ -61,9 +51,6 @@ export async function createTransaction(input: TransactionInput): Promise<Action
           name: data.clientName,
           phone: phoneDigits,
           email: data.clientEmail || null,
-          document: data.clientDocument || null,
-          cep: data.clientCep || null,
-          address: data.clientAddress || null,
         })
         .select("id")
         .single();
@@ -258,39 +245,5 @@ export async function sendTestMessage(phone: string): Promise<ActionResult> {
     return result.ok ? { ok: true } : { ok: false, error: `Falha ao enviar (HTTP ${result.statusCode}).` };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Erro ao enviar mensagem de teste." };
-  }
-}
-
-export interface CepLookupResult {
-  ok: boolean;
-  error?: string;
-  address?: string;
-}
-
-/**
- * Preenche o endereço a partir do CEP usando o ViaCEP (viacep.com.br) —
- * API pública e gratuita dos Correios, sem necessidade de cadastro ou
- * chave de API. Só funciona nesse sentido (CEP -> endereço); não existe
- * fonte pública/gratuita para localizar CPF/CNPJ a partir de telefone.
- */
-export async function lookupCepAction(cep: string): Promise<CepLookupResult> {
-  const digits = onlyDigits(cep);
-  if (digits.length !== 8) {
-    return { ok: false, error: "Informe um CEP válido (8 dígitos)." };
-  }
-
-  try {
-    const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-    if (!response.ok) {
-      return { ok: false, error: `Falha ao consultar CEP (HTTP ${response.status}).` };
-    }
-    const data = await response.json();
-    if (data.erro) {
-      return { ok: false, error: "CEP não encontrado." };
-    }
-    const address = [data.logradouro, data.bairro, data.localidade, data.uf].filter(Boolean).join(", ");
-    return { ok: true, address };
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Erro ao consultar CEP." };
   }
 }

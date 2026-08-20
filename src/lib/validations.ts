@@ -15,9 +15,6 @@ export const transactionSchema = z.object({
     .max(60, "Máximo de 60 parcelas."),
   periodicity: z.enum(["semanal", "quinzenal", "mensal"]),
   firstDueDate: z.string().min(10, "Informe a data do primeiro vencimento."),
-  clientDocument: z.string().trim().optional().or(z.literal("")),
-  clientCep: z.string().trim().optional().or(z.literal("")),
-  clientAddress: z.string().trim().optional().or(z.literal("")),
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
