@@ -188,13 +188,19 @@ semanal automatizado. A cada execução:
 > pode facilmente ultrapassar o tempo máximo de uma function serverless. A fila processa em lote
 > respeitando um orçamento de tempo e o que sobrar continua pendente (`proximo_disparo` no
 > passado), sendo retomado automaticamente na próxima chamada do cron — o processamento é
-> idempotente. O `vercel.json` já agenda `weekly-dispatch` a cada 15 minutos dentro do horário
-> comercial, mas **crons com frequência menor que diária exigem plano Vercel Pro** (o plano Hobby
-> só permite 1 execução por dia); nesse caso, ajuste a expressão cron para uma execução diária e
-> dimensione a carteira de clientes semanais de acordo, ou rode a fila por fora da Vercel
-> (servidor próprio, GitHub Actions, etc.) chamando o mesmo endpoint HTTP. **Com a Meta Cloud
-> API**, sem o delay de 60-120s, esse limite praticamente não é um problema — a fila costuma
-> processar dezenas/centenas de clientes em poucos segundos.
+> idempotente.
+>
+> **Sobre a frequência do cron:** o plano **Hobby (gratuito) da Vercel só permite crons com
+> frequência diária** — uma expressão mais frequente que isso faz o deploy inteiro falhar (erro
+> "Hobby accounts are limited to daily cron jobs"). Por isso o `vercel.json` já vem configurado
+> com `weekly-dispatch` rodando **1x por dia** (`0 13 * * 1-5`, ~10h de Brasília, seg-sex) em vez
+> de a cada 15 minutos. Na prática: com Evolution API, se a carteira de clientes semanais for
+> grande o bastante para não caber no orçamento de tempo de uma única invocação, o restante só é
+> retomado no dia seguinte (ainda seguro, só atrasa o lembrete em um dia). **Com a Meta Cloud
+> API**, sem o delay de 60-120s, isso não é um problema — a fila processa dezenas/centenas de
+> clientes em segundos, então 1x/dia é mais que suficiente. Se tiver plano Pro e quiser processar
+> várias vezes ao dia (recomendado para volumes grandes com Evolution API), troque a expressão de
+> volta para algo como `*/15 12-21 * * 1-5`.
 
 ## Próximos passos sugeridos
 
