@@ -7,8 +7,19 @@ export interface WhatsAppSendResult {
   body: unknown;
 }
 
+export interface WhatsAppMessagePayload {
+  /** Texto final já renderizado (com variação/spintax aplicada) — usado pelos provedores de texto livre. */
+  text: string;
+  /**
+   * Parâmetros ordenados [nome_cliente, numero_parcela, valor, data_vencimento],
+   * mapeados para {{1}} {{2}} {{3}} {{4}} — usados apenas por provedores baseados
+   * em template pré-aprovado (Meta Cloud API).
+   */
+  templateParams?: string[];
+}
+
 export interface WhatsAppProvider {
-  send(toPhone: string, message: string): Promise<WhatsAppSendResult>;
+  send(toPhone: string, payload: WhatsAppMessagePayload): Promise<WhatsAppSendResult>;
 }
 
 async function parseResponse(response: Response) {
@@ -28,7 +39,7 @@ async function parseResponse(response: Response) {
 class EvolutionApiProvider implements WhatsAppProvider {
   constructor(private settings: MessageSettings) {}
 
-  async send(toPhone: string, message: string): Promise<WhatsAppSendResult> {
+  async send(toPhone: string, payload: WhatsAppMessagePayload): Promise<WhatsAppSendResult> {
     const { base_url, api_key, instance_id } = this.settings;
     if (!base_url || !api_key || !instance_id) {
       throw new Error("Configuração incompleta para Evolution API (base_url, api_key, instance_id).");
@@ -42,7 +53,7 @@ class EvolutionApiProvider implements WhatsAppProvider {
       },
       body: JSON.stringify({
         number: onlyDigits(toPhone),
-        text: message,
+        text: payload.text,
       }),
     });
 
@@ -57,7 +68,7 @@ class EvolutionApiProvider implements WhatsAppProvider {
 class ZApiProvider implements WhatsAppProvider {
   constructor(private settings: MessageSettings) {}
 
-  async send(toPhone: string, message: string): Promise<WhatsAppSendResult> {
+  async send(toPhone: string, payload: WhatsAppMessagePayload): Promise<WhatsAppSendResult> {
     const { base_url, api_key, instance_id } = this.settings;
     if (!base_url || !api_key || !instance_id) {
       throw new Error("Configuração incompleta para Z-API (base_url, api_key, instance_id).");
@@ -69,7 +80,7 @@ class ZApiProvider implements WhatsAppProvider {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         phone: onlyDigits(toPhone),
-        message,
+        message: payload.text,
       }),
     });
 
@@ -85,7 +96,7 @@ class ZApiProvider implements WhatsAppProvider {
 class TwilioProvider implements WhatsAppProvider {
   constructor(private settings: MessageSettings) {}
 
-  async send(toPhone: string, message: string): Promise<WhatsAppSendResult> {
+  async send(toPhone: string, payload: WhatsAppMessagePayload): Promise<WhatsAppSendResult> {
     const { instance_id: accountSid, auth_token: authToken, sender_number } = this.settings;
     if (!accountSid || !authToken || !sender_number) {
       throw new Error("Configuração incompleta para Twilio (Account SID, Auth Token, número remetente).");
@@ -95,7 +106,7 @@ class TwilioProvider implements WhatsAppProvider {
     const body = new URLSearchParams({
       From: `whatsapp:${sender_number}`,
       To: `whatsapp:+${onlyDigits(toPhone)}`,
-      Body: message,
+      Body: payload.text,
     });
 
     const response = await fetch(url, {
@@ -119,7 +130,7 @@ class TwilioProvider implements WhatsAppProvider {
 class WppConnectProvider implements WhatsAppProvider {
   constructor(private settings: MessageSettings) {}
 
-  async send(toPhone: string, message: string): Promise<WhatsAppSendResult> {
+  async send(toPhone: string, payload: WhatsAppMessagePayload): Promise<WhatsAppSendResult> {
     const { base_url, api_key, instance_id } = this.settings;
     if (!base_url || !api_key || !instance_id) {
       throw new Error("Configuração incompleta para WPPConnect (base_url, api_key, instance_id/sessão).");
@@ -134,7 +145,63 @@ class WppConnectProvider implements WhatsAppProvider {
       },
       body: JSON.stringify({
         phone: onlyDigits(toPhone),
-        message,
+        message: payload.text,
+      }),
+    });
+
+    return { ok: response.ok, statusCode: response.status, body: await parseResponse(response) };
+  }
+}
+
+const META_GRAPH_API_VERSION = "v21.0";
+
+/**
+ * Meta Cloud API (WhatsApp Business Platform) — https://developers.facebook.com/docs/whatsapp/cloud-api
+ * POST https://graph.facebook.com/{version}/{phone_number_id}/messages
+ * header: Authorization Bearer {access_token}
+ *
+ * Diferente dos demais provedores (que usam a automação não-oficial do
+ * WhatsApp Web e por isso precisam de delay randômico/spintax para reduzir
+ * risco de banimento), esta é a API oficial da Meta. Ela não corre esse
+ * risco, mas em compensação só permite mensagens iniciadas pela empresa
+ * através de um TEMPLATE pré-aprovado — texto livre não é aceito fora da
+ * janela de 24h de atendimento. `instance_id` guarda o Phone Number ID e
+ * `api_key` o Access Token (token de sistema, de longa duração).
+ */
+class MetaCloudApiProvider implements WhatsAppProvider {
+  constructor(private settings: MessageSettings) {}
+
+  async send(toPhone: string, payload: WhatsAppMessagePayload): Promise<WhatsAppSendResult> {
+    const { api_key: accessToken, instance_id: phoneNumberId, template_name: templateName, template_language: templateLanguage } =
+      this.settings;
+
+    if (!accessToken || !phoneNumberId || !templateName) {
+      throw new Error(
+        "Configuração incompleta para Meta Cloud API (Access Token, Phone Number ID, nome do template aprovado).",
+      );
+    }
+
+    const url = `https://graph.facebook.com/${META_GRAPH_API_VERSION}/${phoneNumberId}/messages`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: onlyDigits(toPhone),
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: templateLanguage || "pt_BR" },
+          components: [
+            {
+              type: "body",
+              parameters: (payload.templateParams ?? []).map((text) => ({ type: "text", text })),
+            },
+          ],
+        },
       }),
     });
 
@@ -152,6 +219,8 @@ export function createWhatsAppProvider(settings: MessageSettings): WhatsAppProvi
       return new TwilioProvider(settings);
     case "wppconnect":
       return new WppConnectProvider(settings);
+    case "meta":
+      return new MetaCloudApiProvider(settings);
     default:
       throw new Error(`Provedor de WhatsApp não suportado: ${settings.provider}`);
   }

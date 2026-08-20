@@ -20,13 +20,15 @@ export const transactionSchema = z.object({
 export type TransactionInput = z.infer<typeof transactionSchema>;
 
 export const messageSettingsSchema = z.object({
-  provider: z.enum(["evolution", "zapi", "twilio", "wppconnect"]),
+  provider: z.enum(["evolution", "zapi", "twilio", "wppconnect", "meta"]),
   baseUrl: z.string().trim().optional().or(z.literal("")),
   apiKey: z.string().trim().optional().or(z.literal("")),
   instanceId: z.string().trim().optional().or(z.literal("")),
   senderNumber: z.string().trim().optional().or(z.literal("")),
   authToken: z.string().trim().optional().or(z.literal("")),
   messageTemplate: z.string().trim().min(10, "O template não pode ficar vazio."),
+  templateName: z.string().trim().optional().or(z.literal("")),
+  templateLanguage: z.string().trim().optional().or(z.literal("")),
 });
 
 export type MessageSettingsInput = z.infer<typeof messageSettingsSchema>;

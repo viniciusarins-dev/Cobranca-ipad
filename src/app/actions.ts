@@ -211,6 +211,8 @@ export async function saveMessageSettings(input: MessageSettingsInput): Promise<
     sender_number: data.senderNumber || null,
     auth_token: data.authToken || null,
     message_template: data.messageTemplate,
+    template_name: data.templateName || null,
+    template_language: data.templateLanguage || "pt_BR",
     is_active: true,
   });
 
@@ -235,13 +237,16 @@ export async function sendTestMessage(phone: string): Promise<ActionResult> {
   }
 
   const { createWhatsAppProvider } = await import("@/lib/whatsapp/providers");
+  const { formatDate } = await import("@/lib/utils");
 
   try {
     const provider = createWhatsAppProvider(settings);
-    const result = await provider.send(
-      phone,
-      "Mensagem de teste do sistema de cobrança. Se você recebeu isso, a integração está funcionando corretamente.",
-    );
+    const result = await provider.send(phone, {
+      text: "Mensagem de teste do sistema de cobrança. Se você recebeu isso, a integração está funcionando corretamente.",
+      // Parâmetros de amostra — usados apenas pelo provider Meta Cloud API,
+      // que precisa preencher as variáveis do template aprovado mesmo num teste.
+      templateParams: ["Cliente Teste", "1/1", "0,00", formatDate(new Date())],
+    });
     return result.ok ? { ok: true } : { ok: false, error: `Falha ao enviar (HTTP ${result.statusCode}).` };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Erro ao enviar mensagem de teste." };

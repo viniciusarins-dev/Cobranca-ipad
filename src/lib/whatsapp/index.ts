@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createWhatsAppProvider } from "@/lib/whatsapp/providers";
-import { renderReminderMessage } from "@/lib/whatsapp/template";
+import { buildReminderTemplateParams, renderReminderMessage } from "@/lib/whatsapp/template";
 
 export interface SendReminderResult {
   ok: boolean;
@@ -46,10 +46,11 @@ export async function sendCollectionReminder(
     installment,
     contract.installments_count,
   );
+  const templateParams = buildReminderTemplateParams(client, installment, contract.installments_count);
 
   try {
     const provider = createWhatsAppProvider(settings);
-    const result = await provider.send(client.phone, message);
+    const result = await provider.send(client.phone, { text: message, templateParams });
 
     await supabase.from("message_logs").insert({
       installment_id: installment.id,
