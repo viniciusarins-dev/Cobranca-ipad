@@ -18,10 +18,14 @@ import {
   transactionSchema,
   paymentSchema,
   expenseSchema,
+  phoneSchema,
+  sellPhoneDirectSchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
   type ExpenseInput,
+  type PhoneInput,
+  type SellPhoneDirectInput,
 } from "@/lib/validations";
 import type { ContractStatus, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
 import { onlyDigits } from "@/lib/utils";
@@ -47,6 +51,21 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   }
   const data = parsed.data;
   const supabase = await createClient();
+
+  if (data.phoneId) {
+    const { data: phone, error: phoneError } = await supabase
+      .from("phones")
+      .select("id, status")
+      .eq("id", data.phoneId)
+      .single();
+
+    if (phoneError || !phone) {
+      return { ok: false, error: "Celular do estoque não encontrado." };
+    }
+    if (phone.status === "vendido") {
+      return { ok: false, error: "Este celular já foi vendido." };
+    }
+  }
 
   let clientId = data.clientId;
 
@@ -139,6 +158,21 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     });
     if (downPaymentError) {
       return { ok: false, error: downPaymentError.message };
+    }
+  }
+
+  if (data.phoneId) {
+    const { error: phoneUpdateError } = await supabase
+      .from("phones")
+      .update({
+        status: "vendido",
+        contract_id: contract.id,
+        sale_amount: roundCents(data.totalAmount),
+        sold_at: new Date().toISOString(),
+      })
+      .eq("id", data.phoneId);
+    if (phoneUpdateError) {
+      return { ok: false, error: phoneUpdateError.message };
     }
   }
 
@@ -335,6 +369,127 @@ export async function registerExpense(input: ExpenseInput): Promise<ActionResult
   }
 
   revalidatePath("/");
+  return { ok: true };
+}
+
+export async function createPhone(input: PhoneInput): Promise<ActionResult> {
+  const parsed = phoneSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("phones").insert({
+    model: data.model,
+    description: data.description || null,
+    cost_amount: roundCents(data.costAmount),
+    acquired_at: data.acquiredAt,
+    notes: data.notes || null,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/phones");
+  return { ok: true };
+}
+
+export async function updatePhone(phoneId: string, input: PhoneInput): Promise<ActionResult> {
+  const parsed = phoneSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("phones")
+    .update({
+      model: data.model,
+      description: data.description || null,
+      cost_amount: roundCents(data.costAmount),
+      acquired_at: data.acquiredAt,
+      notes: data.notes || null,
+    })
+    .eq("id", phoneId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/phones");
+  return { ok: true };
+}
+
+export async function deletePhone(phoneId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { data: phone, error: phoneError } = await supabase
+    .from("phones")
+    .select("status")
+    .eq("id", phoneId)
+    .single();
+
+  if (phoneError || !phone) {
+    return { ok: false, error: phoneError?.message ?? "Celular não encontrado." };
+  }
+  if (phone.status === "vendido") {
+    return { ok: false, error: "Não é possível excluir um celular já vendido (histórico de lucro)." };
+  }
+
+  const { error } = await supabase.from("phones").delete().eq("id", phoneId);
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/phones");
+  return { ok: true };
+}
+
+/**
+ * Venda direta de um celular do estoque, fora do sistema de parcelas (à
+ * vista, sem contrato/cliente cadastrado). O lucro é calculado sob demanda
+ * (sale_amount - cost_amount), nunca persistido, para nunca divergir.
+ */
+export async function sellPhoneDirect(input: SellPhoneDirectInput): Promise<ActionResult> {
+  const parsed = sellPhoneDirectSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  const { data: phone, error: phoneError } = await supabase
+    .from("phones")
+    .select("status")
+    .eq("id", data.phoneId)
+    .single();
+
+  if (phoneError || !phone) {
+    return { ok: false, error: phoneError?.message ?? "Celular não encontrado." };
+  }
+  if (phone.status === "vendido") {
+    return { ok: false, error: "Este celular já foi vendido." };
+  }
+
+  const { error } = await supabase
+    .from("phones")
+    .update({
+      status: "vendido",
+      sale_amount: roundCents(data.saleAmount),
+      sale_method: data.saleMethod,
+      buyer_name: data.buyerName || null,
+      sold_at: new Date().toISOString(),
+    })
+    .eq("id", data.phoneId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/phones");
   return { ok: true };
 }
 

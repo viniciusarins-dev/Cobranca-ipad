@@ -3,10 +3,13 @@
 import {
   AlertTriangleIcon,
   BanknoteIcon,
+  BoxIcon,
   CoinsIcon,
   HandCoinsIcon,
+  PackageCheckIcon,
   PiggyBankIcon,
   ReceiptIcon,
+  SmartphoneIcon,
   TrendingUpIcon,
   WalletIcon,
 } from "lucide-react";
@@ -113,6 +116,44 @@ export function DashboardOverview({ metrics }: { metrics: DashboardMetrics }) {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Celulares (estoque e lucro, separado dos empréstimos)
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StatTile label="Em estoque" value={metrics.phones.inStockCount} icon={BoxIcon} accent="cyan" />
+          <StatTile
+            label="Investido em estoque"
+            value={metrics.phones.inStockCost}
+            format="currency"
+            icon={SmartphoneIcon}
+            accent="primary"
+          />
+          <StatTile label="Vendidos" value={metrics.phones.soldCount} icon={PackageCheckIcon} accent="success" />
+          <StatTile
+            label="Lucro hoje"
+            value={metrics.phones.profit.today}
+            format="currency"
+            icon={TrendingUpIcon}
+            accent="success"
+          />
+          <StatTile
+            label="Lucro no mês"
+            value={metrics.phones.profit.month}
+            format="currency"
+            icon={TrendingUpIcon}
+            accent="success"
+          />
+          <StatTile
+            label="Lucro total"
+            value={metrics.phones.profit.total}
+            format="currency"
+            icon={TrendingUpIcon}
+            accent="success"
+          />
+        </div>
       </section>
 
       <section>

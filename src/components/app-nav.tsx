@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/", label: "Clientes", icon: UsersIcon, exact: true },
+  { href: "/phones", label: "Celulares", icon: SmartphoneIcon, exact: false },
   { href: "/settings", label: "Configurações", icon: SettingsIcon, exact: false },
 ] as const;
 

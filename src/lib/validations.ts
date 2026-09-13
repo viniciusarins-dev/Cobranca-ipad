@@ -21,6 +21,8 @@ export const transactionSchema = z
     hasDownPayment: z.boolean(),
     downPaymentAmount: z.number().min(0, "A entrada não pode ser negativa."),
     downPaymentMethod: z.enum(["dinheiro", "pix", "cartao", "outro"]),
+    /** Celular do estoque vendido nesta transação (só relevante para venda_iphone). */
+    phoneId: z.string().uuid().optional().or(z.literal("")),
   })
   .refine((data) => data.type === "venda_iphone" || !data.hasDownPayment, {
     message: "Entrada só se aplica a venda de iPhone.",
@@ -33,6 +35,10 @@ export const transactionSchema = z
   .refine((data) => !data.hasDownPayment || data.downPaymentAmount < data.totalAmount, {
     message: "A entrada deve ser menor que o valor total do produto.",
     path: ["downPaymentAmount"],
+  })
+  .refine((data) => data.type === "venda_iphone" || !data.phoneId, {
+    message: "Celular do estoque só se aplica a venda de iPhone.",
+    path: ["phoneId"],
   });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
@@ -56,6 +62,25 @@ export const expenseSchema = z.object({
 });
 
 export type ExpenseInput = z.infer<typeof expenseSchema>;
+
+export const phoneSchema = z.object({
+  model: z.string().trim().min(2, "Informe o modelo do celular."),
+  description: z.string().trim().optional().or(z.literal("")),
+  costAmount: z.number({ error: "Informe o custo de aquisição." }).min(0, "O custo não pode ser negativo."),
+  acquiredAt: z.string().min(10, "Informe a data de aquisição."),
+  notes: z.string().trim().optional().or(z.literal("")),
+});
+
+export type PhoneInput = z.infer<typeof phoneSchema>;
+
+export const sellPhoneDirectSchema = z.object({
+  phoneId: z.string().uuid(),
+  saleAmount: z.number({ error: "Informe o valor de venda." }).positive("O valor de venda deve ser maior que zero."),
+  saleMethod: z.enum(["dinheiro", "pix", "cartao", "outro"]),
+  buyerName: z.string().trim().optional().or(z.literal("")),
+});
+
+export type SellPhoneDirectInput = z.infer<typeof sellPhoneDirectSchema>;
 
 export const messageSettingsSchema = z.object({
   provider: z.enum(["evolution", "zapi", "twilio", "wppconnect", "meta"]),

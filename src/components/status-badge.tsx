@@ -4,8 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   CONTRACT_STATUS_LABELS,
   INSTALLMENT_STATUS_LABELS,
+  PHONE_STATUS_LABELS,
   type ContractStatus,
   type InstallmentStatus,
+  type PhoneStatus,
 } from "@/lib/types";
 
 const CONTRACT_VARIANT: Record<ContractStatus, "success" | "warning" | "destructive" | "secondary"> = {
@@ -20,6 +22,11 @@ const INSTALLMENT_VARIANT: Record<InstallmentStatus, "success" | "warning" | "de
   pendente: "warning",
   parcial: "outline",
   atrasado: "destructive",
+};
+
+const PHONE_VARIANT: Record<PhoneStatus, "secondary" | "success"> = {
+  estoque: "secondary",
+  vendido: "success",
 };
 
 /** Ponto pulsante (estilo uiverse.io) para chamar atenção a status críticos. */
@@ -54,4 +61,8 @@ export function InstallmentStatusBadge({ status }: { status: InstallmentStatus }
       {INSTALLMENT_STATUS_LABELS[status]}
     </Badge>
   );
+}
+
+export function PhoneStatusBadge({ status }: { status: PhoneStatus }) {
+  return <Badge variant={PHONE_VARIANT[status]}>{PHONE_STATUS_LABELS[status]}</Badge>;
 }

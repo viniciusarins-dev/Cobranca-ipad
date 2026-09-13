@@ -9,18 +9,20 @@ import { ShinyText } from "@/components/ui/shiny-text";
 import { StatTile } from "@/components/ui/stat-tile";
 import { getDashboardMetrics } from "@/lib/dashboard-metrics";
 import { createClient } from "@/lib/supabase/server";
-import type { ContractWithInstallments } from "@/lib/types";
+import type { ContractWithInstallments, Phone } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [{ data, error }, metrics] = await Promise.all([
+  const [{ data, error }, metrics, { data: availablePhonesData }] = await Promise.all([
     supabase.from("contracts").select("*, client:clients(*), installments(*)").order("created_at", { ascending: false }),
     getDashboardMetrics(supabase),
+    supabase.from("phones").select("*").eq("status", "estoque").order("model", { ascending: true }),
   ]);
 
   const contracts = (data ?? []) as ContractWithInstallments[];
+  const availablePhones = (availablePhonesData ?? []) as Phone[];
 
   const allInstallments = contracts.flatMap((contract) => contract.installments ?? []);
   const outstandingAmount = allInstallments
@@ -54,7 +56,7 @@ export default async function DashboardPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <ExpenseDialog />
-          <NewTransactionDialog />
+          <NewTransactionDialog availablePhones={availablePhones} />
         </div>
       </div>
 

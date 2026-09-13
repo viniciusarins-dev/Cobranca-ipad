@@ -14,6 +14,7 @@ import {
   PERIODICITY_LABELS,
   type ContractWithInstallments,
   type Payment,
+  type Phone,
 } from "@/lib/types";
 import { formatCurrency, formatDate, formatPhone, initials, onlyDigits } from "@/lib/utils";
 
@@ -51,6 +52,15 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     .order("paid_at", { ascending: false });
   const payments = (paymentsData ?? []) as Payment[];
   const installmentNumberById = Object.fromEntries(installments.map((i) => [i.id, i.number]));
+
+  const { data: linkedPhoneData } = await supabase
+    .from("phones")
+    .select("*")
+    .eq("contract_id", id)
+    .maybeSingle();
+  const linkedPhone = linkedPhoneData as Phone | null;
+  const phoneProfit =
+    linkedPhone && linkedPhone.sale_amount !== null ? linkedPhone.sale_amount - linkedPhone.cost_amount : null;
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
@@ -130,6 +140,34 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           </dl>
         </CardContent>
       </SpotlightCard>
+
+      {linkedPhone && (
+        <SpotlightCard>
+          <CardHeader>
+            <CardTitle className="text-base">Celular vinculado (estoque)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-muted-foreground">Modelo</dt>
+                <dd className="font-medium">{linkedPhone.model}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Custo de aquisição</dt>
+                <dd className="font-medium">{formatCurrency(linkedPhone.cost_amount)}</dd>
+              </div>
+              {phoneProfit !== null && (
+                <div>
+                  <dt className="text-muted-foreground">Lucro na venda do aparelho</dt>
+                  <dd className={phoneProfit >= 0 ? "font-semibold text-success" : "font-semibold text-destructive"}>
+                    {formatCurrency(phoneProfit)}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </CardContent>
+        </SpotlightCard>
+      )}
 
       <div>
         <h2 className="mb-3 text-lg font-bold tracking-tight text-foreground">Parcelas</h2>

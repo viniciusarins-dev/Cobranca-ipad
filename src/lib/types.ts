@@ -12,6 +12,8 @@ export type WeeklyChargeStatus = "PENDENTE" | "PAGO" | "CANCELADO";
 
 export type PaymentMethod = "dinheiro" | "pix" | "cartao" | "outro";
 
+export type PhoneStatus = "estoque" | "vendido";
+
 export interface Client {
   id: string;
   name: string;
@@ -71,6 +73,29 @@ export interface Payment {
   paid_at: string;
   notes: string | null;
   created_at: string;
+}
+
+/**
+ * Um celular do estoque (Fase 2). Rastreia custo de aquisição, venda e lucro
+ * separadamente dos contratos de empréstimo — pode ser vendido vinculado a um
+ * contrato de "Venda de iPhone" (contract_id preenchido, sale_amount =
+ * principal_amount do contrato) ou diretamente, fora do sistema de parcelas.
+ */
+export interface Phone {
+  id: string;
+  model: string;
+  description: string | null;
+  cost_amount: number;
+  status: PhoneStatus;
+  acquired_at: string;
+  sale_amount: number | null;
+  sale_method: PaymentMethod | null;
+  sold_at: string | null;
+  buyer_name: string | null;
+  contract_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /** Saída manual (combustível, celular, manutenção, despesa pessoal, etc). */
@@ -183,4 +208,9 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   pix: "Pix",
   cartao: "Cartão",
   outro: "Outro",
+};
+
+export const PHONE_STATUS_LABELS: Record<PhoneStatus, string> = {
+  estoque: "Em estoque",
+  vendido: "Vendido",
 };

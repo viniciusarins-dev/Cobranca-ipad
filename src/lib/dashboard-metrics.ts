@@ -2,7 +2,7 @@ import { startOfDay, startOfMonth, startOfWeek } from "date-fns";
 
 import { calculateFinancedAmount, roundCents } from "@/lib/financial-rules";
 import type { createClient } from "@/lib/supabase/server";
-import type { Contract, Expense, Payment, PaymentMethod } from "@/lib/types";
+import type { Contract, Expense, Payment, PaymentMethod, Phone } from "@/lib/types";
 
 export interface PeriodAmounts {
   today: number;
@@ -60,6 +60,22 @@ export interface DashboardMetrics {
   };
   /** Total recebido (parcelas + juros + entradas) agrupado por forma de pagamento (item 9 e 12). */
   receivedByMethod: Record<PaymentMethod, number>;
+  /**
+   * Estoque de celulares (Fase 2) — rastreado separadamente dos empréstimos:
+   * lucro aqui é margem de revenda (venda − custo de aquisição), não juros.
+   */
+  phones: {
+    inStockCount: number;
+    /** Total investido em custo de aquisição dos celulares ainda em estoque. */
+    inStockCost: number;
+    soldCount: number;
+    /** Soma dos valores de venda dos celulares já vendidos. */
+    totalRevenue: number;
+    /** Soma do custo de aquisição dos celulares já vendidos. */
+    totalCost: number;
+    /** totalRevenue − totalCost, por período (baseado na data da venda). */
+    profit: PeriodAmounts;
+  };
 }
 
 const EMPTY_METHOD_TOTALS: Record<PaymentMethod, number> = {
@@ -74,13 +90,19 @@ export async function getDashboardMetrics(
 ): Promise<DashboardMetrics> {
   const now = new Date();
 
-  const [{ data: contractsData }, { data: paymentsData }, { data: installmentsData }, { data: expensesData }] =
-    await Promise.all([
-      supabase.from("contracts").select("id, principal_amount, has_down_payment, down_payment_amount, total_amount"),
-      supabase.from("payments").select("*"),
-      supabase.from("installments").select("amount, paid_principal_amount, status"),
-      supabase.from("expenses").select("*"),
-    ]);
+  const [
+    { data: contractsData },
+    { data: paymentsData },
+    { data: installmentsData },
+    { data: expensesData },
+    { data: phonesData },
+  ] = await Promise.all([
+    supabase.from("contracts").select("id, principal_amount, has_down_payment, down_payment_amount, total_amount"),
+    supabase.from("payments").select("*"),
+    supabase.from("installments").select("amount, paid_principal_amount, status"),
+    supabase.from("expenses").select("*"),
+    supabase.from("phones").select("id, cost_amount, status, sale_amount, sold_at"),
+  ]);
 
   const contracts = (contractsData ?? []) as Pick<
     Contract,
@@ -89,6 +111,7 @@ export async function getDashboardMetrics(
   const payments = (paymentsData ?? []) as Payment[];
   const installments = (installmentsData ?? []) as { amount: number; paid_principal_amount: number; status: string }[];
   const expenses = (expensesData ?? []) as Expense[];
+  const phones = (phonesData ?? []) as Pick<Phone, "id" | "cost_amount" | "status" | "sale_amount" | "sold_at">[];
 
   // Fração de cada contrato que é markup (lucro), calculada uma única vez por
   // contrato e reaproveitada para todos os pagamentos dele — evita qualquer
@@ -156,6 +179,31 @@ export async function getDashboardMetrics(
     }
   }
 
+  let inStockCount = 0;
+  let inStockCost = 0;
+  let soldCount = 0;
+  let phonesTotalRevenue = 0;
+  let phonesTotalCost = 0;
+  const phonesProfit = emptyPeriod();
+
+  for (const phone of phones) {
+    if (phone.status === "estoque") {
+      inStockCount += 1;
+      inStockCost = roundCents(inStockCost + phone.cost_amount);
+      continue;
+    }
+
+    soldCount += 1;
+    const saleAmount = phone.sale_amount ?? 0;
+    phonesTotalRevenue = roundCents(phonesTotalRevenue + saleAmount);
+    phonesTotalCost = roundCents(phonesTotalCost + phone.cost_amount);
+
+    if (phone.sold_at) {
+      const profit = roundCents(saleAmount - phone.cost_amount);
+      addToPeriod(phonesProfit, profit, new Date(phone.sold_at), now);
+    }
+  }
+
   return {
     loans: {
       totalPrincipal,
@@ -176,5 +224,13 @@ export async function getDashboardMetrics(
       balance: roundCents(cashIncome.total - cashExpensesTotal),
     },
     receivedByMethod,
+    phones: {
+      inStockCount,
+      inStockCost,
+      soldCount,
+      totalRevenue: phonesTotalRevenue,
+      totalCost: phonesTotalCost,
+      profit: phonesProfit,
+    },
   };
 }

@@ -24,13 +24,13 @@ import { Switch } from "@/components/ui/switch";
 import { splitAmount } from "@/lib/installments";
 import { calculateFinancedAmount } from "@/lib/financial-rules";
 import { formatCurrency } from "@/lib/utils";
-import { PAYMENT_METHOD_LABELS } from "@/lib/types";
+import { PAYMENT_METHOD_LABELS, type Phone } from "@/lib/types";
 import { transactionSchema, type TransactionInput } from "@/lib/validations";
 import { createTransaction } from "@/app/actions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function NewTransactionDialog() {
+export function NewTransactionDialog({ availablePhones = [] }: { availablePhones?: Phone[] }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -52,6 +52,7 @@ export function NewTransactionDialog() {
       hasDownPayment: false,
       downPaymentAmount: 0,
       downPaymentMethod: "dinheiro",
+      phoneId: "",
     },
   });
 
@@ -75,6 +76,7 @@ export function NewTransactionDialog() {
     if (type !== "venda_iphone") {
       setValue("hasDownPayment", false);
       setValue("downPaymentAmount", 0);
+      setValue("phoneId", "");
     }
   }, [type, setValue]);
 
@@ -209,6 +211,34 @@ export function NewTransactionDialog() {
                       )}
                     />
                   </div>
+                </div>
+              )}
+
+              {availablePhones.length > 0 && (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="phoneId">Celular do estoque (opcional)</Label>
+                  <Controller
+                    control={control}
+                    name="phoneId"
+                    render={({ field }) => (
+                      <Select value={field.value || "none"} onValueChange={(v) => field.onChange(v === "none" ? "" : v)}>
+                        <SelectTrigger id="phoneId">
+                          <SelectValue placeholder="Nenhum" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {availablePhones.map((phone) => (
+                            <SelectItem key={phone.id} value={phone.id}>
+                              {phone.model} — custo {formatCurrency(phone.cost_amount)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Vincula esta venda a um celular do estoque para calcular o lucro real (venda − custo).
+                  </p>
                 </div>
               )}
             </div>
