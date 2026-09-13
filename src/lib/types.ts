@@ -4,11 +4,13 @@ export type Periodicity = "semanal" | "quinzenal" | "mensal";
 
 export type ContractStatus = "ativo" | "inadimplente" | "quitado" | "cancelado";
 
-export type InstallmentStatus = "pendente" | "pago" | "atrasado";
+export type InstallmentStatus = "pendente" | "pago" | "parcial" | "atrasado";
 
 export type WhatsAppProviderName = "evolution" | "zapi" | "twilio" | "wppconnect";
 
 export type WeeklyChargeStatus = "PENDENTE" | "PAGO" | "CANCELADO";
+
+export type PaymentMethod = "dinheiro" | "pix" | "cartao" | "outro";
 
 export interface Client {
   id: string;
@@ -25,7 +27,13 @@ export interface Contract {
   client_id: string;
   type: ContractType;
   description: string | null;
+  /** Valor final financiado (já com os 30% aplicados) — o que é dividido em parcelas. */
   total_amount: number;
+  /** Valor original do produto/empréstimo, antes do markup de 30%. */
+  principal_amount: number;
+  has_down_payment: boolean;
+  /** Valor da entrada (só relevante quando type = "venda_iphone"). Recebido à vista, fora das parcelas. */
+  down_payment_amount: number;
   installments_count: number;
   periodicity: Periodicity;
   first_due_date: string;
@@ -41,9 +49,39 @@ export interface Installment {
   amount: number;
   due_date: string;
   status: InstallmentStatus;
+  /** Soma do principal já pago desta parcela (permite pagamento parcial). */
+  paid_principal_amount: number;
   paid_at: string | null;
   reminder_sent_at: string | null;
   reminder_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Um pagamento registrado contra uma parcela (histórico completo, item 16). */
+export interface Payment {
+  id: string;
+  /** null representa a entrada (down payment) de um contrato de venda de iPhone. */
+  installment_id: string | null;
+  contract_id: string;
+  client_id: string;
+  principal_amount: number;
+  interest_amount: number;
+  method: PaymentMethod;
+  paid_at: string;
+  notes: string | null;
+  created_at: string;
+}
+
+/** Saída manual (combustível, celular, manutenção, despesa pessoal, etc). */
+export interface Expense {
+  id: string;
+  description: string;
+  category: string | null;
+  amount: number;
+  method: PaymentMethod;
+  expense_date: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -124,6 +162,7 @@ export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
 export const INSTALLMENT_STATUS_LABELS: Record<InstallmentStatus, string> = {
   pendente: "Pendente",
   pago: "Pago",
+  parcial: "Parcial",
   atrasado: "Atrasado",
 };
 
@@ -132,4 +171,11 @@ export const WHATSAPP_PROVIDER_LABELS: Record<WhatsAppProviderName, string> = {
   zapi: "Z-API",
   twilio: "Twilio",
   wppconnect: "WPPConnect",
+};
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  dinheiro: "Dinheiro",
+  pix: "Pix",
+  cartao: "Cartão",
+  outro: "Outro",
 };

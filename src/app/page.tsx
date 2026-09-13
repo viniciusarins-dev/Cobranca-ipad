@@ -1,6 +1,9 @@
 import { ClientsTable } from "@/components/clients-table";
+import { DashboardOverview } from "@/components/dashboard-overview";
+import { ExpenseDialog } from "@/components/expense-dialog";
 import { NewTransactionDialog } from "@/components/new-transaction-dialog";
 import { ShinyText } from "@/components/ui/shiny-text";
+import { getDashboardMetrics } from "@/lib/dashboard-metrics";
 import { createClient } from "@/lib/supabase/server";
 import type { ContractWithClient } from "@/lib/types";
 
@@ -8,10 +11,10 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("contracts")
-    .select("*, client:clients(*)")
-    .order("created_at", { ascending: false });
+  const [{ data, error }, metrics] = await Promise.all([
+    supabase.from("contracts").select("*, client:clients(*)").order("created_at", { ascending: false }),
+    getDashboardMetrics(supabase),
+  ]);
 
   const contracts = (data ?? []) as ContractWithClient[];
 
@@ -20,12 +23,21 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
           <ShinyText className="text-xs font-semibold uppercase tracking-widest">Cobrança iPad</ShinyText>
-          <h1 className="text-2xl font-semibold tracking-tight">Clientes</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             Empréstimos e vendas de iPhone parceladas — visão geral e status de cobrança.
           </p>
         </div>
-        <NewTransactionDialog />
+        <div className="flex flex-wrap gap-2">
+          <ExpenseDialog />
+          <NewTransactionDialog />
+        </div>
+      </div>
+
+      <DashboardOverview metrics={metrics} />
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Clientes</h2>
       </div>
 
       {error ? (

@@ -20,11 +20,14 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceRoleClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  // 1. Marca como atrasadas as parcelas pendentes cujo vencimento já passou
+  // 1. Marca como atrasadas as parcelas pendentes OU parcialmente pagas cujo
+  //    vencimento já passou (uma parcela paga em parte continua acumulando
+  //    juros e deve aparecer como atrasada até ser quitada — o valor já
+  //    pago fica preservado em paid_principal_amount, não é perdido).
   const { data: newlyOverdue, error: overdueError } = await supabase
     .from("installments")
     .update({ status: "atrasado" })
-    .eq("status", "pendente")
+    .in("status", ["pendente", "parcial"])
     .lt("due_date", today)
     .select("id, contract_id");
 

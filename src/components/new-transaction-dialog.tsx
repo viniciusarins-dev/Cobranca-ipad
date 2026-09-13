@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusIcon } from "lucide-react";
@@ -20,8 +20,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { splitAmount } from "@/lib/installments";
+import { calculateFinancedAmount } from "@/lib/financial-rules";
 import { formatCurrency } from "@/lib/utils";
+import { PAYMENT_METHOD_LABELS } from "@/lib/types";
 import { transactionSchema, type TransactionInput } from "@/lib/validations";
 import { createTransaction } from "@/app/actions";
 
@@ -37,6 +40,7 @@ export function NewTransactionDialog() {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<TransactionInput>({
     resolver: zodResolver(transactionSchema),
@@ -45,12 +49,34 @@ export function NewTransactionDialog() {
       periodicity: "mensal",
       installmentsCount: 1,
       firstDueDate: today(),
+      hasDownPayment: false,
+      downPaymentAmount: 0,
+      downPaymentMethod: "dinheiro",
     },
   });
 
+  const type = watch("type");
+  const hasDownPayment = type === "venda_iphone" && Boolean(watch("hasDownPayment"));
   const totalAmount = Number(watch("totalAmount")) || 0;
+  const downPaymentAmount = hasDownPayment ? Number(watch("downPaymentAmount")) || 0 : 0;
   const installmentsCount = Number(watch("installmentsCount")) || 1;
-  const previewAmounts = totalAmount > 0 && installmentsCount > 0 ? splitAmount(totalAmount, installmentsCount) : [];
+
+  const { totalFinanced, markupAmount } =
+    totalAmount > 0
+      ? calculateFinancedAmount({ principalAmount: totalAmount, hasDownPayment, downPaymentAmount })
+      : { totalFinanced: 0, markupAmount: 0 };
+
+  const previewAmounts =
+    totalFinanced > 0 && installmentsCount > 0 ? splitAmount(totalFinanced, installmentsCount) : [];
+
+  // Entrada só existe para venda de iPhone: ao trocar o tipo, zera a entrada
+  // para não deixar um valor "fantasma" que reprovaria a validação.
+  useEffect(() => {
+    if (type !== "venda_iphone") {
+      setValue("hasDownPayment", false);
+      setValue("downPaymentAmount", 0);
+    }
+  }, [type, setValue]);
 
   const onSubmit = handleSubmit(async (data) => {
     const result = await createTransaction(data);
@@ -103,11 +129,6 @@ export function NewTransactionDialog() {
             </div>
           </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="clientEmail">E-mail (opcional)</Label>
-            <Input id="clientEmail" type="email" placeholder="cliente@email.com" {...register("clientEmail")} />
-          </div>
-
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="type">Tipo de operação</Label>
@@ -133,9 +154,69 @@ export function NewTransactionDialog() {
             </div>
           </div>
 
+          {type === "venda_iphone" && (
+            <div className="grid gap-3 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label htmlFor="hasDownPayment">Deu entrada?</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Os 30% incidem só sobre o saldo financiado (valor do produto menos a entrada).
+                  </p>
+                </div>
+                <Controller
+                  control={control}
+                  name="hasDownPayment"
+                  render={({ field }) => (
+                    <Switch id="hasDownPayment" checked={Boolean(field.value)} onCheckedChange={field.onChange} />
+                  )}
+                />
+              </div>
+
+              {hasDownPayment && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="downPaymentAmount">Valor da entrada (R$)</Label>
+                    <Input
+                      id="downPaymentAmount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      {...register("downPaymentAmount", { valueAsNumber: true })}
+                    />
+                    {errors.downPaymentAmount && (
+                      <p className="text-xs text-destructive">{errors.downPaymentAmount.message}</p>
+                    )}
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="downPaymentMethod">Forma de pagamento da entrada</Label>
+                    <Controller
+                      control={control}
+                      name="downPaymentMethod"
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger id="downPaymentMethod">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                              <SelectItem key={value} value={value}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="totalAmount">Valor total (R$)</Label>
+              <Label htmlFor="totalAmount">Valor do produto / empréstimo (R$)</Label>
               <Input id="totalAmount" type="number" step="0.01" min="0" placeholder="0,00" {...register("totalAmount", { valueAsNumber: true })} />
               {errors.totalAmount && <p className="text-xs text-destructive">{errors.totalAmount.message}</p>}
             </div>
@@ -174,12 +255,20 @@ export function NewTransactionDialog() {
           </div>
 
           {previewAmounts.length > 0 && (
-            <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-              {previewAmounts.length}x de {formatCurrency(previewAmounts[0])}
-              {previewAmounts.length > 1 && previewAmounts.at(-1) !== previewAmounts[0]
-                ? ` (última parcela ${formatCurrency(previewAmounts.at(-1)!)})`
-                : ""}
-            </p>
+            <div className="grid gap-1 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+              <p>
+                Valor do produto: {formatCurrency(totalAmount)}
+                {hasDownPayment && downPaymentAmount > 0 ? ` · Entrada: ${formatCurrency(downPaymentAmount)}` : ""}
+                {" · "}Juros (30%): {formatCurrency(markupAmount)}
+              </p>
+              <p className="font-medium text-foreground">
+                Total financiado: {formatCurrency(totalFinanced)} — {previewAmounts.length}x de{" "}
+                {formatCurrency(previewAmounts[0])}
+                {previewAmounts.length > 1 && previewAmounts.at(-1) !== previewAmounts[0]
+                  ? ` (última parcela ${formatCurrency(previewAmounts.at(-1)!)})`
+                  : ""}
+              </p>
+            </div>
           )}
 
           <DialogFooter>

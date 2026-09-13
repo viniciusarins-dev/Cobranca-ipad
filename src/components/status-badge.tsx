@@ -15,9 +15,10 @@ const CONTRACT_VARIANT: Record<ContractStatus, "success" | "warning" | "destruct
   cancelado: "warning",
 };
 
-const INSTALLMENT_VARIANT: Record<InstallmentStatus, "success" | "warning" | "destructive"> = {
+const INSTALLMENT_VARIANT: Record<InstallmentStatus, "success" | "warning" | "destructive" | "outline"> = {
   pago: "success",
   pendente: "warning",
+  parcial: "outline",
   atrasado: "destructive",
 };
 

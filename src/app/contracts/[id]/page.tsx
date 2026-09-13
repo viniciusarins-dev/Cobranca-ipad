@@ -3,14 +3,17 @@ import { notFound } from "next/navigation";
 import { ArrowLeftIcon, MessageCircleIcon } from "lucide-react";
 
 import { InstallmentsGrid } from "@/components/installments-grid";
+import { PaymentHistory } from "@/components/payment-history";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { createClient } from "@/lib/supabase/server";
+import { calculateFinancedAmount } from "@/lib/financial-rules";
 import {
   CONTRACT_TYPE_LABELS,
   PERIODICITY_LABELS,
   type ContractWithInstallments,
+  type Payment,
 } from "@/lib/types";
 import { formatCurrency, formatDate, formatPhone, onlyDigits } from "@/lib/utils";
 
@@ -34,6 +37,20 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const installments = [...contract.installments].sort((a, b) => a.number - b.number);
   const paidCount = installments.filter((i) => i.status === "pago").length;
   const whatsappLink = `https://wa.me/${onlyDigits(contract.client.phone)}`;
+
+  const { markupAmount } = calculateFinancedAmount({
+    principalAmount: contract.principal_amount,
+    hasDownPayment: contract.has_down_payment,
+    downPaymentAmount: contract.down_payment_amount,
+  });
+
+  const { data: paymentsData } = await supabase
+    .from("payments")
+    .select("*")
+    .eq("contract_id", id)
+    .order("paid_at", { ascending: false });
+  const payments = (paymentsData ?? []) as Payment[];
+  const installmentNumberById = Object.fromEntries(installments.map((i) => [i.id, i.number]));
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
@@ -68,8 +85,8 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               <dd className="font-medium">{CONTRACT_TYPE_LABELS[contract.type]}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Valor total</dt>
-              <dd className="font-medium">{formatCurrency(contract.total_amount)}</dd>
+              <dt className="text-muted-foreground">Valor do produto</dt>
+              <dd className="font-medium">{formatCurrency(contract.principal_amount)}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Parcelas</dt>
@@ -80,6 +97,20 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             <div>
               <dt className="text-muted-foreground">Periodicidade</dt>
               <dd className="font-medium">{PERIODICITY_LABELS[contract.periodicity]}</dd>
+            </div>
+            {contract.has_down_payment && (
+              <div>
+                <dt className="text-muted-foreground">Entrada</dt>
+                <dd className="font-medium">{formatCurrency(contract.down_payment_amount)}</dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-muted-foreground">Juros (30%)</dt>
+              <dd className="font-medium">{formatCurrency(markupAmount)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Total financiado</dt>
+              <dd className="font-medium">{formatCurrency(contract.total_amount)}</dd>
             </div>
             {contract.description && (
               <div className="col-span-2 sm:col-span-4">
@@ -98,6 +129,15 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       <div>
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Parcelas</h2>
         <InstallmentsGrid installments={installments} />
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-lg font-semibold tracking-tight">Histórico de pagamentos</h2>
+        <PaymentHistory
+          payments={payments}
+          installmentNumberById={installmentNumberById}
+          totalInstallments={contract.installments_count}
+        />
       </div>
     </main>
   );
