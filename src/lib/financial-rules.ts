@@ -1,13 +1,20 @@
 import { parseISO } from "date-fns";
 
-import type { InstallmentStatus } from "@/lib/types";
+import type { ContractType, InstallmentStatus } from "@/lib/types";
 
 /**
  * Todas as regras de rentabilidade do negócio ficam centralizadas aqui para
  * evitar que cálculos divergentes apareçam em telas diferentes (dashboard,
  * criação de contrato, tela de pagamento).
+ *
+ * Empréstimo: 7,5% de juros aplicados sobre o saldo financiado, distribuídos
+ * igualmente entre as parcelas (matematicamente idêntico a aplicar 7,5%
+ * sobre cada parcela base individualmente, já que a divisão é igualitária —
+ * ver `splitAmount`). Venda de iPhone: SEM juros automático — o valor
+ * digitado pelo usuário é exatamente o que é dividido em parcelas (o lucro
+ * da venda do aparelho é rastreado à parte, no módulo de estoque/Celulares).
  */
-export const LOAN_MARKUP_RATE = 0.3;
+export const LOAN_INSTALLMENT_INTEREST_RATE = 0.075;
 export const LATE_INTEREST_RATE_PER_DAY = 0.01;
 
 /** Arredonda para centavos passando por inteiro, evitando erro de ponto flutuante. */
@@ -16,7 +23,8 @@ export function roundCents(value: number): number {
 }
 
 export interface FinancedAmountInput {
-  /** Valor original do produto/empréstimo, antes de qualquer markup. */
+  contractType: ContractType;
+  /** Valor original do produto/empréstimo, antes de qualquer juros. */
   principalAmount: number;
   /** Só relevante para venda de iPhone. */
   hasDownPayment: boolean;
@@ -25,27 +33,32 @@ export interface FinancedAmountInput {
 }
 
 export interface FinancedAmountResult {
-  /** Base sobre a qual os 30% incidem (principal menos a entrada, se houver). */
+  /** Base sobre a qual os juros incidem (principal menos a entrada, se houver). */
   financedBase: number;
-  /** Valor dos 30% (o ganho previsto do contrato). */
+  /** Valor dos juros do empréstimo (0 para venda de iPhone). */
   markupAmount: number;
   /** financedBase + markupAmount — é isto que é dividido em parcelas. */
   totalFinanced: number;
+  /** Taxa efetivamente aplicada (7,5% para empréstimo, 0 para venda de iPhone). */
+  rate: number;
 }
 
 /**
- * Calcula o valor final a ser financiado (dividido em parcelas), aplicando
- * os 30% de markup uma única vez sobre o saldo financiado — nunca por
- * parcela — para não haver risco de duplicar o markup quando o contrato é
- * dividido em N parcelas (a divisão em si é feita depois, por splitAmount).
+ * Calcula o valor final a ser financiado (dividido em parcelas). Os juros
+ * são aplicados uma única vez sobre o saldo financiado — nunca por parcela —
+ * para não haver risco de duplicar o juros quando o contrato é dividido em N
+ * parcelas (a divisão em si é feita depois, por splitAmount). Como a divisão
+ * é igualitária, o resultado por parcela é idêntico a aplicar a taxa
+ * individualmente em cada parcela base.
  */
 export function calculateFinancedAmount(input: FinancedAmountInput): FinancedAmountResult {
   const downPayment = input.hasDownPayment ? Math.max(input.downPaymentAmount, 0) : 0;
   const financedBase = roundCents(Math.max(input.principalAmount - downPayment, 0));
-  const markupAmount = roundCents(financedBase * LOAN_MARKUP_RATE);
+  const rate = input.contractType === "emprestimo" ? LOAN_INSTALLMENT_INTEREST_RATE : 0;
+  const markupAmount = roundCents(financedBase * rate);
   const totalFinanced = roundCents(financedBase + markupAmount);
 
-  return { financedBase, markupAmount, totalFinanced };
+  return { financedBase, markupAmount, totalFinanced, rate };
 }
 
 /** Quantidade de dias corridos entre o vencimento e a data de referência (0 se ainda não venceu). */

@@ -8,6 +8,7 @@ import { GradientHeading } from "@/components/ui/gradient-heading";
 import { ShinyText } from "@/components/ui/shiny-text";
 import { StatTile } from "@/components/ui/stat-tile";
 import { getDashboardMetrics } from "@/lib/dashboard-metrics";
+import { getTodayDebtors } from "@/lib/debtors";
 import { createClient } from "@/lib/supabase/server";
 import type { ContractWithInstallments, Phone } from "@/lib/types";
 
@@ -15,10 +16,11 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [{ data, error }, metrics, { data: availablePhonesData }] = await Promise.all([
+  const [{ data, error }, metrics, { data: availablePhonesData }, { summary: debtorsSummary }] = await Promise.all([
     supabase.from("contracts").select("*, client:clients(*), installments(*)").order("created_at", { ascending: false }),
     getDashboardMetrics(supabase),
     supabase.from("phones").select("*").eq("status", "estoque").order("model", { ascending: true }),
+    getTodayDebtors(supabase),
   ]);
 
   const contracts = (data ?? []) as ContractWithInstallments[];
@@ -82,7 +84,7 @@ export default async function DashboardPage() {
             />
           </div>
 
-          <DashboardOverview metrics={metrics} />
+          <DashboardOverview metrics={metrics} debtorsSummary={debtorsSummary} />
 
           <div>
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Clientes</h2>

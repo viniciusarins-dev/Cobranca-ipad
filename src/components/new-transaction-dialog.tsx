@@ -62,10 +62,10 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
   const downPaymentAmount = hasDownPayment ? Number(watch("downPaymentAmount")) || 0 : 0;
   const installmentsCount = Number(watch("installmentsCount")) || 1;
 
-  const { totalFinanced, markupAmount } =
+  const { totalFinanced, markupAmount, rate } =
     totalAmount > 0
-      ? calculateFinancedAmount({ principalAmount: totalAmount, hasDownPayment, downPaymentAmount })
-      : { totalFinanced: 0, markupAmount: 0 };
+      ? calculateFinancedAmount({ contractType: type, principalAmount: totalAmount, hasDownPayment, downPaymentAmount })
+      : { totalFinanced: 0, markupAmount: 0, rate: 0 };
 
   const previewAmounts =
     totalFinanced > 0 && installmentsCount > 0 ? splitAmount(totalFinanced, installmentsCount) : [];
@@ -162,7 +162,8 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
                 <div>
                   <Label htmlFor="hasDownPayment">Deu entrada?</Label>
                   <p className="text-xs text-muted-foreground">
-                    Os 30% incidem só sobre o saldo financiado (valor do produto menos a entrada).
+                    A entrada é recebida à vista; o restante (valor do produto menos a entrada) é dividido nas
+                    parcelas, sem juros automático — o valor é o que você digitar.
                   </p>
                 </div>
                 <Controller
@@ -246,7 +247,9 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="totalAmount">Valor do produto / empréstimo (R$)</Label>
+              <Label htmlFor="totalAmount">
+                {type === "venda_iphone" ? "Valor do produto (R$)" : "Valor emprestado (R$)"}
+              </Label>
               <Input id="totalAmount" type="number" step="0.01" min="0" placeholder="0,00" {...register("totalAmount", { valueAsNumber: true })} />
               {errors.totalAmount && <p className="text-xs text-destructive">{errors.totalAmount.message}</p>}
             </div>
@@ -287,12 +290,12 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
           {previewAmounts.length > 0 && (
             <div className="grid gap-1 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
               <p>
-                Valor do produto: {formatCurrency(totalAmount)}
+                {type === "venda_iphone" ? "Valor do produto" : "Valor emprestado"}: {formatCurrency(totalAmount)}
                 {hasDownPayment && downPaymentAmount > 0 ? ` · Entrada: ${formatCurrency(downPaymentAmount)}` : ""}
-                {" · "}Juros (30%): {formatCurrency(markupAmount)}
+                {rate > 0 ? ` · Juros (${rate * 100}% por parcela): ${formatCurrency(markupAmount)}` : ""}
               </p>
               <p className="font-medium text-foreground">
-                Total financiado: {formatCurrency(totalFinanced)} — {previewAmounts.length}x de{" "}
+                Total previsto: {formatCurrency(totalFinanced)} — {previewAmounts.length}x de{" "}
                 {formatCurrency(previewAmounts[0])}
                 {previewAmounts.length > 1 && previewAmounts.at(-1) !== previewAmounts[0]
                   ? ` (última parcela ${formatCurrency(previewAmounts.at(-1)!)})`

@@ -66,6 +66,9 @@ export function PaymentHistory({ payments, installmentNumberById, totalInstallme
                     </span>
                   )}
                   {payment.notes && <p className="text-xs text-muted-foreground">{payment.notes}</p>}
+                  {payment.created_by_email && (
+                    <p className="text-xs text-muted-foreground">Registrado por {payment.created_by_email}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-semibold">{formatCurrency(total)}</span>

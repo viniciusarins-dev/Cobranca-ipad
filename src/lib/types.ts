@@ -81,6 +81,8 @@ export interface Payment {
   method: PaymentMethod;
   paid_at: string;
   notes: string | null;
+  /** E-mail do usuário autenticado que registrou o pagamento, se houver. */
+  created_by_email: string | null;
   created_at: string;
 }
 
@@ -116,6 +118,8 @@ export interface Expense {
   method: PaymentMethod;
   expense_date: string;
   notes: string | null;
+  /** E-mail do usuário autenticado que registrou a saída, se houver. */
+  created_by_email: string | null;
   created_at: string;
   updated_at: string;
 }

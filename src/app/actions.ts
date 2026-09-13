@@ -32,6 +32,13 @@ import {
 import type { ContractStatus, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
 import { onlyDigits } from "@/lib/utils";
 
+async function getCurrentUserEmail(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.email ?? null;
+}
+
 /** ISO 8601 (1=segunda ... 7=domingo), com fins de semana ajustados para o dia útil mais próximo. */
 function toBusinessWeekday(date: string): number {
   const isoWeekday = getISODay(parseISO(date));
@@ -101,6 +108,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
 
   const hasDownPayment = data.type === "venda_iphone" && data.hasDownPayment;
   const { totalFinanced } = calculateFinancedAmount({
+    contractType: data.type,
     principalAmount: data.totalAmount,
     hasDownPayment,
     downPaymentAmount: data.downPaymentAmount,
@@ -115,9 +123,10 @@ export async function createTransaction(input: TransactionInput): Promise<Action
       principal_amount: data.totalAmount,
       has_down_payment: hasDownPayment,
       down_payment_amount: hasDownPayment ? data.downPaymentAmount : 0,
-      // total_amount é o valor JÁ com os 30% de markup aplicados sobre o
-      // saldo financiado (produto menos entrada) — é isto que é dividido
-      // em parcelas. O markup nunca é recalculado por parcela.
+      // total_amount já sai com os juros aplicados quando for empréstimo
+      // (7,5%) ou exatamente o valor digitado quando for venda de iPhone
+      // (sem juros automático) — é isto que é dividido em parcelas. O juros
+      // nunca é recalculado por parcela.
       total_amount: totalFinanced,
       installments_count: data.installmentsCount,
       periodicity: data.periodicity,
@@ -157,6 +166,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
       interest_amount: 0,
       method: data.downPaymentMethod,
       notes: "Entrada",
+      created_by_email: await getCurrentUserEmail(supabase),
     });
     if (downPaymentError) {
       return { ok: false, error: downPaymentError.message };
@@ -309,6 +319,8 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     return { ok: false, error: "Não há saldo em aberto nesta parcela." };
   }
 
+  const createdByEmail = await getCurrentUserEmail(supabase);
+
   const { error: paymentError } = await supabase.from("payments").insert({
     installment_id: installment.id,
     contract_id: installment.contract_id,
@@ -317,6 +329,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     interest_amount: interestPortion,
     method: data.method,
     notes: data.notes || null,
+    created_by_email: createdByEmail,
   });
 
   if (paymentError) {
@@ -346,6 +359,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
 
   revalidatePath(`/contracts/${installment.contract_id}`);
   revalidatePath("/");
+  revalidatePath("/debtors");
   return { ok: true, contractId: installment.contract_id };
 }
 
@@ -356,6 +370,7 @@ export async function registerExpense(input: ExpenseInput): Promise<ActionResult
   }
   const data = parsed.data;
   const supabase = await createClient();
+  const createdByEmail = await getCurrentUserEmail(supabase);
 
   const { error } = await supabase.from("expenses").insert({
     description: data.description,
@@ -364,6 +379,7 @@ export async function registerExpense(input: ExpenseInput): Promise<ActionResult
     method: data.method,
     expense_date: data.expenseDate,
     notes: data.notes || null,
+    created_by_email: createdByEmail,
   });
 
   if (error) {

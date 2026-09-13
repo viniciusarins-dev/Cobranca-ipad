@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import {
   AlertTriangleIcon,
   BanknoteIcon,
   BoxIcon,
+  CalendarClockIcon,
+  CheckCircle2Icon,
   CoinsIcon,
   HandCoinsIcon,
   PackageCheckIcon,
@@ -15,13 +18,21 @@ import {
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { Button } from "@/components/ui/button";
 import { StatTile } from "@/components/ui/stat-tile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DashboardMetrics } from "@/lib/dashboard-metrics";
+import type { TodayDebtorsSummary } from "@/lib/debtors";
 import { PAYMENT_METHOD_LABELS } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 
-export function DashboardOverview({ metrics }: { metrics: DashboardMetrics }) {
+export function DashboardOverview({
+  metrics,
+  debtorsSummary,
+}: {
+  metrics: DashboardMetrics;
+  debtorsSummary: TodayDebtorsSummary;
+}) {
   const flowChartData = [
     { periodo: "Hoje", Entradas: metrics.income.today, Saídas: metrics.expenses.today },
     { periodo: "Semana", Entradas: metrics.income.week, Saídas: metrics.expenses.week },
@@ -31,6 +42,45 @@ export function DashboardOverview({ metrics }: { metrics: DashboardMetrics }) {
 
   return (
     <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">📅 Devedores de Hoje</CardTitle>
+          <Button asChild size="sm">
+            <Link href="/debtors">Ver devedores</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatTile label="Devedores" value={debtorsSummary.debtorsCount} icon={CalendarClockIcon} accent="warning" />
+            <StatTile
+              label="A receber"
+              value={debtorsSummary.expectedAmount}
+              format="currency"
+              icon={WalletIcon}
+              accent="cyan"
+            />
+            <StatTile
+              label="Juros de atraso"
+              value={debtorsSummary.lateInterestAmount}
+              format="currency"
+              icon={AlertTriangleIcon}
+              accent="destructive"
+            />
+            <StatTile
+              label="Total"
+              value={debtorsSummary.totalToReceive}
+              format="currency"
+              icon={TrendingUpIcon}
+              accent="warning"
+            />
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            <CheckCircle2Icon className="mr-1 inline size-4 text-success" />
+            {debtorsSummary.paidTodayCount} pagos hoje · {formatCurrency(debtorsSummary.receivedToday)} recebido
+          </p>
+        </CardContent>
+      </Card>
+
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Empréstimos e vendas — Total
