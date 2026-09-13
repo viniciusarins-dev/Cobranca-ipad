@@ -20,12 +20,14 @@ import {
   expenseSchema,
   phoneSchema,
   sellPhoneDirectSchema,
+  clientAddressSchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
   type ExpenseInput,
   type PhoneInput,
   type SellPhoneDirectInput,
+  type ClientAddressInput,
 } from "@/lib/validations";
 import type { ContractStatus, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
 import { onlyDigits } from "@/lib/utils";
@@ -490,6 +492,127 @@ export async function sellPhoneDirect(input: SellPhoneDirectInput): Promise<Acti
   }
 
   revalidatePath("/phones");
+  return { ok: true };
+}
+
+export async function updateClientAddress(clientId: string, input: ClientAddressInput): Promise<ActionResult> {
+  const parsed = clientAddressSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("clients")
+    .update({
+      street: data.street || null,
+      street_number: data.streetNumber || null,
+      neighborhood: data.neighborhood || null,
+      city: data.city || null,
+      state: data.state || null,
+      zip_code: data.zipCode || null,
+    })
+    .eq("id", clientId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+const DOCUMENT_MAX_SIZE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Foto/PDF do documento do cliente, enviado para um bucket de Storage
+ * PRIVADO (`client-documents`, criado na migration 0006) — nunca fica
+ * público; só é acessível via signed URL gerada no servidor (ver
+ * `getClientDocumentSignedUrl`).
+ */
+export async function uploadClientDocument(clientId: string, formData: FormData): Promise<ActionResult> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "Selecione um arquivo." };
+  }
+  if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+    return { ok: false, error: "Envie uma imagem ou PDF." };
+  }
+  if (file.size > DOCUMENT_MAX_SIZE_BYTES) {
+    return { ok: false, error: "Arquivo muito grande (máx. 8MB)." };
+  }
+
+  const supabase = await createClient();
+
+  const { data: client, error: clientError } = await supabase
+    .from("clients")
+    .select("document_photo_path")
+    .eq("id", clientId)
+    .single();
+
+  if (clientError || !client) {
+    return { ok: false, error: clientError?.message ?? "Cliente não encontrado." };
+  }
+
+  const extension = file.name.includes(".") ? file.name.split(".").pop() : "bin";
+  const path = `${clientId}/${Date.now()}.${extension}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("client-documents")
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (uploadError) {
+    return { ok: false, error: uploadError.message };
+  }
+
+  const { error: updateError } = await supabase
+    .from("clients")
+    .update({ document_photo_path: path })
+    .eq("id", clientId);
+
+  if (updateError) {
+    // Reverte o upload para não deixar um arquivo órfão sem referência.
+    await supabase.storage.from("client-documents").remove([path]);
+    return { ok: false, error: updateError.message };
+  }
+
+  if (client.document_photo_path) {
+    await supabase.storage.from("client-documents").remove([client.document_photo_path]);
+  }
+
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteClientDocument(clientId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { data: client, error: clientError } = await supabase
+    .from("clients")
+    .select("document_photo_path")
+    .eq("id", clientId)
+    .single();
+
+  if (clientError || !client) {
+    return { ok: false, error: clientError?.message ?? "Cliente não encontrado." };
+  }
+  if (!client.document_photo_path) {
+    return { ok: true };
+  }
+
+  await supabase.storage.from("client-documents").remove([client.document_photo_path]);
+
+  const { error: updateError } = await supabase
+    .from("clients")
+    .update({ document_photo_path: null })
+    .eq("id", clientId);
+
+  if (updateError) {
+    return { ok: false, error: updateError.message };
+  }
+
+  revalidatePath("/");
   return { ok: true };
 }
 

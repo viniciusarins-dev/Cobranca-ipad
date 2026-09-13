@@ -102,3 +102,14 @@ export const loginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+export const clientAddressSchema = z.object({
+  street: z.string().trim().optional().or(z.literal("")),
+  streetNumber: z.string().trim().optional().or(z.literal("")),
+  neighborhood: z.string().trim().optional().or(z.literal("")),
+  city: z.string().trim().optional().or(z.literal("")),
+  state: z.string().trim().max(2, "Use a sigla do estado (ex: SP).").optional().or(z.literal("")),
+  zipCode: z.string().trim().optional().or(z.literal("")),
+});
+
+export type ClientAddressInput = z.infer<typeof clientAddressSchema>;

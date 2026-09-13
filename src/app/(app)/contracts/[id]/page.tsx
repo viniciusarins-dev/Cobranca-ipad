@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, MessageCircleIcon } from "lucide-react";
 
+import { ClientDetailsCard } from "@/components/client-details-card";
 import { InstallmentsGrid } from "@/components/installments-grid";
 import { PaymentHistory } from "@/components/payment-history";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
+import { getClientDocumentSignedUrl } from "@/lib/client-documents";
 import { createClient } from "@/lib/supabase/server";
 import { calculateFinancedAmount } from "@/lib/financial-rules";
 import {
@@ -61,6 +63,8 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const linkedPhone = linkedPhoneData as Phone | null;
   const phoneProfit =
     linkedPhone && linkedPhone.sale_amount !== null ? linkedPhone.sale_amount - linkedPhone.cost_amount : null;
+
+  const documentSignedUrl = await getClientDocumentSignedUrl(supabase, contract.client.document_photo_path);
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
@@ -140,6 +144,8 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           </dl>
         </CardContent>
       </SpotlightCard>
+
+      <ClientDetailsCard client={contract.client} documentSignedUrl={documentSignedUrl} />
 
       {linkedPhone && (
         <SpotlightCard>

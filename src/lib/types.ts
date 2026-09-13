@@ -18,7 +18,16 @@ export interface Client {
   id: string;
   name: string;
   phone: string;
+  /** Não é mais exibido na tela (Fase 1) — mantido no banco por compatibilidade com dados existentes. */
   email: string | null;
+  street: string | null;
+  street_number: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  /** Caminho do objeto no bucket privado `client-documents` (nunca uma URL pública). */
+  document_photo_path: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
