@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { InstallmentStatusBadge } from "@/components/status-badge";
 import { calculateLateInterest, roundCents } from "@/lib/financial-rules";
 import { PAYMENT_METHOD_LABELS, type Installment } from "@/lib/types";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { paymentSchema, type PaymentInput } from "@/lib/validations";
 import { sendReminderAction, registerPayment } from "@/app/actions";
 
@@ -168,7 +168,12 @@ function InstallmentRow({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between",
+        installment.status === "atrasado" && "border-destructive/30",
+      )}
+    >
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="font-semibold">
@@ -196,7 +201,7 @@ function InstallmentRow({
 
         <Button
           type="button"
-          variant="outline"
+          variant={installment.status === "atrasado" ? "glow" : "outline"}
           size="sm"
           disabled={installment.status === "pago" || isSending}
           onClick={handleSendReminder}

@@ -31,7 +31,7 @@ export function SpotlightCard({
       ref={ref}
       onMouseMove={handleMouseMove}
       className={cn(
-        "card-spotlight rounded-xl border border-border bg-card text-card-foreground shadow-sm",
+        "card-spotlight rounded-xl border border-border bg-card/60 text-card-foreground backdrop-blur-xl",
         className,
       )}
       style={spotlightColor ? ({ ...style, "--spotlight-color": spotlightColor } as React.CSSProperties) : style}

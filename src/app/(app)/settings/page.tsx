@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 
 import { SettingsForm } from "@/components/settings-form";
+import { GradientHeading } from "@/components/ui/gradient-heading";
 import { createClient } from "@/lib/supabase/server";
 import type { MessageSettings } from "@/lib/types";
 
@@ -20,13 +21,15 @@ export default async function SettingsPage() {
       <div>
         <Link
           href="/"
-          className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeftIcon className="size-4" />
           Voltar para clientes
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">Configuração de cobrança via WhatsApp</h1>
-        <p className="text-sm text-muted-foreground">
+        <GradientHeading className="mt-3 text-2xl sm:text-3xl">
+          Configuração de cobrança via WhatsApp
+        </GradientHeading>
+        <p className="mt-1 text-sm text-muted-foreground">
           Configure o provedor de mensagens usado para enviar lembretes automáticos e manuais.
         </p>
       </div>

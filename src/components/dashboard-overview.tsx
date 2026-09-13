@@ -1,8 +1,18 @@
 "use client";
 
+import {
+  AlertTriangleIcon,
+  BanknoteIcon,
+  CoinsIcon,
+  HandCoinsIcon,
+  PiggyBankIcon,
+  ReceiptIcon,
+  TrendingUpIcon,
+  WalletIcon,
+} from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-import { StatCard } from "@/components/ui/stat-card";
+import { StatTile } from "@/components/ui/stat-tile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DashboardMetrics } from "@/lib/dashboard-metrics";
 import { PAYMENT_METHOD_LABELS } from "@/lib/types";
@@ -23,16 +33,17 @@ export function DashboardOverview({ metrics }: { metrics: DashboardMetrics }) {
           Empréstimos e vendas — Total
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatCard label="Total emprestado" period="Total" value={metrics.loans.totalPrincipal} />
-          <StatCard label="Previsto para receber" period="Total" value={metrics.loans.totalExpected} />
-          <StatCard
+          <StatTile label="Total emprestado" value={metrics.loans.totalPrincipal} format="currency" icon={HandCoinsIcon} accent="primary" />
+          <StatTile label="Previsto para receber" value={metrics.loans.totalExpected} format="currency" icon={WalletIcon} accent="cyan" />
+          <StatTile
             label="Recebido (parcelas)"
-            period="Total"
             value={metrics.loans.totalReceivedPrincipal}
-            tone="success"
+            format="currency"
+            icon={TrendingUpIcon}
+            accent="success"
           />
-          <StatCard label="Ainda a receber" period="Total" value={metrics.loans.totalOutstanding} tone="warning" />
-          <StatCard label="Em atraso" period="Total" value={metrics.loans.totalOverdue} tone="destructive" />
+          <StatTile label="Ainda a receber" value={metrics.loans.totalOutstanding} format="currency" icon={ReceiptIcon} accent="warning" />
+          <StatTile label="Em atraso" value={metrics.loans.totalOverdue} format="currency" icon={AlertTriangleIcon} accent="destructive" />
         </div>
       </section>
 
@@ -41,10 +52,10 @@ export function DashboardOverview({ metrics }: { metrics: DashboardMetrics }) {
           Juros de atraso recebidos
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Juros" period="Diário" value={metrics.lateInterestReceived.today} tone="success" />
-          <StatCard label="Juros" period="Semanal" value={metrics.lateInterestReceived.week} tone="success" />
-          <StatCard label="Juros" period="Mensal" value={metrics.lateInterestReceived.month} tone="success" />
-          <StatCard label="Juros" period="Total" value={metrics.lateInterestReceived.total} tone="success" />
+          <StatTile label="Diário" value={metrics.lateInterestReceived.today} format="currency" icon={CoinsIcon} accent="success" />
+          <StatTile label="Semanal" value={metrics.lateInterestReceived.week} format="currency" icon={CoinsIcon} accent="success" />
+          <StatTile label="Mensal" value={metrics.lateInterestReceived.month} format="currency" icon={CoinsIcon} accent="success" />
+          <StatTile label="Total" value={metrics.lateInterestReceived.total} format="currency" icon={CoinsIcon} accent="success" />
         </div>
       </section>
 
@@ -53,10 +64,10 @@ export function DashboardOverview({ metrics }: { metrics: DashboardMetrics }) {
           Ganhos (30% + juros de atraso já realizados)
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatCard label="Ganhos" period="Diário" value={metrics.earnings.today} tone="success" />
-          <StatCard label="Ganhos" period="Semanal" value={metrics.earnings.week} tone="success" />
-          <StatCard label="Ganhos" period="Mensal" value={metrics.earnings.month} tone="success" />
-          <StatCard label="Ganhos" period="Total" value={metrics.earnings.total} tone="success" />
+          <StatTile label="Diário" value={metrics.earnings.today} format="currency" icon={TrendingUpIcon} accent="success" />
+          <StatTile label="Semanal" value={metrics.earnings.week} format="currency" icon={TrendingUpIcon} accent="success" />
+          <StatTile label="Mensal" value={metrics.earnings.month} format="currency" icon={TrendingUpIcon} accent="success" />
+          <StatTile label="Total" value={metrics.earnings.total} format="currency" icon={TrendingUpIcon} accent="success" />
         </div>
       </section>
 
@@ -91,14 +102,14 @@ export function DashboardOverview({ metrics }: { metrics: DashboardMetrics }) {
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <StatCard label="Entradas" period="Diário" value={metrics.cash.income.today} />
-              <StatCard label="Entradas" period="Semanal" value={metrics.cash.income.week} />
-              <StatCard label="Entradas" period="Mensal" value={metrics.cash.income.month} />
-              <StatCard label="Entradas" period="Total" value={metrics.cash.income.total} />
+              <StatTile label="Entradas hoje" value={metrics.cash.income.today} format="currency" icon={BanknoteIcon} accent="cyan" />
+              <StatTile label="Entradas semana" value={metrics.cash.income.week} format="currency" icon={BanknoteIcon} accent="cyan" />
+              <StatTile label="Entradas mês" value={metrics.cash.income.month} format="currency" icon={BanknoteIcon} accent="cyan" />
+              <StatTile label="Entradas total" value={metrics.cash.income.total} format="currency" icon={BanknoteIcon} accent="cyan" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Saídas em dinheiro" period="Total" value={metrics.cash.expensesTotal} tone="destructive" />
-              <StatCard label="Saldo em caixa" period="Atual" value={metrics.cash.balance} tone="success" />
+              <StatTile label="Saídas em dinheiro" value={metrics.cash.expensesTotal} format="currency" icon={ReceiptIcon} accent="destructive" />
+              <StatTile label="Saldo em caixa" value={metrics.cash.balance} format="currency" icon={PiggyBankIcon} accent="success" />
             </div>
           </CardContent>
         </Card>
@@ -110,11 +121,13 @@ export function DashboardOverview({ metrics }: { metrics: DashboardMetrics }) {
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(Object.keys(PAYMENT_METHOD_LABELS) as Array<keyof typeof PAYMENT_METHOD_LABELS>).map((method) => (
-            <StatCard
+            <StatTile
               key={method}
               label={PAYMENT_METHOD_LABELS[method]}
-              period="Total"
               value={metrics.receivedByMethod[method]}
+              format="currency"
+              icon={WalletIcon}
+              accent="primary"
             />
           ))}
         </div>

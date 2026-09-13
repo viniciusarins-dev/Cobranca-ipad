@@ -7,8 +7,9 @@ import { Loader2Icon, SendIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +41,12 @@ const PROVIDER_FIELDS: Record<WhatsAppProviderName, { label: string; key: keyof 
     { label: "Sessão (Instance ID)", key: "instanceId" },
     { label: "Token (API Key)", key: "apiKey" },
   ],
+  meta: [
+    { label: "Phone Number ID", key: "instanceId" },
+    { label: "Access Token (token de sistema, permanente)", key: "apiKey" },
+    { label: "Nome do template aprovado", key: "templateName" },
+    { label: "Idioma do template (ex: pt_BR)", key: "templateLanguage" },
+  ],
 };
 
 export function SettingsForm({ initialSettings }: { initialSettings: MessageSettings | null }) {
@@ -62,6 +69,8 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
       senderNumber: initialSettings?.sender_number ?? "",
       authToken: initialSettings?.auth_token ?? "",
       messageTemplate: initialSettings?.message_template ?? DEFAULT_TEMPLATE,
+      templateName: initialSettings?.template_name ?? "",
+      templateLanguage: initialSettings?.template_language ?? "pt_BR",
     },
   });
 
@@ -94,12 +103,12 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
-      <Card>
+      <SpotlightCard>
         <CardHeader>
           <CardTitle>Provedor de WhatsApp</CardTitle>
           <CardDescription>
-            Escolha e configure a API responsável pelo envio das cobranças (Evolution API, Z-API, Twilio ou
-            WPPConnect).
+            Escolha e configure a API responsável pelo envio das cobranças (Meta Cloud API, Evolution API, Z-API,
+            Twilio ou WPPConnect).
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -133,15 +142,26 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
 
-      <Card>
+          {provider === "meta" && (
+            <div className="rounded-lg border border-warning/25 bg-warning/10 p-3 text-sm text-warning">
+              A Meta exige que mensagens iniciadas pela empresa usem um template pré-aprovado — texto livre só
+              funciona respondendo dentro de 24h após o cliente escrever. Crie o template no Meta Business Manager
+              com exatamente <strong>4 variáveis</strong>, nesta ordem: nome do cliente, parcela, valor e data de
+              vencimento. O texto abaixo (&quot;Template da mensagem&quot;) é só uma referência do conteúdo — o que
+              realmente é enviado é o template aprovado com esse nome.
+            </div>
+          )}
+        </CardContent>
+      </SpotlightCard>
+
+      <SpotlightCard>
         <CardHeader>
           <CardTitle>Template da mensagem</CardTitle>
           <CardDescription>
             Use os placeholders <code>{"{nome_cliente}"}</code>, <code>{"{numero_parcela}"}</code>,{" "}
             <code>{"{valor}"}</code> e <code>{"{data_vencimento}"}</code>.
+            {provider === "meta" && " Para a Meta, isto é só referência — o envio real usa o template aprovado."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -150,7 +170,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
             <p className="mt-1.5 text-xs text-destructive">{errors.messageTemplate.message}</p>
           )}
         </CardContent>
-      </Card>
+      </SpotlightCard>
 
       <div className="flex justify-end">
         <Button type="submit" variant="glow" disabled={isSubmitting} size="lg">
@@ -158,7 +178,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
         </Button>
       </div>
 
-      <Card>
+      <SpotlightCard>
         <CardHeader>
           <CardTitle>Testar envio</CardTitle>
           <CardDescription>Salve a configuração acima antes de testar.</CardDescription>
@@ -178,7 +198,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
             Enviar teste
           </Button>
         </CardContent>
-      </Card>
+      </SpotlightCard>
     </form>
   );
 }

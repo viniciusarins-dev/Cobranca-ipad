@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractStatusBadge } from "@/components/status-badge";
 import { CONTRACT_TYPE_LABELS, PERIODICITY_LABELS, type ContractWithClient } from "@/lib/types";
-import { formatCurrency, formatPhone } from "@/lib/utils";
+import { formatCurrency, formatPhone, initials } from "@/lib/utils";
 
 type FilterTab = "todos" | "ativo" | "inadimplente" | "quitado";
 
@@ -84,9 +84,15 @@ export function ClientsTable({ contracts }: { contracts: ContractWithClient[] })
               </TableRow>
             )}
             {filtered.map((contract) => (
-              <TableRow key={contract.id} className="cursor-pointer">
+              <TableRow key={contract.id} className="cursor-pointer hover:bg-primary/8">
                 <TableCell>
-                  <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3 font-medium text-foreground">
+                  <Link
+                    href={`/contracts/${contract.id}`}
+                    className="-mx-4 -my-3 flex items-center gap-3 px-4 py-3 font-medium text-foreground"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-accent-cyan text-xs font-bold text-primary-foreground">
+                      {initials(contract.client.name)}
+                    </span>
                     {contract.client.name}
                   </Link>
                 </TableCell>

@@ -15,7 +15,7 @@ import {
   type ContractWithInstallments,
   type Payment,
 } from "@/lib/types";
-import { formatCurrency, formatDate, formatPhone, onlyDigits } from "@/lib/utils";
+import { formatCurrency, formatDate, formatPhone, initials, onlyDigits } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +56,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <Link
         href="/"
-        className="inline-flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeftIcon className="size-4" />
         Voltar para clientes
@@ -64,17 +64,22 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
 
       <SpotlightCard>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle className="text-xl">{contract.client.name}</CardTitle>
-            <a
-              href={whatsappLink}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <MessageCircleIcon className="size-4" />
-              {formatPhone(contract.client.phone)}
-            </a>
+          <div className="flex items-center gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-accent-cyan text-sm font-bold text-primary-foreground">
+              {initials(contract.client.name)}
+            </span>
+            <div>
+              <CardTitle className="text-xl">{contract.client.name}</CardTitle>
+              <a
+                href={whatsappLink}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <MessageCircleIcon className="size-4" />
+                {formatPhone(contract.client.phone)}
+              </a>
+            </div>
           </div>
           <ContractStatusBadge status={contract.status} />
         </CardHeader>
@@ -110,7 +115,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             </div>
             <div>
               <dt className="text-muted-foreground">Total financiado</dt>
-              <dd className="font-medium">{formatCurrency(contract.total_amount)}</dd>
+              <dd className="font-semibold text-accent-cyan">{formatCurrency(contract.total_amount)}</dd>
             </div>
             {contract.description && (
               <div className="col-span-2 sm:col-span-4">
@@ -127,7 +132,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       </SpotlightCard>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold tracking-tight">Parcelas</h2>
+        <h2 className="mb-3 text-lg font-bold tracking-tight text-foreground">Parcelas</h2>
         <InstallmentsGrid installments={installments} />
       </div>
 

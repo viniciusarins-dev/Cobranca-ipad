@@ -3,17 +3,27 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { dispatchWeeklyCharge } from "@/lib/scheduling/dispatch-weekly-charge";
 import { getBrazilDateString, getBrazilIsoWeekday, isWithinDispatchWindow } from "@/lib/scheduling/time-window";
 import { checkEvolutionConnection } from "@/lib/whatsapp/evolution-health";
+import { checkMetaConnection } from "@/lib/whatsapp/meta-health";
+import type { WhatsAppProviderName } from "@/lib/types";
 
-const MIN_DELAY_MS = 60_000;
-const MAX_DELAY_MS = 120_000;
+// Delay randômico anti-banimento — só necessário para o Evolution API
+// (automação não-oficial via WhatsApp Web). A Meta Cloud API é uma API
+// oficial e sancionada, sem risco de banimento por volume/cadência, então
+// usa apenas um intervalo mínimo por boa prática de uso de API.
+const EVOLUTION_MIN_DELAY_MS = 60_000;
+const EVOLUTION_MAX_DELAY_MS = 120_000;
+const META_DELAY_MS = 300;
 
 // Margem de segurança para a fila parar antes do timeout da function,
 // deixando tempo para a última atualização no banco terminar.
 const SAFETY_BUFFER_MS = 20_000;
 const DEFAULT_BUDGET_MS = 280_000;
 
-function randomDelayMs() {
-  return MIN_DELAY_MS + Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS));
+function delayForProvider(provider: WhatsAppProviderName) {
+  if (provider === "evolution") {
+    return EVOLUTION_MIN_DELAY_MS + Math.floor(Math.random() * (EVOLUTION_MAX_DELAY_MS - EVOLUTION_MIN_DELAY_MS));
+  }
+  return META_DELAY_MS;
 }
 
 function sleep(ms: number) {
@@ -36,16 +46,19 @@ function emptySummary(reason: string): WeeklyDispatchSummary {
 
 /**
  * Serviço de agendamento: identifica os contratos semanais com disparo
- * previsto para hoje e processa a fila com segurança anti-banimento
- * (healthcheck da instância, trava de horário, delay randômico entre
- * envios e re-checagem de status em tempo real antes de cada mensagem).
+ * previsto para hoje e processa a fila com segurança (healthcheck do
+ * provedor, trava de horário, e re-checagem de status em tempo real antes
+ * de cada mensagem). O delay randômico de 60-120s entre envios só é
+ * aplicado ao Evolution API (automação não-oficial, com risco real de
+ * banimento) — a Meta Cloud API é oficial e não precisa desse cuidado, então
+ * a fila roda bem mais rápido quando esse é o provedor ativo.
  *
  * Processa em lote respeitando um orçamento de tempo (`maxDurationMs`),
- * pois o delay de 60-120s por cliente pode facilmente ultrapassar o
- * limite de execução de uma function serverless. O que não for
- * processado nesta chamada permanece pendente (proximo_disparo no
- * passado) e é retomado automaticamente na próxima execução do cron —
- * o processamento é idempotente e seguro para rodar em lotes.
+ * já que o delay do Evolution API pode facilmente ultrapassar o limite de
+ * execução de uma function serverless. O que não for processado nesta
+ * chamada permanece pendente (proximo_disparo no passado) e é retomado
+ * automaticamente na próxima execução do cron — o processamento é
+ * idempotente e seguro para rodar em lotes.
  */
 export async function runWeeklyDispatchQueue(
   supabase: SupabaseClient,
@@ -68,13 +81,17 @@ export async function runWeeklyDispatchQueue(
     return emptySummary("Nenhuma configuração de WhatsApp ativa. Configure em Ajustes.");
   }
 
-  if (settings.provider !== "evolution") {
-    return emptySummary("O disparo automático semanal está disponível apenas para o provedor Evolution API.");
+  if (settings.provider !== "evolution" && settings.provider !== "meta") {
+    return emptySummary(
+      "O disparo automático semanal está disponível apenas para os provedores Evolution API ou Meta Cloud API.",
+    );
   }
 
-  const health = await checkEvolutionConnection(settings);
+  const health =
+    settings.provider === "evolution" ? await checkEvolutionConnection(settings) : await checkMetaConnection(settings);
+
   if (!health.ok) {
-    return emptySummary(health.error ?? "Instância da Evolution API não está conectada.");
+    return emptySummary(health.error ?? "Não foi possível confirmar a conexão com o provedor de WhatsApp.");
   }
 
   const todayDateString = getBrazilDateString();
@@ -111,7 +128,7 @@ export async function runWeeklyDispatchQueue(
 
     const isLast = processed === queue.length;
     if (!isLast) {
-      await sleep(randomDelayMs());
+      await sleep(delayForProvider(settings.provider));
     }
   }
 

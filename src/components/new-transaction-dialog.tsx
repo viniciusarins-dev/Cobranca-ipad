@@ -275,7 +275,7 @@ export function NewTransactionDialog() {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" variant="glow" disabled={isSubmitting}>
               {isSubmitting ? "Salvando..." : "Salvar cadastro"}
             </Button>
           </DialogFooter>

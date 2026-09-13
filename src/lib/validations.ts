@@ -58,13 +58,22 @@ export const expenseSchema = z.object({
 export type ExpenseInput = z.infer<typeof expenseSchema>;
 
 export const messageSettingsSchema = z.object({
-  provider: z.enum(["evolution", "zapi", "twilio", "wppconnect"]),
+  provider: z.enum(["evolution", "zapi", "twilio", "wppconnect", "meta"]),
   baseUrl: z.string().trim().optional().or(z.literal("")),
   apiKey: z.string().trim().optional().or(z.literal("")),
   instanceId: z.string().trim().optional().or(z.literal("")),
   senderNumber: z.string().trim().optional().or(z.literal("")),
   authToken: z.string().trim().optional().or(z.literal("")),
   messageTemplate: z.string().trim().min(10, "O template não pode ficar vazio."),
+  templateName: z.string().trim().optional().or(z.literal("")),
+  templateLanguage: z.string().trim().optional().or(z.literal("")),
 });
 
 export type MessageSettingsInput = z.infer<typeof messageSettingsSchema>;
+
+export const loginSchema = z.object({
+  email: z.string().trim().email("Informe um e-mail válido."),
+  password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres."),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;

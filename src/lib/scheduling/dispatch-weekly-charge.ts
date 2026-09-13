@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, format, parseISO } from "date-fns";
 
 import { createWhatsAppProvider } from "@/lib/whatsapp/providers";
-import { renderReminderMessage } from "@/lib/whatsapp/template";
+import { buildReminderTemplateParams, renderReminderMessage } from "@/lib/whatsapp/template";
 import { varyMessage } from "@/lib/whatsapp/spintax";
 import type { Client, Installment, MessageSettings } from "@/lib/types";
 
@@ -73,10 +73,11 @@ export async function dispatchWeeklyCharge(
     charge.contract.installments_count,
   );
   const finalMessage = varyMessage(baseMessage);
+  const templateParams = buildReminderTemplateParams(client, pendingInstallment, charge.contract.installments_count);
 
   try {
     const provider = createWhatsAppProvider(settings);
-    const result = await provider.send(client.phone, finalMessage);
+    const result = await provider.send(client.phone, { text: finalMessage, templateParams });
 
     await supabase.from("message_logs").insert({
       installment_id: pendingInstallment.id,

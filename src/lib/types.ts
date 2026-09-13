@@ -6,7 +6,7 @@ export type ContractStatus = "ativo" | "inadimplente" | "quitado" | "cancelado";
 
 export type InstallmentStatus = "pendente" | "pago" | "parcial" | "atrasado";
 
-export type WhatsAppProviderName = "evolution" | "zapi" | "twilio" | "wppconnect";
+export type WhatsAppProviderName = "evolution" | "zapi" | "twilio" | "wppconnect" | "meta";
 
 export type WeeklyChargeStatus = "PENDENTE" | "PAGO" | "CANCELADO";
 
@@ -95,6 +95,10 @@ export interface MessageSettings {
   sender_number: string | null;
   auth_token: string | null;
   message_template: string;
+  /** Nome do template aprovado pela Meta (obrigatório apenas para provider "meta"). */
+  template_name: string | null;
+  /** Código de idioma do template aprovado (ex: "pt_BR"). Só usado por provider "meta". */
+  template_language: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -171,6 +175,7 @@ export const WHATSAPP_PROVIDER_LABELS: Record<WhatsAppProviderName, string> = {
   zapi: "Z-API",
   twilio: "Twilio",
   wppconnect: "WPPConnect",
+  meta: "Meta Cloud API (oficial)",
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
