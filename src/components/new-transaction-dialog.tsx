@@ -62,10 +62,16 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
   const downPaymentAmount = hasDownPayment ? Number(watch("downPaymentAmount")) || 0 : 0;
   const installmentsCount = Number(watch("installmentsCount")) || 1;
 
-  const { totalFinanced, markupAmount, rate } =
+  const { totalFinanced, markupAmount, ratePercent } =
     totalAmount > 0
-      ? calculateFinancedAmount({ contractType: type, principalAmount: totalAmount, hasDownPayment, downPaymentAmount })
-      : { totalFinanced: 0, markupAmount: 0, rate: 0 };
+      ? calculateFinancedAmount({
+          contractType: type,
+          principalAmount: totalAmount,
+          installmentsCount,
+          hasDownPayment,
+          downPaymentAmount,
+        })
+      : { totalFinanced: 0, markupAmount: 0, ratePercent: 0 };
 
   const previewAmounts =
     totalFinanced > 0 && installmentsCount > 0 ? splitAmount(totalFinanced, installmentsCount) : [];
@@ -292,7 +298,9 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
               <p>
                 {type === "venda_iphone" ? "Valor do produto" : "Valor emprestado"}: {formatCurrency(totalAmount)}
                 {hasDownPayment && downPaymentAmount > 0 ? ` · Entrada: ${formatCurrency(downPaymentAmount)}` : ""}
-                {rate > 0 ? ` · Juros (${rate * 100}% por parcela): ${formatCurrency(markupAmount)}` : ""}
+                {ratePercent > 0
+                  ? ` · Juros 7,5%/semana × ${installmentsCount} = ${ratePercent}% (${formatCurrency(markupAmount)})`
+                  : ""}
               </p>
               <p className="font-medium text-foreground">
                 Total previsto: {formatCurrency(totalFinanced)} — {previewAmounts.length}x de{" "}

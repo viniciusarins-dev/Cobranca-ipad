@@ -99,7 +99,7 @@ export async function getDashboardMetrics(
   ] = await Promise.all([
     supabase
       .from("contracts")
-      .select("id, type, principal_amount, has_down_payment, down_payment_amount, total_amount"),
+      .select("id, type, principal_amount, installments_count, has_down_payment, down_payment_amount, total_amount"),
     supabase.from("payments").select("*"),
     supabase.from("installments").select("amount, paid_principal_amount, status"),
     supabase.from("expenses").select("*"),
@@ -108,7 +108,7 @@ export async function getDashboardMetrics(
 
   const contracts = (contractsData ?? []) as Pick<
     Contract,
-    "id" | "type" | "principal_amount" | "has_down_payment" | "down_payment_amount" | "total_amount"
+    "id" | "type" | "principal_amount" | "installments_count" | "has_down_payment" | "down_payment_amount" | "total_amount"
   >[];
   const payments = (paymentsData ?? []) as Payment[];
   const installments = (installmentsData ?? []) as { amount: number; paid_principal_amount: number; status: string }[];
@@ -133,6 +133,7 @@ export async function getDashboardMetrics(
     const { markupAmount } = calculateFinancedAmount({
       contractType: contract.type,
       principalAmount: contract.principal_amount,
+      installmentsCount: contract.installments_count,
       hasDownPayment: contract.has_down_payment,
       downPaymentAmount: contract.down_payment_amount,
     });

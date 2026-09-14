@@ -7,14 +7,22 @@ import type { ContractType, InstallmentStatus } from "@/lib/types";
  * evitar que cálculos divergentes apareçam em telas diferentes (dashboard,
  * criação de contrato, tela de pagamento).
  *
- * Empréstimo: 7,5% de juros aplicados sobre o saldo financiado, distribuídos
- * igualmente entre as parcelas (matematicamente idêntico a aplicar 7,5%
- * sobre cada parcela base individualmente, já que a divisão é igualitária —
- * ver `splitAmount`). Venda de iPhone: SEM juros automático — o valor
- * digitado pelo usuário é exatamente o que é dividido em parcelas (o lucro
- * da venda do aparelho é rastreado à parte, no módulo de estoque/Celulares).
+ * Empréstimo: juros CONTRATUAL de 7,5% por semana/parcela, ACUMULATIVO —
+ * o percentual total cresce com a quantidade de parcelas
+ * (percentual = quantidadeParcelas × 7,5%; ex.: 4 parcelas = 30%,
+ * 8 parcelas = 60%, 12 parcelas = 90%). Esse percentual é aplicado UMA
+ * ÚNICA VEZ sobre o valor emprestado, e o total resultante é dividido
+ * igualmente entre as parcelas — nunca recalculado por parcela.
+ *
+ * Venda de iPhone: SEM juros automático — o valor digitado pelo usuário é
+ * exatamente o que é dividido em parcelas (o lucro da venda do aparelho é
+ * rastreado à parte, no módulo de estoque/Celulares).
+ *
+ * Este juros do empréstimo é totalmente independente do juros de atraso
+ * (1%/dia, `LATE_INTEREST_RATE_PER_DAY`) — nunca são somados na mesma
+ * fórmula; o de atraso só incide se uma parcela não for paga no vencimento.
  */
-export const LOAN_INSTALLMENT_INTEREST_RATE = 0.075;
+export const LOAN_WEEKLY_INTEREST_RATE_PERCENT = 7.5;
 export const LATE_INTEREST_RATE_PER_DAY = 0.01;
 
 /** Arredonda para centavos passando por inteiro, evitando erro de ponto flutuante. */
@@ -26,6 +34,8 @@ export interface FinancedAmountInput {
   contractType: ContractType;
   /** Valor original do produto/empréstimo, antes de qualquer juros. */
   principalAmount: number;
+  /** Quantidade de parcelas/semanas — define o percentual acumulado do empréstimo. */
+  installmentsCount: number;
   /** Só relevante para venda de iPhone. */
   hasDownPayment: boolean;
   /** Valor recebido à vista, fora das parcelas (ignorado se hasDownPayment = false). */
@@ -39,26 +49,32 @@ export interface FinancedAmountResult {
   markupAmount: number;
   /** financedBase + markupAmount — é isto que é dividido em parcelas. */
   totalFinanced: number;
-  /** Taxa efetivamente aplicada (7,5% para empréstimo, 0 para venda de iPhone). */
+  /** Taxa efetivamente aplicada, como fração (ex.: 0,6 para 60%). 0 para venda de iPhone. */
   rate: number;
+  /** A mesma taxa, em percentual, já arredondada para exibição (ex.: 60, 22.5). */
+  ratePercent: number;
 }
 
 /**
- * Calcula o valor final a ser financiado (dividido em parcelas). Os juros
- * são aplicados uma única vez sobre o saldo financiado — nunca por parcela —
- * para não haver risco de duplicar o juros quando o contrato é dividido em N
- * parcelas (a divisão em si é feita depois, por splitAmount). Como a divisão
- * é igualitária, o resultado por parcela é idêntico a aplicar a taxa
- * individualmente em cada parcela base.
+ * Calcula o valor final a ser financiado (dividido em parcelas). Para
+ * empréstimo, o percentual de juros é quantidadeParcelas × 7,5% — calculado
+ * e aplicado UMA ÚNICA VEZ sobre o valor emprestado, nunca por parcela —
+ * e o total resultante é então dividido em partes iguais (a divisão em si é
+ * feita depois, por `splitAmount`, que ajusta a última parcela para a soma
+ * bater exatamente com o total).
  */
 export function calculateFinancedAmount(input: FinancedAmountInput): FinancedAmountResult {
   const downPayment = input.hasDownPayment ? Math.max(input.downPaymentAmount, 0) : 0;
   const financedBase = roundCents(Math.max(input.principalAmount - downPayment, 0));
-  const rate = input.contractType === "emprestimo" ? LOAN_INSTALLMENT_INTEREST_RATE : 0;
+  const ratePercent =
+    input.contractType === "emprestimo"
+      ? Math.round(input.installmentsCount * LOAN_WEEKLY_INTEREST_RATE_PERCENT * 100) / 100
+      : 0;
+  const rate = ratePercent / 100;
   const markupAmount = roundCents(financedBase * rate);
   const totalFinanced = roundCents(financedBase + markupAmount);
 
-  return { financedBase, markupAmount, totalFinanced, rate };
+  return { financedBase, markupAmount, totalFinanced, rate, ratePercent };
 }
 
 /** Quantidade de dias corridos entre o vencimento e a data de referência (0 se ainda não venceu). */

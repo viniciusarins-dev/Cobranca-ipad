@@ -10,7 +10,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { getClientDocumentSignedUrl } from "@/lib/client-documents";
 import { createClient } from "@/lib/supabase/server";
-import { calculateFinancedAmount, roundCents } from "@/lib/financial-rules";
+import { calculateFinancedAmount } from "@/lib/financial-rules";
 import {
   CONTRACT_TYPE_LABELS,
   PERIODICITY_LABELS,
@@ -41,19 +41,18 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const paidCount = installments.filter((i) => i.status === "pago").length;
   const whatsappLink = `https://wa.me/${onlyDigits(contract.client.phone)}`;
 
-  const { rate } = calculateFinancedAmount({
+  const { markupAmount, ratePercent } = calculateFinancedAmount({
     contractType: contract.type,
     principalAmount: contract.principal_amount,
+    installmentsCount: contract.installments_count,
     hasDownPayment: contract.has_down_payment,
     downPaymentAmount: contract.down_payment_amount,
   });
 
-  // Valores por parcela lidos da parcela real já persistida (não recalculados
-  // do zero), garantindo que a tela mostre exatamente o que foi cobrado —
-  // a última parcela pode diferer em centavos por causa do arredondamento.
+  // Valor da parcela lido da parcela real já persistida (não recalculado do
+  // zero), garantindo que a tela mostre exatamente o que foi cobrado — a
+  // última parcela pode diferir em centavos por causa do arredondamento.
   const representativeInstallmentAmount = installments[0]?.amount ?? 0;
-  const installmentBaseAmount = roundCents(representativeInstallmentAmount / (1 + rate));
-  const installmentInterestAmount = roundCents(representativeInstallmentAmount - installmentBaseAmount);
 
   const { data: paymentsData } = await supabase
     .from("payments")
@@ -112,7 +111,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               <dd className="font-medium">{CONTRACT_TYPE_LABELS[contract.type]}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Valor do produto</dt>
+              <dt className="text-muted-foreground">{contract.type === "emprestimo" ? "Valor emprestado" : "Valor do produto"}</dt>
               <dd className="font-medium">{formatCurrency(contract.principal_amount)}</dd>
             </div>
             <div>
@@ -134,21 +133,25 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             {contract.type === "emprestimo" ? (
               <>
                 <div>
-                  <dt className="text-muted-foreground">Valor base da parcela</dt>
-                  <dd className="font-medium">{formatCurrency(installmentBaseAmount)}</dd>
+                  <dt className="text-muted-foreground">Juros por semana</dt>
+                  <dd className="font-medium">7,5%</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Juros por parcela (7,5%)</dt>
-                  <dd className="font-medium">{formatCurrency(installmentInterestAmount)}</dd>
+                  <dt className="text-muted-foreground">Juros acumulado</dt>
+                  <dd className="font-medium">{ratePercent}%</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Valor final da parcela</dt>
+                  <dt className="text-muted-foreground">Valor dos juros</dt>
+                  <dd className="font-medium">{formatCurrency(markupAmount)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Valor da parcela</dt>
                   <dd className="font-semibold text-accent-cyan">{formatCurrency(representativeInstallmentAmount)}</dd>
                 </div>
               </>
             ) : null}
             <div>
-              <dt className="text-muted-foreground">Total previsto</dt>
+              <dt className="text-muted-foreground">{contract.type === "emprestimo" ? "Total a receber" : "Total previsto"}</dt>
               <dd className="font-semibold text-accent-cyan">{formatCurrency(contract.total_amount)}</dd>
             </div>
             {contract.description && (

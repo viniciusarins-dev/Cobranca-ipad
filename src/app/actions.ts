@@ -110,6 +110,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   const { totalFinanced } = calculateFinancedAmount({
     contractType: data.type,
     principalAmount: data.totalAmount,
+    installmentsCount: data.installmentsCount,
     hasDownPayment,
     downPaymentAmount: data.downPaymentAmount,
   });
