@@ -45,11 +45,14 @@ function newIdempotencyKey(): string {
  */
 export function RegisterPaymentDialog({
   installment,
+  contractPrincipalAmount,
   triggerLabel = "Registrar pagamento",
   clientName,
   onPaid,
 }: {
   installment: Installment;
+  /** Valor originalmente emprestado no contrato — base do juros de atraso (nunca o valor da parcela). */
+  contractPrincipalAmount: number;
   triggerLabel?: string;
   /** Exibido no diálogo de confirmação — útil em telas que listam vários clientes (Devedores do Dia). */
   clientName?: string;
@@ -62,12 +65,11 @@ export function RegisterPaymentDialog({
   const interestOwed = useMemo(
     () =>
       calculateLateInterest({
-        amount: installment.amount,
-        paidPrincipalAmount: installment.paid_principal_amount,
+        originalPrincipalAmount: contractPrincipalAmount,
         dueDate: installment.due_date,
         status: installment.status,
       }),
-    [installment.amount, installment.paid_principal_amount, installment.due_date, installment.status],
+    [contractPrincipalAmount, installment.due_date, installment.status],
   );
   const totalDue = roundCents(outstandingPrincipal + interestOwed);
 
@@ -135,7 +137,12 @@ export function RegisterPaymentDialog({
         <div className="grid gap-1 rounded-md bg-muted px-3 py-2 text-sm">
           <p className="text-muted-foreground">Principal em aberto: {formatCurrency(outstandingPrincipal)}</p>
           {interestOwed > 0 && (
-            <p className="text-destructive">Juros de atraso (1%/dia): {formatCurrency(interestOwed)}</p>
+            <>
+              <p className="text-destructive">Juros de atraso (1%/dia): {formatCurrency(interestOwed)}</p>
+              <p className="text-xs text-muted-foreground">
+                Calculado sobre o valor originalmente emprestado: {formatCurrency(contractPrincipalAmount)}
+              </p>
+            </>
           )}
           <p className="font-medium">Total devido agora: {formatCurrency(totalDue)}</p>
           <p className="text-xs text-muted-foreground">

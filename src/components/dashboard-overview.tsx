@@ -21,18 +21,22 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { Button } from "@/components/ui/button";
 import { StatTile } from "@/components/ui/stat-tile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LateInterestCard } from "@/components/late-interest-detail-dialog";
 import type { DashboardMetrics } from "@/lib/dashboard-metrics";
-import type { TodayDebtorsSummary } from "@/lib/debtors";
+import { getLateInterestBreakdown, type Debtor, type TodayDebtorsSummary } from "@/lib/debtors";
 import { PAYMENT_METHOD_LABELS } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 
 export function DashboardOverview({
   metrics,
   debtorsSummary,
+  debtors,
 }: {
   metrics: DashboardMetrics;
   debtorsSummary: TodayDebtorsSummary;
+  debtors: Debtor[];
 }) {
+  const lateInterestBreakdown = getLateInterestBreakdown(debtors);
   const flowChartData = [
     { periodo: "Hoje", Entradas: metrics.income.today, Saídas: metrics.expenses.today },
     { periodo: "Semana", Entradas: metrics.income.week, Saídas: metrics.expenses.week },
@@ -59,13 +63,7 @@ export function DashboardOverview({
               icon={WalletIcon}
               accent="cyan"
             />
-            <StatTile
-              label="Juros de atraso"
-              value={debtorsSummary.lateInterestAmount}
-              format="currency"
-              icon={AlertTriangleIcon}
-              accent="destructive"
-            />
+            <LateInterestCard amount={debtorsSummary.lateInterestAmount} breakdown={lateInterestBreakdown} />
             <StatTile
               label="Total"
               value={debtorsSummary.totalToReceive}

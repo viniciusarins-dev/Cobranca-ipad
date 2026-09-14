@@ -14,9 +14,11 @@ import { sendReminderAction } from "@/app/actions";
 function InstallmentRow({
   installment,
   totalInstallments,
+  contractPrincipalAmount,
 }: {
   installment: Installment;
   totalInstallments: number;
+  contractPrincipalAmount: number;
 }) {
   const [isSending, setIsSending] = useState(false);
 
@@ -61,7 +63,9 @@ function InstallmentRow({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {installment.status !== "pago" && <RegisterPaymentDialog installment={installment} />}
+        {installment.status !== "pago" && (
+          <RegisterPaymentDialog installment={installment} contractPrincipalAmount={contractPrincipalAmount} />
+        )}
 
         <Button
           type="button"
@@ -78,11 +82,22 @@ function InstallmentRow({
   );
 }
 
-export function InstallmentsGrid({ installments }: { installments: Installment[] }) {
+export function InstallmentsGrid({
+  installments,
+  contractPrincipalAmount,
+}: {
+  installments: Installment[];
+  contractPrincipalAmount: number;
+}) {
   return (
     <div className="flex flex-col gap-3">
       {installments.map((installment) => (
-        <InstallmentRow key={installment.id} installment={installment} totalInstallments={installments.length} />
+        <InstallmentRow
+          key={installment.id}
+          installment={installment}
+          totalInstallments={installments.length}
+          contractPrincipalAmount={contractPrincipalAmount}
+        />
       ))}
     </div>
   );

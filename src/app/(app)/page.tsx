@@ -17,7 +17,8 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [{ data, error }, metrics, { data: availablePhonesData }, { summary: debtorsSummary }] = await Promise.all([
+  const [{ data, error }, metrics, { data: availablePhonesData }, { summary: debtorsSummary, debtors }] =
+    await Promise.all([
     supabase.from("contracts").select("*, client:clients(*), installments(*)").order("created_at", { ascending: false }),
     getDashboardMetrics(supabase),
     supabase.from("phones").select("*").eq("status", "estoque").order("model", { ascending: true }),
@@ -88,7 +89,7 @@ export default async function DashboardPage() {
             />
           </div>
 
-          <DashboardOverview metrics={metrics} debtorsSummary={debtorsSummary} />
+          <DashboardOverview metrics={metrics} debtorsSummary={debtorsSummary} debtors={debtors} />
 
           <div>
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Clientes</h2>

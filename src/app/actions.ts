@@ -394,7 +394,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
 
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
-    .select("client_id")
+    .select("client_id, principal_amount")
     .eq("id", installment.contract_id)
     .single();
 
@@ -407,9 +407,10 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   // fecha a causa raiz do saldo residual tipo "R$ 0,11": se o pagamento é
   // integral, o valor cobrado é exatamente o que está em aberto no instante
   // da confirmação, nunca um total pré-calculado que ficou desatualizado.
+  // O juros de atraso usa o valor ORIGINALMENTE EMPRESTADO no contrato como
+  // base (nunca o valor da parcela) — regra de negócio explícita.
   const interestOwed = calculateLateInterest({
-    amount: installment.amount,
-    paidPrincipalAmount: installment.paid_principal_amount,
+    originalPrincipalAmount: contract.principal_amount,
     dueDate: installment.due_date,
     status: installment.status,
   });

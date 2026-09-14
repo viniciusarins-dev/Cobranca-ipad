@@ -5,7 +5,7 @@ import type { Client, Contract, Installment } from "@/lib/types";
 
 export interface DebtorInstallmentRow {
   installment: Installment;
-  contract: Pick<Contract, "id" | "type" | "description" | "installments_count">;
+  contract: Pick<Contract, "id" | "type" | "description" | "installments_count" | "principal_amount">;
   outstandingPrincipal: number;
   interestOwed: number;
   totalDue: number;
@@ -31,6 +31,50 @@ export interface TodayDebtorsSummary {
   totalToReceive: number;
   paidTodayCount: number;
   receivedToday: number;
+}
+
+export interface LateInterestDetailRow {
+  clientId: string;
+  clientName: string;
+  contractId: string;
+  installmentNumber: number;
+  installmentsCount: number;
+  dueDate: string;
+  daysLate: number;
+  /** Valor originalmente emprestado no contrato — base do juros de atraso. */
+  originalPrincipalAmount: number;
+  interestOwed: number;
+}
+
+/**
+ * Detalhamento de exatamente quais clientes/parcelas compõem o total de
+ * juros de atraso pendentes mostrado no dashboard — a soma deste
+ * detalhamento é SEMPRE igual ao valor do card, porque os dois vêm do
+ * mesmo `debtors` (nunca calculados de formas diferentes em telas
+ * diferentes).
+ */
+export function getLateInterestBreakdown(debtors: Debtor[]): LateInterestDetailRow[] {
+  const rows: LateInterestDetailRow[] = [];
+
+  for (const debtor of debtors) {
+    for (const row of debtor.rows) {
+      if (!row.isOverdue || row.interestOwed <= 0) continue;
+      rows.push({
+        clientId: debtor.client.id,
+        clientName: debtor.client.name,
+        contractId: row.contract.id,
+        installmentNumber: row.installment.number,
+        installmentsCount: row.contract.installments_count,
+        dueDate: row.installment.due_date,
+        daysLate: row.daysLate,
+        originalPrincipalAmount: row.contract.principal_amount,
+        interestOwed: row.interestOwed,
+      });
+    }
+  }
+
+  rows.sort((a, b) => b.interestOwed - a.interestOwed);
+  return rows;
 }
 
 export interface PaidTodayRow {
@@ -61,7 +105,9 @@ export async function getTodayDebtors(
   const [{ data: installmentsData }, { data: paymentsTodayData }] = await Promise.all([
     supabase
       .from("installments")
-      .select("*, contract:contracts(id, type, status, description, installments_count, client:clients(*))")
+      .select(
+        "*, contract:contracts(id, type, status, description, installments_count, principal_amount, client:clients(*))",
+      )
       .in("status", ["pendente", "atrasado", "parcial"])
       .lte("due_date", todayStr),
     supabase
@@ -76,7 +122,9 @@ export async function getTodayDebtors(
   ]);
 
   type InstallmentRow = Installment & {
-    contract: Pick<Contract, "id" | "type" | "status" | "description" | "installments_count"> & { client: Client };
+    contract: Pick<Contract, "id" | "type" | "status" | "description" | "installments_count" | "principal_amount"> & {
+      client: Client;
+    };
   };
   const allInstallments = (installmentsData ?? []) as InstallmentRow[];
   // Um empréstimo cancelado (ex.: cadastrado errado e excluído) nunca deve
@@ -95,8 +143,7 @@ export async function getTodayDebtors(
     if (outstandingPrincipal <= 0) continue;
 
     const interestOwed = calculateLateInterest({
-      amount: installment.amount,
-      paidPrincipalAmount: installment.paid_principal_amount,
+      originalPrincipalAmount: installment.contract.principal_amount,
       dueDate: installment.due_date,
       status: installment.status,
     });

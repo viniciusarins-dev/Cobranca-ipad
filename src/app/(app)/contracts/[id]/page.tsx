@@ -204,7 +204,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
 
       <div>
         <h2 className="mb-3 text-lg font-bold tracking-tight text-foreground">Parcelas</h2>
-        <InstallmentsGrid installments={installments} />
+        <InstallmentsGrid installments={installments} contractPrincipalAmount={contract.principal_amount} />
       </div>
 
       <div>

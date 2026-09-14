@@ -89,22 +89,32 @@ export function daysLate(dueDate: string, referenceDate: Date = new Date()): num
 }
 
 export interface LateInterestInstallmentInput {
-  amount: number;
-  paidPrincipalAmount: number;
+  /**
+   * Valor originalmente emprestado no CONTRATO (`contracts.principal_amount`)
+   * — base do juros de atraso. NUNCA o valor da parcela, nem o saldo em
+   * aberto dela: o juros de atraso é 1% ao dia sobre o valor total que foi
+   * emprestado ao cliente, independente de quanto já foi pago daquela
+   * parcela especificamente.
+   */
+  originalPrincipalAmount: number;
   dueDate: string;
   status: InstallmentStatus;
 }
 
 /**
- * Juros de 1% ao dia sobre o saldo em aberto da parcela (amount menos o que
- * já foi pago dela), calculados a partir da diferença entre due_date e a
- * data de referência.
+ * Juros de 1% ao dia sobre o valor ORIGINALMENTE EMPRESTADO no contrato
+ * (nunca sobre o valor da parcela nem sobre o saldo em aberto dela),
+ * calculados a partir da diferença entre due_date e a data de referência.
  *
- * É uma função PURA e idempotente — parte sempre de due_date/hoje, nunca de
- * si mesma — por isso é segura para chamar a cada renderização de tela sem
- * risco de "somar juros de novo" a cada vez que a página é aberta. Cada
- * parcela usa sua própria due_date e seu próprio saldo, então parcelas
- * diferentes (mesmo que atrasadas no mesmo período) nunca se misturam.
+ * É uma função PURA e idempotente — parte sempre de due_date/hoje e do
+ * valor original do contrato, nunca de um juros calculado anteriormente —
+ * por isso é segura para chamar a cada renderização de tela sem risco de
+ * "juros sobre juros": abrir a tela de novo no mesmo dia sempre devolve o
+ * mesmo valor, nunca soma em cima do que já tinha sido mostrado antes.
+ * Cada parcela usa sua própria due_date, então parcelas diferentes do
+ * mesmo contrato (mesmo que atrasadas ao mesmo tempo) contam seus próprios
+ * dias de atraso separadamente — mas todas usam a MESMA base (o valor
+ * original do contrato), conforme a regra de negócio.
  */
 export function calculateLateInterest(
   installment: LateInterestInstallmentInput,
@@ -114,15 +124,10 @@ export function calculateLateInterest(
     return 0;
   }
 
-  const outstandingPrincipal = roundCents(
-    Math.max(installment.amount - installment.paidPrincipalAmount, 0),
-  );
-  if (outstandingPrincipal <= 0) return 0;
-
   const days = daysLate(installment.dueDate, referenceDate);
   if (days <= 0) return 0;
 
-  return roundCents(outstandingPrincipal * LATE_INTEREST_RATE_PER_DAY * days);
+  return roundCents(installment.originalPrincipalAmount * LATE_INTEREST_RATE_PER_DAY * days);
 }
 
 export interface SplitPaymentResult {

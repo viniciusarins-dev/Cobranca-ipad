@@ -172,14 +172,20 @@ export function DebtorsView({ debtors, paidToday }: { debtors: Debtor[]; paidTod
                           {row.isOverdue && ` · Atraso: ${row.daysLate} dia${row.daysLate > 1 ? "s" : ""}`}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          Valor original: {formatCurrency(row.outstandingPrincipal)}
-                          {row.interestOwed > 0 && ` · Juros de atraso: ${formatCurrency(row.interestOwed)}`}
+                          Valor original da parcela: {formatCurrency(row.outstandingPrincipal)}
                         </span>
+                        {row.interestOwed > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            Valor originalmente emprestado: {formatCurrency(row.contract.principal_amount)} · Juros
+                            de atraso (1%/dia): {formatCurrency(row.interestOwed)}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-semibold">{formatCurrency(row.totalDue)}</span>
                         <RegisterPaymentDialog
                           installment={row.installment}
+                          contractPrincipalAmount={row.contract.principal_amount}
                           triggerLabel="Marcar como pago"
                           clientName={debtor.client.name}
                           onPaid={() => router.refresh()}
