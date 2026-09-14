@@ -243,6 +243,88 @@ async function recalculateContractStatus(supabase: Awaited<ReturnType<typeof cre
   await syncWeeklyChargeStatus(supabase, contractId, status);
 }
 
+/**
+ * Exclui um empréstimo/venda cadastrado errado. Duas situações:
+ *
+ * 1) Nenhum pagamento registrado ainda: exclusão real. O contrato é
+ *    apagado (a foreign key `on delete cascade` já existente cuida de
+ *    parcelas, weekly_charges e message_logs automaticamente — não sobra
+ *    nada órfão); se havia um celular do estoque vinculado, ele volta a
+ *    ficar disponível (a "venda" nunca existiu de fato).
+ * 2) Já existe pagamento registrado: NUNCA apaga silenciosamente o
+ *    histórico financeiro. Em vez disso, o contrato é marcado como
+ *    "cancelado" (status que já existe no sistema) — payments, installments
+ *    e o histórico continuam intactos para auditoria, mas o contrato para
+ *    de contar em qualquer indicador/pendência/Devedores do Dia.
+ */
+export async function deleteContract(contractId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { data: contract, error: contractError } = await supabase
+    .from("contracts")
+    .select("id")
+    .eq("id", contractId)
+    .maybeSingle();
+
+  if (contractError) {
+    return { ok: false, error: contractError.message };
+  }
+  if (!contract) {
+    return { ok: false, error: "Empréstimo não encontrado (talvez já tenha sido excluído)." };
+  }
+
+  const { count: paymentsCount, error: countError } = await supabase
+    .from("payments")
+    .select("id", { count: "exact", head: true })
+    .eq("contract_id", contractId);
+
+  if (countError) {
+    return { ok: false, error: countError.message };
+  }
+
+  if ((paymentsCount ?? 0) > 0) {
+    const { error: cancelError } = await supabase
+      .from("contracts")
+      .update({ status: "cancelado" })
+      .eq("id", contractId);
+    if (cancelError) {
+      return { ok: false, error: cancelError.message };
+    }
+    await syncWeeklyChargeStatus(supabase, contractId, "cancelado");
+
+    revalidatePath("/");
+    revalidatePath("/debtors");
+    revalidatePath(`/contracts/${contractId}`);
+    return { ok: true };
+  }
+
+  const { error: phoneUnlinkError } = await supabase
+    .from("phones")
+    .update({
+      status: "estoque",
+      contract_id: null,
+      sale_amount: null,
+      sale_method: null,
+      sold_at: null,
+      buyer_name: null,
+    })
+    .eq("contract_id", contractId);
+
+  if (phoneUnlinkError) {
+    return { ok: false, error: phoneUnlinkError.message };
+  }
+
+  const { error: deleteError } = await supabase.from("contracts").delete().eq("id", contractId);
+  if (deleteError) {
+    return { ok: false, error: deleteError.message };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/debtors");
+  revalidatePath("/phones");
+  return { ok: true };
+}
+
 export async function updateInstallmentStatus(
   installmentId: string,
   status: InstallmentStatus,
@@ -282,6 +364,20 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   const data = parsed.data;
   const supabase = await createClient();
 
+  // Protege contra clique duplo / reenvio / duas requisições simultâneas:
+  // se esta mesma tentativa de pagamento (mesma idempotencyKey) já foi
+  // processada, não cria um segundo lançamento — apenas confirma sucesso.
+  if (data.idempotencyKey) {
+    const { data: existingPayment } = await supabase
+      .from("payments")
+      .select("contract_id")
+      .eq("idempotency_key", data.idempotencyKey)
+      .maybeSingle();
+    if (existingPayment) {
+      return { ok: true, contractId: existingPayment.contract_id };
+    }
+  }
+
   const { data: installment, error: installmentError } = await supabase
     .from("installments")
     .select("id, contract_id, amount, paid_principal_amount, due_date, status")
@@ -306,6 +402,11 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     return { ok: false, error: contractError?.message ?? "Contrato não encontrado." };
   }
 
+  // Juros de atraso e saldo em aberto SEMPRE recalculados agora, no servidor
+  // — nunca a partir de um valor mostrado na tela momentos atrás. Isso
+  // fecha a causa raiz do saldo residual tipo "R$ 0,11": se o pagamento é
+  // integral, o valor cobrado é exatamente o que está em aberto no instante
+  // da confirmação, nunca um total pré-calculado que ficou desatualizado.
   const interestOwed = calculateLateInterest({
     amount: installment.amount,
     paidPrincipalAmount: installment.paid_principal_amount,
@@ -314,7 +415,9 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   });
   const principalOwed = roundCents(Math.max(installment.amount - installment.paid_principal_amount, 0));
 
-  const { interestPortion, principalPortion } = splitPayment(data.amount, interestOwed, principalOwed);
+  const amountToApply = data.payInFull ? roundCents(interestOwed + principalOwed) : roundCents(data.amount!);
+
+  const { interestPortion, principalPortion } = splitPayment(amountToApply, interestOwed, principalOwed);
 
   if (interestPortion + principalPortion <= 0) {
     return { ok: false, error: "Não há saldo em aberto nesta parcela." };
@@ -331,13 +434,26 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     method: data.method,
     notes: data.notes || null,
     created_by_email: createdByEmail,
+    idempotency_key: data.idempotencyKey ?? null,
   });
 
   if (paymentError) {
+    // unique_violation: outra requisição com a mesma idempotencyKey venceu a
+    // corrida (ex.: duplo clique no mesmíssimo instante) — trata como
+    // sucesso, nunca como erro, e nunca duplica o pagamento.
+    if (paymentError.code === "23505" && data.idempotencyKey) {
+      return { ok: true, contractId: installment.contract_id };
+    }
     return { ok: false, error: paymentError.message };
   }
 
-  const newPaidPrincipal = roundCents(installment.paid_principal_amount + principalPortion);
+  // Nunca deixa passar de `installment.amount` (mesmo por causa de ruído de
+  // ponto flutuante): parcela quitada sempre fecha com saldo exatamente
+  // zero e status "pago", nunca um resíduo de centavos.
+  const newPaidPrincipal = Math.min(
+    roundCents(installment.paid_principal_amount + principalPortion),
+    roundCents(installment.amount),
+  );
   const isFullyPaid = newPaidPrincipal >= roundCents(installment.amount);
   const isStillLate = daysLate(installment.due_date) > 0;
 

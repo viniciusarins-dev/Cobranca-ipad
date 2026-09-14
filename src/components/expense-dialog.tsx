@@ -20,11 +20,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getBusinessToday } from "@/lib/date-utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/types";
 import { expenseSchema, type ExpenseInput } from "@/lib/validations";
 import { registerExpense } from "@/app/actions";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => getBusinessToday();
 
 export function ExpenseDialog() {
   const [open, setOpen] = useState(false);

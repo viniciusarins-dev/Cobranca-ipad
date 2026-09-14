@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeftIcon, MessageCircleIcon } from "lucide-react";
 
 import { ClientDetailsCard } from "@/components/client-details-card";
+import { DeleteContractDialog } from "@/components/delete-contract-dialog";
 import { InstallmentsGrid } from "@/components/installments-grid";
 import { PaymentHistory } from "@/components/payment-history";
 import { ContractStatusBadge } from "@/components/status-badge";
@@ -102,7 +103,10 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               </a>
             </div>
           </div>
-          <ContractStatusBadge status={contract.status} />
+          <div className="flex items-center gap-2">
+            <ContractStatusBadge status={contract.status} />
+            <DeleteContractDialog contract={contract} clientName={contract.client.name} />
+          </div>
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">

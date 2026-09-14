@@ -181,6 +181,7 @@ export function DebtorsView({ debtors, paidToday }: { debtors: Debtor[]; paidTod
                         <RegisterPaymentDialog
                           installment={row.installment}
                           triggerLabel="Marcar como pago"
+                          clientName={debtor.client.name}
                           onPaid={() => router.refresh()}
                         />
                       </div>

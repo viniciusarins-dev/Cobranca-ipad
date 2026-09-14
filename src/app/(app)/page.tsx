@@ -7,6 +7,7 @@ import { NewTransactionDialog } from "@/components/new-transaction-dialog";
 import { GradientHeading } from "@/components/ui/gradient-heading";
 import { ShinyText } from "@/components/ui/shiny-text";
 import { StatTile } from "@/components/ui/stat-tile";
+import { businessMonthStartUTC } from "@/lib/date-utils";
 import { getDashboardMetrics } from "@/lib/dashboard-metrics";
 import { getTodayDebtors } from "@/lib/debtors";
 import { createClient } from "@/lib/supabase/server";
@@ -26,8 +27,11 @@ export default async function DashboardPage() {
   const contracts = (data ?? []) as ContractWithInstallments[];
   const availablePhones = (availablePhonesData ?? []) as Phone[];
 
-  const allInstallments = contracts.flatMap((contract) => contract.installments ?? []);
-  const outstandingAmount = allInstallments
+  // Contratos cancelados (ex.: cadastrados errado e excluídos) não devem
+  // continuar contando como saldo em aberto.
+  const nonCancelledContracts = contracts.filter((c) => c.status !== "cancelado");
+  const outstandingAmount = nonCancelledContracts
+    .flatMap((contract) => contract.installments ?? [])
     .filter((installment) => installment.status !== "pago")
     .reduce((sum, installment) => sum + installment.amount, 0);
 
@@ -37,13 +41,13 @@ export default async function DashboardPage() {
 
   const overdueCount = contracts.filter((c) => c.status === "inadimplente").length;
 
-  const now = new Date();
-  const receivedThisMonth = allInstallments
+  // Valores já recebidos permanecem no histórico mesmo que o contrato seja
+  // cancelado depois — por isso usa `contracts` (todos), não `nonCancelledContracts`.
+  const monthStart = businessMonthStartUTC();
+  const receivedThisMonth = contracts
+    .flatMap((contract) => contract.installments ?? [])
     .filter((installment) => installment.status === "pago" && installment.paid_at)
-    .filter((installment) => {
-      const paidAt = new Date(installment.paid_at!);
-      return paidAt.getMonth() === now.getMonth() && paidAt.getFullYear() === now.getFullYear();
-    })
+    .filter((installment) => new Date(installment.paid_at!) >= monthStart)
     .reduce((sum, installment) => sum + installment.amount, 0);
 
   return (

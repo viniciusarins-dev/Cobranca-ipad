@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { getBusinessToday } from "@/lib/date-utils";
 import { splitAmount } from "@/lib/installments";
 import { calculateFinancedAmount } from "@/lib/financial-rules";
 import { formatCurrency } from "@/lib/utils";
@@ -28,7 +29,7 @@ import { PAYMENT_METHOD_LABELS, type Phone } from "@/lib/types";
 import { transactionSchema, type TransactionInput } from "@/lib/validations";
 import { createTransaction } from "@/app/actions";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => getBusinessToday();
 
 export function NewTransactionDialog({ availablePhones = [] }: { availablePhones?: Phone[] }) {
   const [open, setOpen] = useState(false);

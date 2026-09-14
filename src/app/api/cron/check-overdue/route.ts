@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { getBusinessToday } from "@/lib/date-utils";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { sendCollectionReminder } from "@/lib/whatsapp";
 import type { ContractStatus } from "@/lib/types";
@@ -18,7 +19,9 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServiceRoleClient();
-  const today = new Date().toISOString().slice(0, 10);
+  // Sempre o calendário do fuso do negócio (Brasil) — nunca UTC — para uma
+  // parcela nunca ser marcada como atrasada antes da meia-noite de verdade.
+  const today = getBusinessToday();
 
   // 1. Marca como atrasadas as parcelas pendentes OU parcialmente pagas cujo
   //    vencimento já passou (uma parcela paga em parte continua acumulando
@@ -77,7 +80,7 @@ export async function GET(request: NextRequest) {
     if (installment.contract?.periodicity === "semanal") continue;
 
     const alreadyRemindedToday =
-      installment.reminder_sent_at && installment.reminder_sent_at.slice(0, 10) === today;
+      installment.reminder_sent_at && getBusinessToday(new Date(installment.reminder_sent_at)) === today;
     if (alreadyRemindedToday) continue;
 
     const result = await sendCollectionReminder(supabase, installment.id);

@@ -1,5 +1,4 @@
-import { startOfDay, startOfMonth, startOfWeek } from "date-fns";
-
+import { businessDayRangeUTC, businessMonthStartUTC, businessWeekStartUTC, getBusinessToday } from "@/lib/date-utils";
 import { calculateFinancedAmount, roundCents } from "@/lib/financial-rules";
 import type { createClient } from "@/lib/supabase/server";
 import type { Contract, Expense, Payment, PaymentMethod, Phone } from "@/lib/types";
@@ -15,11 +14,26 @@ function emptyPeriod(): PeriodAmounts {
   return { today: 0, week: 0, month: 0, total: 0 };
 }
 
-function addToPeriod(period: PeriodAmounts, value: number, date: Date, now: Date) {
+interface PeriodBoundaries {
+  dayStart: Date;
+  weekStart: Date;
+  monthStart: Date;
+}
+
+/** Calcula os limites de hoje/semana/mês uma única vez, sempre no fuso do negócio (Brasil). */
+function getPeriodBoundaries(now: Date): PeriodBoundaries {
+  return {
+    dayStart: businessDayRangeUTC(getBusinessToday(now)).start,
+    weekStart: businessWeekStartUTC(now),
+    monthStart: businessMonthStartUTC(now),
+  };
+}
+
+function addToPeriod(period: PeriodAmounts, value: number, date: Date, boundaries: PeriodBoundaries) {
   period.total = roundCents(period.total + value);
-  if (date >= startOfDay(now)) period.today = roundCents(period.today + value);
-  if (date >= startOfWeek(now, { weekStartsOn: 1 })) period.week = roundCents(period.week + value);
-  if (date >= startOfMonth(now)) period.month = roundCents(period.month + value);
+  if (date >= boundaries.dayStart) period.today = roundCents(period.today + value);
+  if (date >= boundaries.weekStart) period.week = roundCents(period.week + value);
+  if (date >= boundaries.monthStart) period.month = roundCents(period.month + value);
 }
 
 export interface DashboardMetrics {
@@ -89,6 +103,7 @@ export async function getDashboardMetrics(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<DashboardMetrics> {
   const now = new Date();
+  const boundaries = getPeriodBoundaries(now);
 
   const [
     { data: contractsData },
@@ -99,21 +114,43 @@ export async function getDashboardMetrics(
   ] = await Promise.all([
     supabase
       .from("contracts")
-      .select("id, type, principal_amount, installments_count, has_down_payment, down_payment_amount, total_amount"),
+      .select(
+        "id, type, status, principal_amount, installments_count, has_down_payment, down_payment_amount, total_amount",
+      ),
     supabase.from("payments").select("*"),
-    supabase.from("installments").select("amount, paid_principal_amount, status"),
+    supabase.from("installments").select("contract_id, amount, paid_principal_amount, status"),
     supabase.from("expenses").select("*"),
     supabase.from("phones").select("id, cost_amount, status, sale_amount, sold_at"),
   ]);
 
-  const contracts = (contractsData ?? []) as Pick<
+  const allContracts = (contractsData ?? []) as Pick<
     Contract,
-    "id" | "type" | "principal_amount" | "installments_count" | "has_down_payment" | "down_payment_amount" | "total_amount"
+    | "id"
+    | "type"
+    | "status"
+    | "principal_amount"
+    | "installments_count"
+    | "has_down_payment"
+    | "down_payment_amount"
+    | "total_amount"
   >[];
   const payments = (paymentsData ?? []) as Payment[];
-  const installments = (installmentsData ?? []) as { amount: number; paid_principal_amount: number; status: string }[];
+  const allInstallments = (installmentsData ?? []) as {
+    contract_id: string;
+    amount: number;
+    paid_principal_amount: number;
+    status: string;
+  }[];
   const expenses = (expensesData ?? []) as Expense[];
   const phones = (phonesData ?? []) as Pick<Phone, "id" | "cost_amount" | "status" | "sale_amount" | "sold_at">[];
+
+  // Um empréstimo cancelado (ex.: cadastrado errado e excluído) nunca deve
+  // continuar contando nos indicadores de empréstimos — o histórico de
+  // pagamentos já recebidos permanece intocado (ver `income`/`earnings`
+  // abaixo, que somam todos os `payments` sem filtrar por status do contrato).
+  const contracts = allContracts.filter((c) => c.status !== "cancelado");
+  const activeContractIds = new Set(contracts.map((c) => c.id));
+  const installments = allInstallments.filter((i) => activeContractIds.has(i.contract_id));
 
   // Fração de cada contrato que é markup (lucro), calculada uma única vez por
   // contrato e reaproveitada para todos os pagamentos dele — evita qualquer
@@ -160,24 +197,24 @@ export async function getDashboardMetrics(
     const paidAt = new Date(payment.paid_at);
     const total = roundCents(payment.principal_amount + payment.interest_amount);
 
-    addToPeriod(income, total, paidAt, now);
+    addToPeriod(income, total, paidAt, boundaries);
     receivedByMethod[payment.method] = roundCents(receivedByMethod[payment.method] + total);
     if (payment.method === "dinheiro") {
-      addToPeriod(cashIncome, total, paidAt, now);
+      addToPeriod(cashIncome, total, paidAt, boundaries);
     }
 
-    addToPeriod(lateInterestReceived, payment.interest_amount, paidAt, now);
+    addToPeriod(lateInterestReceived, payment.interest_amount, paidAt, boundaries);
 
     const markupRatio = payment.installment_id ? (markupRatioByContract.get(payment.contract_id) ?? 0) : 0;
     const earnedFromPrincipal = roundCents(payment.principal_amount * markupRatio);
-    addToPeriod(earnings, roundCents(earnedFromPrincipal + payment.interest_amount), paidAt, now);
+    addToPeriod(earnings, roundCents(earnedFromPrincipal + payment.interest_amount), paidAt, boundaries);
   }
 
   const expensesPeriod = emptyPeriod();
   let cashExpensesTotal = 0;
   for (const expense of expenses) {
-    const expenseDate = new Date(`${expense.expense_date}T00:00:00`);
-    addToPeriod(expensesPeriod, expense.amount, expenseDate, now);
+    const expenseDate = businessDayRangeUTC(expense.expense_date).start;
+    addToPeriod(expensesPeriod, expense.amount, expenseDate, boundaries);
     if (expense.method === "dinheiro") {
       cashExpensesTotal = roundCents(cashExpensesTotal + expense.amount);
     }
@@ -204,7 +241,7 @@ export async function getDashboardMetrics(
 
     if (phone.sold_at) {
       const profit = roundCents(saleAmount - phone.cost_amount);
-      addToPeriod(phonesProfit, profit, new Date(phone.sold_at), now);
+      addToPeriod(phonesProfit, profit, new Date(phone.sold_at), boundaries);
     }
   }
 

@@ -43,12 +43,27 @@ export const transactionSchema = z
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
 
-export const paymentSchema = z.object({
-  installmentId: z.string().uuid(),
-  amount: z.number({ error: "Informe o valor pago." }).positive("O valor pago deve ser maior que zero."),
-  method: z.enum(["dinheiro", "pix", "cartao", "outro"]),
-  notes: z.string().trim().optional().or(z.literal("")),
-});
+export const paymentSchema = z
+  .object({
+    installmentId: z.string().uuid(),
+    /**
+     * Quando true, o servidor ignora `amount` e quita exatamente o que está
+     * em aberto no momento da confirmação (principal + juros de atraso
+     * recalculados na hora) — nunca um valor pré-calculado na tela, que pode
+     * ficar desatualizado entre abrir o diálogo e confirmar o pagamento
+     * (a causa raiz do saldo residual tipo "R$ 0,11").
+     */
+    payInFull: z.boolean(),
+    amount: z.number().positive("O valor pago deve ser maior que zero.").optional(),
+    method: z.enum(["dinheiro", "pix", "cartao", "outro"]),
+    notes: z.string().trim().optional().or(z.literal("")),
+    /** Gerado uma vez por tentativa de pagamento no cliente — protege contra clique duplo/reenvio. */
+    idempotencyKey: z.string().uuid().optional(),
+  })
+  .refine((data) => data.payInFull || data.amount !== undefined, {
+    message: "Informe o valor pago.",
+    path: ["amount"],
+  });
 
 export type PaymentInput = z.infer<typeof paymentSchema>;
 

@@ -1,5 +1,4 @@
-import { startOfDay, startOfTomorrow } from "date-fns";
-
+import { businessDayRangeUTC, getBusinessToday } from "@/lib/date-utils";
 import { calculateLateInterest, daysLate, roundCents } from "@/lib/financial-rules";
 import type { createClient } from "@/lib/supabase/server";
 import type { Client, Contract, Installment } from "@/lib/types";
@@ -56,14 +55,13 @@ export async function getTodayDebtors(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<{ debtors: Debtor[]; summary: TodayDebtorsSummary; paidToday: PaidTodayRow[] }> {
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const dayStart = startOfDay(now);
-  const dayEnd = startOfTomorrow();
+  const todayStr = getBusinessToday(now);
+  const { start: dayStart, end: dayEnd } = businessDayRangeUTC(todayStr);
 
   const [{ data: installmentsData }, { data: paymentsTodayData }] = await Promise.all([
     supabase
       .from("installments")
-      .select("*, contract:contracts(id, type, description, installments_count, client:clients(*))")
+      .select("*, contract:contracts(id, type, status, description, installments_count, client:clients(*))")
       .in("status", ["pendente", "atrasado", "parcial"])
       .lte("due_date", todayStr),
     supabase
@@ -78,9 +76,12 @@ export async function getTodayDebtors(
   ]);
 
   type InstallmentRow = Installment & {
-    contract: Pick<Contract, "id" | "type" | "description" | "installments_count"> & { client: Client };
+    contract: Pick<Contract, "id" | "type" | "status" | "description" | "installments_count"> & { client: Client };
   };
-  const installments = (installmentsData ?? []) as InstallmentRow[];
+  const allInstallments = (installmentsData ?? []) as InstallmentRow[];
+  // Um empréstimo cancelado (ex.: cadastrado errado e excluído) nunca deve
+  // continuar cobrando o cliente nem aparecer nos indicadores.
+  const installments = allInstallments.filter((installment) => installment.contract.status !== "cancelado");
 
   const debtorsByClient = new Map<string, Debtor>();
 

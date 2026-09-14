@@ -1,5 +1,4 @@
-import { parseISO } from "date-fns";
-
+import { daysBetweenDateStrings, getBusinessToday } from "@/lib/date-utils";
 import type { ContractType, InstallmentStatus } from "@/lib/types";
 
 /**
@@ -77,14 +76,16 @@ export function calculateFinancedAmount(input: FinancedAmountInput): FinancedAmo
   return { financedBase, markupAmount, totalFinanced, rate, ratePercent };
 }
 
-/** Quantidade de dias corridos entre o vencimento e a data de referência (0 se ainda não venceu). */
+/**
+ * Quantidade de dias corridos entre o vencimento e a data de referência
+ * (0 se ainda não venceu). Compara sempre pelo calendário do fuso horário
+ * do negócio (Brasil) — nunca pelo fuso do processo do servidor — para uma
+ * parcela de amanhã nunca ser contada como já vencida (ou vice-versa) só
+ * por causa de onde o código está rodando.
+ */
 export function daysLate(dueDate: string, referenceDate: Date = new Date()): number {
-  const due = parseISO(dueDate);
-  const dueStart = new Date(due.getFullYear(), due.getMonth(), due.getDate());
-  const refStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
-  const diffMs = refStart.getTime() - dueStart.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  return Math.max(diffDays, 0);
+  const todayStr = getBusinessToday(referenceDate);
+  return Math.max(daysBetweenDateStrings(dueDate, todayStr), 0);
 }
 
 export interface LateInterestInstallmentInput {

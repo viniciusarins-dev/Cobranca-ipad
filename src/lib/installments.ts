@@ -1,5 +1,6 @@
 import { addDays, addMonths, format, parseISO } from "date-fns";
 
+import { daysBetweenDateStrings, getBusinessToday } from "@/lib/date-utils";
 import type { Periodicity } from "@/lib/types";
 
 export interface GeneratedInstallment {
@@ -53,7 +54,5 @@ export function generateInstallments(params: {
 }
 
 export function isOverdue(dueDate: string, referenceDate: Date = new Date()) {
-  const due = parseISO(dueDate);
-  const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
-  return due < today;
+  return daysBetweenDateStrings(dueDate, getBusinessToday(referenceDate)) > 0;
 }

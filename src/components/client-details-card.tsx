@@ -140,6 +140,7 @@ function DocumentSection({
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isReplacing, setIsReplacing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -160,6 +161,7 @@ function DocumentSection({
     if (result.ok) {
       toast.success("Documento enviado.");
       if (fileInputRef.current) fileInputRef.current.value = "";
+      setIsReplacing(false);
       router.refresh();
     } else {
       toast.error(result.error ?? "Erro ao enviar documento.");
@@ -182,20 +184,35 @@ function DocumentSection({
 
   if (documentSignedUrl) {
     return (
-      <div className="flex flex-wrap items-center gap-3">
-        <a
-          href={documentSignedUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-        >
-          <FileTextIcon className="size-4" />
-          Ver documento
-        </a>
-        <Button type="button" variant="outline" size="sm" disabled={isRemoving} onClick={handleRemove}>
-          <TrashIcon />
-          Remover
-        </Button>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <a
+            href={documentSignedUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+          >
+            <FileTextIcon className="size-4" />
+            Ver documento
+          </a>
+          <Button type="button" variant="outline" size="sm" onClick={() => setIsReplacing((v) => !v)}>
+            <UploadIcon />
+            Substituir
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled={isRemoving} onClick={handleRemove}>
+            <TrashIcon />
+            Remover
+          </Button>
+        </div>
+        {isReplacing && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="max-w-xs" />
+            <Button type="button" size="sm" disabled={isUploading} onClick={handleUpload}>
+              <UploadIcon />
+              {isUploading ? "Enviando..." : "Enviar novo documento"}
+            </Button>
+          </div>
+        )}
       </div>
     );
   }

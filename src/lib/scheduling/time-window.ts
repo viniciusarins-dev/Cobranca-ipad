@@ -1,7 +1,13 @@
+import { toBusinessDateString } from "@/lib/date-utils";
+
 /**
  * Trava de horário do disparo automático de cobranças: segunda a sexta,
  * das 09:00 às 18:00, no horário de Brasília. Calculado via Intl a partir
  * do relógio real (não depende do fuso horário do servidor/runtime).
+ *
+ * O fuso horário do negócio é definido uma única vez em `@/lib/date-utils`
+ * — não duplicar a constante aqui, para nunca haver duas fontes de verdade
+ * sobre "qual é o fuso do negócio" divergindo entre si.
  */
 const TIMEZONE = "America/Sao_Paulo";
 
@@ -39,7 +45,7 @@ export function getBrazilIsoWeekday(date: Date = new Date()): number {
 
 /** Data (yyyy-MM-dd) no horário de Brasília, para comparar com colunas `date`. */
 export function getBrazilDateString(date: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(date);
+  return toBusinessDateString(date);
 }
 
 /** true se estamos entre segunda e sexta, das 09:00 (inclusive) às 18:00 (exclusive), em Brasília. */

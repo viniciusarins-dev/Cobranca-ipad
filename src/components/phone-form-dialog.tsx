@@ -19,11 +19,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getBusinessToday } from "@/lib/date-utils";
 import type { Phone } from "@/lib/types";
 import { phoneSchema, type PhoneInput } from "@/lib/validations";
 import { createPhone, updatePhone } from "@/app/actions";
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => getBusinessToday();
 
 export function PhoneFormDialog({ phone }: { phone?: Phone }) {
   const [open, setOpen] = useState(false);
