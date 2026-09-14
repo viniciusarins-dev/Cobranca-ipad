@@ -75,20 +75,24 @@ export interface DashboardMetrics {
   /** Total recebido (parcelas + juros + entradas) agrupado por forma de pagamento (item 9 e 12). */
   receivedByMethod: Record<PaymentMethod, number>;
   /**
-   * Estoque de celulares (Fase 2) — rastreado separadamente dos empréstimos:
-   * lucro aqui é margem de revenda (venda − custo de aquisição), não juros.
+   * Vendas de iPhone (operações individuais, sem conceito de estoque) —
+   * rastreadas separadamente dos empréstimos: lucro aqui é venda − custo de
+   * aquisição, nunca juros, e é reconhecido no ato da venda, independente de
+   * quanto já foi efetivamente recebido do cliente.
    */
   phones: {
-    inStockCount: number;
-    /** Total investido em custo de aquisição dos celulares ainda em estoque. */
-    inStockCost: number;
-    soldCount: number;
-    /** Soma dos valores de venda dos celulares já vendidos. */
-    totalRevenue: number;
-    /** Soma do custo de aquisição dos celulares já vendidos. */
+    /** Quantidade de vendas ativas (contrato não cancelado). */
+    count: number;
+    /** Soma do custo de aquisição de todos os iPhones vendidos. */
     totalCost: number;
-    /** totalRevenue − totalCost, por período (baseado na data da venda). */
-    profit: PeriodAmounts;
+    /** Soma do valor de venda (principal_amount do contrato) de todas as vendas. */
+    totalSaleValue: number;
+    /** totalSaleValue − totalCost — lucro real, indepedente do que já foi recebido. */
+    totalProfit: number;
+    /** Soma de tudo já efetivamente recebido (entrada + parcelas) nessas vendas. */
+    totalReceived: number;
+    /** totalSaleValue − totalReceived, nunca negativo. */
+    totalPending: number;
   };
 }
 
@@ -120,7 +124,7 @@ export async function getDashboardMetrics(
     supabase.from("payments").select("*"),
     supabase.from("installments").select("contract_id, amount, paid_principal_amount, status"),
     supabase.from("expenses").select("*"),
-    supabase.from("phones").select("id, cost_amount, status, sale_amount, sold_at"),
+    supabase.from("phones").select("id, contract_id, cost_amount"),
   ]);
 
   const allContracts = (contractsData ?? []) as Pick<
@@ -142,7 +146,7 @@ export async function getDashboardMetrics(
     status: string;
   }[];
   const expenses = (expensesData ?? []) as Expense[];
-  const phones = (phonesData ?? []) as Pick<Phone, "id" | "cost_amount" | "status" | "sale_amount" | "sold_at">[];
+  const phones = (phonesData ?? []) as Pick<Phone, "id" | "contract_id" | "cost_amount">[];
 
   // Um empréstimo cancelado (ex.: cadastrado errado e excluído) nunca deve
   // continuar contando nos indicadores de empréstimos — o histórico de
@@ -150,6 +154,7 @@ export async function getDashboardMetrics(
   // abaixo, que somam todos os `payments` sem filtrar por status do contrato).
   const contracts = allContracts.filter((c) => c.status !== "cancelado");
   const activeContractIds = new Set(contracts.map((c) => c.id));
+  const contractsById = new Map(contracts.map((c) => [c.id, c]));
   const installments = allInstallments.filter((i) => activeContractIds.has(i.contract_id));
 
   // Fração de cada contrato que é markup (lucro), calculada uma única vez por
@@ -192,6 +197,7 @@ export async function getDashboardMetrics(
   const income = emptyPeriod();
   const cashIncome = emptyPeriod();
   const receivedByMethod: Record<PaymentMethod, number> = { ...EMPTY_METHOD_TOTALS };
+  const receivedByContract = new Map<string, number>();
 
   for (const payment of payments) {
     const paidAt = new Date(payment.paid_at);
@@ -208,6 +214,10 @@ export async function getDashboardMetrics(
     const markupRatio = payment.installment_id ? (markupRatioByContract.get(payment.contract_id) ?? 0) : 0;
     const earnedFromPrincipal = roundCents(payment.principal_amount * markupRatio);
     addToPeriod(earnings, roundCents(earnedFromPrincipal + payment.interest_amount), paidAt, boundaries);
+
+    if (activeContractIds.has(payment.contract_id)) {
+      receivedByContract.set(payment.contract_id, roundCents((receivedByContract.get(payment.contract_id) ?? 0) + total));
+    }
   }
 
   const expensesPeriod = emptyPeriod();
@@ -220,30 +230,29 @@ export async function getDashboardMetrics(
     }
   }
 
-  let inStockCount = 0;
-  let inStockCost = 0;
-  let soldCount = 0;
-  let phonesTotalRevenue = 0;
+  // Lucro de venda de iPhone é reconhecido no ato da venda (venda − custo),
+  // nunca em função do que já foi recebido — por isso soma sempre o
+  // principal_amount do contrato, independente de received/pending. Um
+  // celular cujo contrato foi cancelado é excluído (contractsById só tem
+  // contratos ativos), evitando lucro "fantasma" de venda desfeita.
+  let phonesCount = 0;
   let phonesTotalCost = 0;
-  const phonesProfit = emptyPeriod();
+  let phonesTotalSaleValue = 0;
+  let phonesTotalReceived = 0;
 
   for (const phone of phones) {
-    if (phone.status === "estoque") {
-      inStockCount += 1;
-      inStockCost = roundCents(inStockCost + phone.cost_amount);
-      continue;
-    }
+    if (!phone.contract_id) continue;
+    const contract = contractsById.get(phone.contract_id);
+    if (!contract) continue;
 
-    soldCount += 1;
-    const saleAmount = phone.sale_amount ?? 0;
-    phonesTotalRevenue = roundCents(phonesTotalRevenue + saleAmount);
+    phonesCount += 1;
     phonesTotalCost = roundCents(phonesTotalCost + phone.cost_amount);
-
-    if (phone.sold_at) {
-      const profit = roundCents(saleAmount - phone.cost_amount);
-      addToPeriod(phonesProfit, profit, new Date(phone.sold_at), boundaries);
-    }
+    phonesTotalSaleValue = roundCents(phonesTotalSaleValue + contract.principal_amount);
+    phonesTotalReceived = roundCents(phonesTotalReceived + (receivedByContract.get(phone.contract_id) ?? 0));
   }
+
+  const phonesTotalProfit = roundCents(phonesTotalSaleValue - phonesTotalCost);
+  const phonesTotalPending = roundCents(Math.max(phonesTotalSaleValue - phonesTotalReceived, 0));
 
   return {
     loans: {
@@ -266,12 +275,12 @@ export async function getDashboardMetrics(
     },
     receivedByMethod,
     phones: {
-      inStockCount,
-      inStockCost,
-      soldCount,
-      totalRevenue: phonesTotalRevenue,
+      count: phonesCount,
       totalCost: phonesTotalCost,
-      profit: phonesProfit,
+      totalSaleValue: phonesTotalSaleValue,
+      totalProfit: phonesTotalProfit,
+      totalReceived: phonesTotalReceived,
+      totalPending: phonesTotalPending,
     },
   };
 }

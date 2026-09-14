@@ -168,38 +168,44 @@ export function DashboardOverview({
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Celulares (estoque e lucro, separado dos empréstimos)
+          Vendas de iPhone (operações individuais, separado dos empréstimos)
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <StatTile label="Em estoque" value={metrics.phones.inStockCount} icon={BoxIcon} accent="cyan" />
+          <StatTile label="Vendas" value={metrics.phones.count} icon={BoxIcon} accent="cyan" />
           <StatTile
-            label="Investido em estoque"
-            value={metrics.phones.inStockCost}
+            label="Total investido"
+            value={metrics.phones.totalCost}
             format="currency"
             icon={SmartphoneIcon}
             accent="primary"
           />
-          <StatTile label="Vendidos" value={metrics.phones.soldCount} icon={PackageCheckIcon} accent="success" />
           <StatTile
-            label="Lucro hoje"
-            value={metrics.phones.profit.today}
+            label="Total em vendas"
+            value={metrics.phones.totalSaleValue}
+            format="currency"
+            icon={HandCoinsIcon}
+            accent="warning"
+          />
+          <StatTile
+            label="Lucro real"
+            value={metrics.phones.totalProfit}
             format="currency"
             icon={TrendingUpIcon}
             accent="success"
           />
           <StatTile
-            label="Lucro no mês"
-            value={metrics.phones.profit.month}
+            label="Total recebido"
+            value={metrics.phones.totalReceived}
             format="currency"
-            icon={TrendingUpIcon}
-            accent="success"
+            icon={PackageCheckIcon}
+            accent="cyan"
           />
           <StatTile
-            label="Lucro total"
-            value={metrics.phones.profit.total}
+            label="Total pendente"
+            value={metrics.phones.totalPending}
             format="currency"
-            icon={TrendingUpIcon}
-            accent="success"
+            icon={ReceiptIcon}
+            accent="destructive"
           />
         </div>
       </section>

@@ -21,8 +21,16 @@ export const transactionSchema = z
     hasDownPayment: z.boolean(),
     downPaymentAmount: z.number().min(0, "A entrada não pode ser negativa."),
     downPaymentMethod: z.enum(["dinheiro", "pix", "cartao", "outro"]),
-    /** Celular do estoque vendido nesta transação (só relevante para venda_iphone). */
-    phoneId: z.string().uuid().optional().or(z.literal("")),
+    /**
+     * Detalhes do aparelho — só relevantes/obrigatórios para venda_iphone.
+     * Cada venda é uma operação individual (sem conceito de estoque):
+     * o iPhone é cadastrado junto com a própria venda.
+     */
+    phoneModel: z.string().trim().optional().or(z.literal("")),
+    phoneColor: z.string().trim().optional().or(z.literal("")),
+    phoneBatteryPercent: z.number().min(0, "Mínimo 0%.").max(100, "Máximo 100%.").optional(),
+    /** Custo de aquisição do iPhone (o que foi pago para adquiri-lo) — nunca confundir com o valor da venda. */
+    phoneCostAmount: z.number().min(0, "O custo não pode ser negativo.").optional(),
   })
   .refine((data) => data.type === "venda_iphone" || !data.hasDownPayment, {
     message: "Entrada só se aplica a venda de iPhone.",
@@ -36,9 +44,13 @@ export const transactionSchema = z
     message: "A entrada deve ser menor que o valor total do produto.",
     path: ["downPaymentAmount"],
   })
-  .refine((data) => data.type === "venda_iphone" || !data.phoneId, {
-    message: "Celular do estoque só se aplica a venda de iPhone.",
-    path: ["phoneId"],
+  .refine((data) => data.type !== "venda_iphone" || (data.phoneModel && data.phoneModel.length > 0), {
+    message: "Informe o modelo do iPhone.",
+    path: ["phoneModel"],
+  })
+  .refine((data) => data.type !== "venda_iphone" || data.phoneCostAmount !== undefined, {
+    message: "Informe o custo do iPhone.",
+    path: ["phoneCostAmount"],
   });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
@@ -78,24 +90,21 @@ export const expenseSchema = z.object({
 
 export type ExpenseInput = z.infer<typeof expenseSchema>;
 
-export const phoneSchema = z.object({
-  model: z.string().trim().min(2, "Informe o modelo do celular."),
-  description: z.string().trim().optional().or(z.literal("")),
-  costAmount: z.number({ error: "Informe o custo de aquisição." }).min(0, "O custo não pode ser negativo."),
-  acquiredAt: z.string().min(10, "Informe a data de aquisição."),
-  notes: z.string().trim().optional().or(z.literal("")),
+/**
+ * Edição de uma venda de iPhone já cadastrada (item 21 do pedido): modelo,
+ * cor, bateria e custo sempre editáveis (não afetam parcelas já geradas).
+ * `saleAmount` só é aceito pelo backend quando o contrato ainda não tem
+ * nenhum pagamento registrado — ver `updateIphoneSale`.
+ */
+export const iphoneSaleUpdateSchema = z.object({
+  model: z.string().trim().min(1, "Informe o modelo do iPhone."),
+  color: z.string().trim().optional().or(z.literal("")),
+  batteryPercent: z.number().min(0, "Mínimo 0%.").max(100, "Máximo 100%.").optional(),
+  costAmount: z.number({ error: "Informe o custo do iPhone." }).min(0, "O custo não pode ser negativo."),
+  saleAmount: z.number({ error: "Informe o valor da venda." }).positive("O valor da venda deve ser maior que zero."),
 });
 
-export type PhoneInput = z.infer<typeof phoneSchema>;
-
-export const sellPhoneDirectSchema = z.object({
-  phoneId: z.string().uuid(),
-  saleAmount: z.number({ error: "Informe o valor de venda." }).positive("O valor de venda deve ser maior que zero."),
-  saleMethod: z.enum(["dinheiro", "pix", "cartao", "outro"]),
-  buyerName: z.string().trim().optional().or(z.literal("")),
-});
-
-export type SellPhoneDirectInput = z.infer<typeof sellPhoneDirectSchema>;
+export type IphoneSaleUpdateInput = z.infer<typeof iphoneSaleUpdateSchema>;
 
 export const messageSettingsSchema = z.object({
   provider: z.enum(["evolution", "zapi", "twilio", "wppconnect", "meta"]),

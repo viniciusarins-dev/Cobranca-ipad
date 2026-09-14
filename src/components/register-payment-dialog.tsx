@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { calculateLateInterest, roundCents } from "@/lib/financial-rules";
-import { PAYMENT_METHOD_LABELS, type Installment } from "@/lib/types";
+import { PAYMENT_METHOD_LABELS, type ContractType, type Installment } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 import { paymentSchema, type PaymentInput } from "@/lib/validations";
 import { registerPayment } from "@/app/actions";
@@ -45,12 +45,15 @@ function newIdempotencyKey(): string {
  */
 export function RegisterPaymentDialog({
   installment,
+  contractType,
   contractPrincipalAmount,
   triggerLabel = "Registrar pagamento",
   clientName,
   onPaid,
 }: {
   installment: Installment;
+  /** Venda de iPhone nunca gera juros de atraso — só empréstimo. */
+  contractType: ContractType;
   /** Valor originalmente emprestado no contrato — base do juros de atraso (nunca o valor da parcela). */
   contractPrincipalAmount: number;
   triggerLabel?: string;
@@ -65,11 +68,12 @@ export function RegisterPaymentDialog({
   const interestOwed = useMemo(
     () =>
       calculateLateInterest({
+        contractType,
         originalPrincipalAmount: contractPrincipalAmount,
         dueDate: installment.due_date,
         status: installment.status,
       }),
-    [contractPrincipalAmount, installment.due_date, installment.status],
+    [contractType, contractPrincipalAmount, installment.due_date, installment.status],
   );
   const totalDue = roundCents(outstandingPrincipal + interestOwed);
 

@@ -87,14 +87,18 @@ export interface Payment {
 }
 
 /**
- * Um celular do estoque (Fase 2). Rastreia custo de aquisição, venda e lucro
- * separadamente dos contratos de empréstimo — pode ser vendido vinculado a um
- * contrato de "Venda de iPhone" (contract_id preenchido, sale_amount =
- * principal_amount do contrato) ou diretamente, fora do sistema de parcelas.
+ * Detalhes do iPhone de uma venda (operação individual, sem conceito de
+ * estoque — cada venda tem seu próprio aparelho, cadastrado junto com o
+ * contrato). Rastreia custo de aquisição, venda e lucro separadamente dos
+ * juros do empréstimo — lucro = sale_amount − cost_amount, sempre vinculado
+ * a um contrato de "Venda de iPhone" (contract_id).
  */
 export interface Phone {
   id: string;
   model: string;
+  color: string | null;
+  /** Saúde da bateria em %, de 0 a 100. */
+  battery_percent: number | null;
   description: string | null;
   cost_amount: number;
   status: PhoneStatus;

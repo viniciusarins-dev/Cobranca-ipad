@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ContractStatusBadge } from "@/components/status-badge";
-import { CONTRACT_TYPE_LABELS, PERIODICITY_LABELS, type ContractWithClient } from "@/lib/types";
+import { ContractStatusBadge, ContractTypeBadge } from "@/components/status-badge";
+import { PERIODICITY_LABELS, type ContractWithClient } from "@/lib/types";
 import { formatCurrency, formatPhone, initials } from "@/lib/utils";
 
 type FilterTab = "todos" | "ativo" | "inadimplente" | "quitado";
@@ -103,7 +103,7 @@ export function ClientsTable({ contracts }: { contracts: ContractWithClient[] })
                 </TableCell>
                 <TableCell>
                   <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
-                    {CONTRACT_TYPE_LABELS[contract.type]}
+                    <ContractTypeBadge type={contract.type} />
                   </Link>
                 </TableCell>
                 <TableCell>

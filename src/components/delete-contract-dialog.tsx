@@ -19,12 +19,17 @@ import { CONTRACT_STATUS_LABELS, type Contract } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 import { deleteContract } from "@/app/actions";
 
-type ContractSummary = Pick<Contract, "id" | "principal_amount" | "installments_count" | "total_amount" | "status">;
+type ContractSummary = Pick<
+  Contract,
+  "id" | "type" | "principal_amount" | "installments_count" | "total_amount" | "status"
+>;
 
 export function DeleteContractDialog({ contract, clientName }: { contract: ContractSummary; clientName: string }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
+  const isSale = contract.type === "venda_iphone";
+  const operationLabel = isSale ? "venda" : "empréstimo";
 
   async function handleConfirm() {
     setIsDeleting(true);
@@ -32,12 +37,12 @@ export function DeleteContractDialog({ contract, clientName }: { contract: Contr
     setIsDeleting(false);
 
     if (result.ok) {
-      toast.success("Empréstimo excluído.");
+      toast.success(isSale ? "Venda excluída." : "Empréstimo excluído.");
       setOpen(false);
-      router.push("/");
+      router.push(isSale ? "/phones" : "/");
       router.refresh();
     } else {
-      toast.error(result.error ?? "Erro ao excluir empréstimo.");
+      toast.error(result.error ?? `Erro ao excluir ${operationLabel}.`);
     }
   }
 
@@ -46,15 +51,15 @@ export function DeleteContractDialog({ contract, clientName }: { contract: Contr
       <DialogTrigger asChild>
         <Button type="button" variant="destructive" size="sm">
           <TrashIcon />
-          Excluir empréstimo
+          Excluir {operationLabel}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Excluir empréstimo?</DialogTitle>
+          <DialogTitle>Excluir {operationLabel}?</DialogTitle>
           <DialogDescription>
-            Tem certeza que deseja excluir este empréstimo? Esta ação removerá o empréstimo e os dados relacionados
-            que dependem dele. Essa ação não poderá ser desfeita.
+            Tem certeza que deseja excluir {isSale ? "esta venda" : "este empréstimo"}? Esta ação removerá o registro
+            e os dados relacionados que dependem dele. Essa ação não poderá ser desfeita.
           </DialogDescription>
         </DialogHeader>
 
@@ -64,7 +69,7 @@ export function DeleteContractDialog({ contract, clientName }: { contract: Contr
             <dd className="font-medium">{clientName}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Valor emprestado</dt>
+            <dt className="text-muted-foreground">{isSale ? "Valor da venda" : "Valor emprestado"}</dt>
             <dd className="font-medium">{formatCurrency(contract.principal_amount)}</dd>
           </div>
           <div>
@@ -82,9 +87,9 @@ export function DeleteContractDialog({ contract, clientName }: { contract: Contr
         </dl>
 
         <p className="text-xs text-muted-foreground">
-          Se já houver algum pagamento registrado neste empréstimo, ele não será apagado — o sistema mantém o
-          histórico financeiro e apenas marca o empréstimo como cancelado, removendo-o de todos os indicadores e
-          pendências.
+          Se já houver algum pagamento registrado, ele não será apagado — o sistema mantém o histórico financeiro e
+          apenas marca {isSale ? "a venda" : "o empréstimo"} como cancelado(a), removendo-o(a) de todos os
+          indicadores e pendências.
         </p>
 
         <DialogFooter>

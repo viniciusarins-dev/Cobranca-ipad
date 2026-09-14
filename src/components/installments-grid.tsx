@@ -7,17 +7,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { InstallmentStatusBadge } from "@/components/status-badge";
 import { RegisterPaymentDialog } from "@/components/register-payment-dialog";
-import { type Installment } from "@/lib/types";
+import { type ContractType, type Installment } from "@/lib/types";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { sendReminderAction } from "@/app/actions";
 
 function InstallmentRow({
   installment,
   totalInstallments,
+  contractType,
   contractPrincipalAmount,
 }: {
   installment: Installment;
   totalInstallments: number;
+  contractType: ContractType;
   contractPrincipalAmount: number;
 }) {
   const [isSending, setIsSending] = useState(false);
@@ -64,7 +66,11 @@ function InstallmentRow({
 
       <div className="flex flex-wrap items-center gap-2">
         {installment.status !== "pago" && (
-          <RegisterPaymentDialog installment={installment} contractPrincipalAmount={contractPrincipalAmount} />
+          <RegisterPaymentDialog
+            installment={installment}
+            contractType={contractType}
+            contractPrincipalAmount={contractPrincipalAmount}
+          />
         )}
 
         <Button
@@ -84,9 +90,11 @@ function InstallmentRow({
 
 export function InstallmentsGrid({
   installments,
+  contractType,
   contractPrincipalAmount,
 }: {
   installments: Installment[];
+  contractType: ContractType;
   contractPrincipalAmount: number;
 }) {
   return (
@@ -96,6 +104,7 @@ export function InstallmentsGrid({
           key={installment.id}
           installment={installment}
           totalInstallments={installments.length}
+          contractType={contractType}
           contractPrincipalAmount={contractPrincipalAmount}
         />
       ))}

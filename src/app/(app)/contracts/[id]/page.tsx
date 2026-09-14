@@ -6,19 +6,13 @@ import { ClientDetailsCard } from "@/components/client-details-card";
 import { DeleteContractDialog } from "@/components/delete-contract-dialog";
 import { InstallmentsGrid } from "@/components/installments-grid";
 import { PaymentHistory } from "@/components/payment-history";
-import { ContractStatusBadge } from "@/components/status-badge";
+import { ContractStatusBadge, ContractTypeBadge } from "@/components/status-badge";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { getClientDocumentSignedUrl } from "@/lib/client-documents";
 import { createClient } from "@/lib/supabase/server";
-import { calculateFinancedAmount } from "@/lib/financial-rules";
-import {
-  CONTRACT_TYPE_LABELS,
-  PERIODICITY_LABELS,
-  type ContractWithInstallments,
-  type Payment,
-  type Phone,
-} from "@/lib/types";
+import { calculateFinancedAmount, roundCents } from "@/lib/financial-rules";
+import { PERIODICITY_LABELS, type ContractWithInstallments, type Payment, type Phone } from "@/lib/types";
 import { formatCurrency, formatDate, formatPhone, initials, onlyDigits } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -70,7 +64,9 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     .maybeSingle();
   const linkedPhone = linkedPhoneData as Phone | null;
   const phoneProfit =
-    linkedPhone && linkedPhone.sale_amount !== null ? linkedPhone.sale_amount - linkedPhone.cost_amount : null;
+    linkedPhone && linkedPhone.sale_amount !== null
+      ? roundCents(linkedPhone.sale_amount - linkedPhone.cost_amount)
+      : null;
 
   const documentSignedUrl = await getClientDocumentSignedUrl(supabase, contract.client.document_photo_path);
 
@@ -112,7 +108,9 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div>
               <dt className="text-muted-foreground">Tipo</dt>
-              <dd className="font-medium">{CONTRACT_TYPE_LABELS[contract.type]}</dd>
+              <dd className="font-medium">
+                <ContractTypeBadge type={contract.type} />
+              </dd>
             </div>
             <div>
               <dt className="text-muted-foreground">{contract.type === "emprestimo" ? "Valor emprestado" : "Valor do produto"}</dt>
@@ -177,7 +175,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       {linkedPhone && (
         <SpotlightCard>
           <CardHeader>
-            <CardTitle className="text-base">Celular vinculado (estoque)</CardTitle>
+            <CardTitle className="text-base">Detalhes do iPhone vendido</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
@@ -186,14 +184,24 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
                 <dd className="font-medium">{linkedPhone.model}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Custo de aquisição</dt>
+                <dt className="text-muted-foreground">Cor</dt>
+                <dd className="font-medium">{linkedPhone.color ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Saúde da bateria</dt>
+                <dd className="font-medium">
+                  {linkedPhone.battery_percent !== null ? `${linkedPhone.battery_percent}%` : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Custo do iPhone</dt>
                 <dd className="font-medium">{formatCurrency(linkedPhone.cost_amount)}</dd>
               </div>
               {phoneProfit !== null && (
                 <div>
-                  <dt className="text-muted-foreground">Lucro na venda do aparelho</dt>
+                  <dt className="text-muted-foreground">{phoneProfit >= 0 ? "Lucro" : "Prejuízo"} na venda</dt>
                   <dd className={phoneProfit >= 0 ? "font-semibold text-success" : "font-semibold text-destructive"}>
-                    {formatCurrency(phoneProfit)}
+                    {formatCurrency(Math.abs(phoneProfit))}
                   </dd>
                 </div>
               )}
@@ -204,7 +212,11 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
 
       <div>
         <h2 className="mb-3 text-lg font-bold tracking-tight text-foreground">Parcelas</h2>
-        <InstallmentsGrid installments={installments} contractPrincipalAmount={contract.principal_amount} />
+        <InstallmentsGrid
+          installments={installments}
+          contractType={contract.type}
+          contractPrincipalAmount={contract.principal_amount}
+        />
       </div>
 
       <div>

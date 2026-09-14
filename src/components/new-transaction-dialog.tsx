@@ -23,15 +23,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { getBusinessToday } from "@/lib/date-utils";
 import { splitAmount } from "@/lib/installments";
-import { calculateFinancedAmount } from "@/lib/financial-rules";
+import { calculateFinancedAmount, roundCents } from "@/lib/financial-rules";
 import { formatCurrency } from "@/lib/utils";
-import { PAYMENT_METHOD_LABELS, type Phone } from "@/lib/types";
+import { PAYMENT_METHOD_LABELS } from "@/lib/types";
 import { transactionSchema, type TransactionInput } from "@/lib/validations";
 import { createTransaction } from "@/app/actions";
 
 const today = () => getBusinessToday();
 
-export function NewTransactionDialog({ availablePhones = [] }: { availablePhones?: Phone[] }) {
+export function NewTransactionDialog() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -53,15 +53,19 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
       hasDownPayment: false,
       downPaymentAmount: 0,
       downPaymentMethod: "dinheiro",
-      phoneId: "",
+      phoneModel: "",
+      phoneColor: "",
+      phoneCostAmount: 0,
     },
   });
 
   const type = watch("type");
-  const hasDownPayment = type === "venda_iphone" && Boolean(watch("hasDownPayment"));
+  const isIphoneSale = type === "venda_iphone";
+  const hasDownPayment = isIphoneSale && Boolean(watch("hasDownPayment"));
   const totalAmount = Number(watch("totalAmount")) || 0;
   const downPaymentAmount = hasDownPayment ? Number(watch("downPaymentAmount")) || 0 : 0;
   const installmentsCount = Number(watch("installmentsCount")) || 1;
+  const phoneCostAmount = isIphoneSale ? Number(watch("phoneCostAmount")) || 0 : 0;
 
   const { totalFinanced, markupAmount, ratePercent } =
     totalAmount > 0
@@ -77,15 +81,21 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
   const previewAmounts =
     totalFinanced > 0 && installmentsCount > 0 ? splitAmount(totalFinanced, installmentsCount) : [];
 
-  // Entrada só existe para venda de iPhone: ao trocar o tipo, zera a entrada
-  // para não deixar um valor "fantasma" que reprovaria a validação.
+  const iphoneProfit = isIphoneSale && totalAmount > 0 ? roundCents(totalAmount - phoneCostAmount) : 0;
+
+  // Entrada e detalhes do iPhone só existem para venda de iPhone: ao trocar
+  // o tipo, zera esses campos para não deixar um valor "fantasma" que
+  // reprovaria a validação.
   useEffect(() => {
-    if (type !== "venda_iphone") {
+    if (!isIphoneSale) {
       setValue("hasDownPayment", false);
       setValue("downPaymentAmount", 0);
-      setValue("phoneId", "");
+      setValue("phoneModel", "");
+      setValue("phoneColor", "");
+      setValue("phoneBatteryPercent", undefined);
+      setValue("phoneCostAmount", 0);
     }
-  }, [type, setValue]);
+  }, [isIphoneSale, setValue]);
 
   const onSubmit = handleSubmit(async (data) => {
     const result = await createTransaction(data);
@@ -222,33 +232,52 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
                 </div>
               )}
 
-              {availablePhones.length > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="phoneId">Celular do estoque (opcional)</Label>
-                  <Controller
-                    control={control}
-                    name="phoneId"
-                    render={({ field }) => (
-                      <Select value={field.value || "none"} onValueChange={(v) => field.onChange(v === "none" ? "" : v)}>
-                        <SelectTrigger id="phoneId">
-                          <SelectValue placeholder="Nenhum" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum</SelectItem>
-                          {availablePhones.map((phone) => (
-                            <SelectItem key={phone.id} value={phone.id}>
-                              {phone.model} — custo {formatCurrency(phone.cost_amount)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                  <Label htmlFor="phoneModel">Modelo do iPhone</Label>
+                  <Input id="phoneModel" placeholder="Ex: iPhone 13 Pro 256GB" {...register("phoneModel")} />
+                  {errors.phoneModel && <p className="text-xs text-destructive">{errors.phoneModel.message}</p>}
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="phoneColor">Cor (opcional)</Label>
+                  <Input id="phoneColor" placeholder="Ex: Grafite" {...register("phoneColor")} />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="phoneBatteryPercent">Saúde da bateria % (opcional)</Label>
+                  <Input
+                    id="phoneBatteryPercent"
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="Ex: 87"
+                    {...register("phoneBatteryPercent", { valueAsNumber: true })}
                   />
+                  {errors.phoneBatteryPercent && (
+                    <p className="text-xs text-destructive">{errors.phoneBatteryPercent.message}</p>
+                  )}
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="phoneCostAmount">Custo do iPhone (R$)</Label>
+                  <Input
+                    id="phoneCostAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    {...register("phoneCostAmount", { valueAsNumber: true })}
+                  />
+                  {errors.phoneCostAmount && (
+                    <p className="text-xs text-destructive">{errors.phoneCostAmount.message}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">
-                    Vincula esta venda a um celular do estoque para calcular o lucro real (venda − custo).
+                    Usado para calcular o lucro real da venda (valor da venda − custo). O IMEI pode ser adicionado
+                    depois, se necessário.
                   </p>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -310,6 +339,14 @@ export function NewTransactionDialog({ availablePhones = [] }: { availablePhones
                   ? ` (última parcela ${formatCurrency(previewAmounts.at(-1)!)})`
                   : ""}
               </p>
+              {isIphoneSale && phoneCostAmount > 0 && (
+                <p className="font-medium">
+                  Custo do iPhone: {formatCurrency(phoneCostAmount)} ·{" "}
+                  <span className={iphoneProfit >= 0 ? "text-success" : "text-destructive"}>
+                    {iphoneProfit >= 0 ? "Lucro" : "Prejuízo"}: {formatCurrency(Math.abs(iphoneProfit))}
+                  </span>
+                </p>
+              )}
             </div>
           )}
 

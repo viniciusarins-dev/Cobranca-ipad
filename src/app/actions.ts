@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getISODay, parseISO } from "date-fns";
 
 import { createClient } from "@/lib/supabase/server";
+import { getBusinessToday } from "@/lib/date-utils";
 import { generateInstallments } from "@/lib/installments";
 import { sendCollectionReminder } from "@/lib/whatsapp";
 import {
@@ -18,15 +19,13 @@ import {
   transactionSchema,
   paymentSchema,
   expenseSchema,
-  phoneSchema,
-  sellPhoneDirectSchema,
+  iphoneSaleUpdateSchema,
   clientAddressSchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
   type ExpenseInput,
-  type PhoneInput,
-  type SellPhoneDirectInput,
+  type IphoneSaleUpdateInput,
   type ClientAddressInput,
 } from "@/lib/validations";
 import type { ContractStatus, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
@@ -60,21 +59,6 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   }
   const data = parsed.data;
   const supabase = await createClient();
-
-  if (data.phoneId) {
-    const { data: phone, error: phoneError } = await supabase
-      .from("phones")
-      .select("id, status")
-      .eq("id", data.phoneId)
-      .single();
-
-    if (phoneError || !phone) {
-      return { ok: false, error: "Celular do estoque não encontrado." };
-    }
-    if (phone.status === "vendido") {
-      return { ok: false, error: "Este celular já foi vendido." };
-    }
-  }
 
   let clientId = data.clientId;
 
@@ -174,18 +158,24 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     }
   }
 
-  if (data.phoneId) {
-    const { error: phoneUpdateError } = await supabase
-      .from("phones")
-      .update({
-        status: "vendido",
-        contract_id: contract.id,
-        sale_amount: roundCents(data.totalAmount),
-        sold_at: new Date().toISOString(),
-      })
-      .eq("id", data.phoneId);
-    if (phoneUpdateError) {
-      return { ok: false, error: phoneUpdateError.message };
+  // Venda de iPhone é uma operação individual (sem estoque): o aparelho é
+  // cadastrado junto com a própria venda, já vinculado ao contrato. O lucro
+  // (venda − custo) é sempre calculado sob demanda a partir daqui, nunca
+  // dependente de quanto o cliente já pagou.
+  if (data.type === "venda_iphone") {
+    const { error: phoneError } = await supabase.from("phones").insert({
+      model: data.phoneModel,
+      color: data.phoneColor || null,
+      battery_percent: data.phoneBatteryPercent ?? null,
+      cost_amount: roundCents(data.phoneCostAmount ?? 0),
+      status: "vendido",
+      sale_amount: roundCents(data.totalAmount),
+      sold_at: new Date().toISOString(),
+      acquired_at: getBusinessToday(),
+      contract_id: contract.id,
+    });
+    if (phoneError) {
+      return { ok: false, error: phoneError.message };
     }
   }
 
@@ -203,6 +193,9 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   }
 
   revalidatePath("/");
+  if (data.type === "venda_iphone") {
+    revalidatePath("/phones");
+  }
   return { ok: true, contractId: contract.id };
 }
 
@@ -249,8 +242,8 @@ async function recalculateContractStatus(supabase: Awaited<ReturnType<typeof cre
  * 1) Nenhum pagamento registrado ainda: exclusão real. O contrato é
  *    apagado (a foreign key `on delete cascade` já existente cuida de
  *    parcelas, weekly_charges e message_logs automaticamente — não sobra
- *    nada órfão); se havia um celular do estoque vinculado, ele volta a
- *    ficar disponível (a "venda" nunca existiu de fato).
+ *    nada órfão); se for uma venda de iPhone, o registro do aparelho
+ *    também é excluído (a venda nunca aconteceu de fato).
  * 2) Já existe pagamento registrado: NUNCA apaga silenciosamente o
  *    histórico financeiro. Em vez disso, o contrato é marcado como
  *    "cancelado" (status que já existe no sistema) — payments, installments
@@ -298,20 +291,13 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
     return { ok: true };
   }
 
-  const { error: phoneUnlinkError } = await supabase
-    .from("phones")
-    .update({
-      status: "estoque",
-      contract_id: null,
-      sale_amount: null,
-      sale_method: null,
-      sold_at: null,
-      buyer_name: null,
-    })
-    .eq("contract_id", contractId);
+  // Venda de iPhone é uma operação individual (sem estoque): se o contrato
+  // excluído for uma venda sem nenhum pagamento, o registro do aparelho
+  // não tem mais razão para existir — a venda nunca aconteceu de fato.
+  const { error: phoneDeleteError } = await supabase.from("phones").delete().eq("contract_id", contractId);
 
-  if (phoneUnlinkError) {
-    return { ok: false, error: phoneUnlinkError.message };
+  if (phoneDeleteError) {
+    return { ok: false, error: phoneDeleteError.message };
   }
 
   const { error: deleteError } = await supabase.from("contracts").delete().eq("id", contractId);
@@ -394,7 +380,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
 
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
-    .select("client_id, principal_amount")
+    .select("client_id, type, principal_amount")
     .eq("id", installment.contract_id)
     .single();
 
@@ -408,8 +394,10 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   // integral, o valor cobrado é exatamente o que está em aberto no instante
   // da confirmação, nunca um total pré-calculado que ficou desatualizado.
   // O juros de atraso usa o valor ORIGINALMENTE EMPRESTADO no contrato como
-  // base (nunca o valor da parcela) — regra de negócio explícita.
+  // base (nunca o valor da parcela) e só existe para empréstimo — venda de
+  // iPhone nunca gera juros de atraso.
   const interestOwed = calculateLateInterest({
+    contractType: contract.type,
     originalPrincipalAmount: contract.principal_amount,
     dueDate: installment.due_date,
     status: installment.status,
@@ -478,6 +466,9 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   revalidatePath(`/contracts/${installment.contract_id}`);
   revalidatePath("/");
   revalidatePath("/debtors");
+  if (contract.type === "venda_iphone") {
+    revalidatePath("/phones");
+  }
   return { ok: true, contractId: installment.contract_id };
 }
 
@@ -508,125 +499,133 @@ export async function registerExpense(input: ExpenseInput): Promise<ActionResult
   return { ok: true };
 }
 
-export async function createPhone(input: PhoneInput): Promise<ActionResult> {
-  const parsed = phoneSchema.safeParse(input);
+/**
+ * Edita uma venda de iPhone já cadastrada (item 21 do pedido): modelo, cor,
+ * bateria e custo sempre podem ser corrigidos (não afetam as parcelas já
+ * geradas — o custo só entra no cálculo de lucro, nunca no parcelamento).
+ * O valor da venda só pode ser alterado enquanto o contrato ainda não tiver
+ * nenhum pagamento registrado — nesse caso as parcelas são recalculadas do
+ * zero a partir do novo valor, mantendo a mesma quantidade de parcelas,
+ * periodicidade e 1º vencimento já definidos na criação.
+ */
+export async function updateIphoneSale(contractId: string, input: IphoneSaleUpdateInput): Promise<ActionResult> {
+  const parsed = iphoneSaleUpdateSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
   const data = parsed.data;
   const supabase = await createClient();
 
-  const { error } = await supabase.from("phones").insert({
-    model: data.model,
-    description: data.description || null,
-    cost_amount: roundCents(data.costAmount),
-    acquired_at: data.acquiredAt,
-    notes: data.notes || null,
-  });
+  const { data: contract, error: contractError } = await supabase
+    .from("contracts")
+    .select("id, type, principal_amount, installments_count, periodicity, first_due_date, has_down_payment, down_payment_amount")
+    .eq("id", contractId)
+    .single();
 
-  if (error) {
-    return { ok: false, error: error.message };
+  if (contractError || !contract) {
+    return { ok: false, error: contractError?.message ?? "Venda não encontrada." };
+  }
+  if (contract.type !== "venda_iphone") {
+    return { ok: false, error: "Esta operação não é uma venda de iPhone." };
   }
 
-  revalidatePath("/phones");
-  return { ok: true };
-}
+  const { data: phone, error: phoneError } = await supabase
+    .from("phones")
+    .select("id")
+    .eq("contract_id", contractId)
+    .maybeSingle();
 
-export async function updatePhone(phoneId: string, input: PhoneInput): Promise<ActionResult> {
-  const parsed = phoneSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  if (phoneError || !phone) {
+    return { ok: false, error: phoneError?.message ?? "Celular vinculado não encontrado." };
   }
-  const data = parsed.data;
-  const supabase = await createClient();
 
-  const { error } = await supabase
+  const newSaleAmount = roundCents(data.saleAmount);
+  const saleValueChanged = newSaleAmount !== roundCents(contract.principal_amount);
+
+  if (saleValueChanged) {
+    const { count: paymentsCount, error: countError } = await supabase
+      .from("payments")
+      .select("id", { count: "exact", head: true })
+      .eq("contract_id", contractId);
+
+    if (countError) {
+      return { ok: false, error: countError.message };
+    }
+    if ((paymentsCount ?? 0) > 0) {
+      return {
+        ok: false,
+        error: "Não é possível alterar o valor da venda depois que algum pagamento foi registrado.",
+      };
+    }
+    if (contract.has_down_payment && contract.down_payment_amount >= newSaleAmount) {
+      return { ok: false, error: "O novo valor da venda deve ser maior que a entrada já definida." };
+    }
+  }
+
+  const { error: phoneUpdateError } = await supabase
     .from("phones")
     .update({
       model: data.model,
-      description: data.description || null,
+      color: data.color || null,
+      battery_percent: data.batteryPercent ?? null,
       cost_amount: roundCents(data.costAmount),
-      acquired_at: data.acquiredAt,
-      notes: data.notes || null,
+      sale_amount: newSaleAmount,
     })
-    .eq("id", phoneId);
+    .eq("id", phone.id);
 
-  if (error) {
-    return { ok: false, error: error.message };
+  if (phoneUpdateError) {
+    return { ok: false, error: phoneUpdateError.message };
+  }
+
+  if (saleValueChanged) {
+    const { totalFinanced } = calculateFinancedAmount({
+      contractType: "venda_iphone",
+      principalAmount: newSaleAmount,
+      installmentsCount: contract.installments_count,
+      hasDownPayment: contract.has_down_payment,
+      downPaymentAmount: contract.down_payment_amount,
+    });
+
+    const { error: contractUpdateError } = await supabase
+      .from("contracts")
+      .update({ principal_amount: newSaleAmount, total_amount: totalFinanced })
+      .eq("id", contractId);
+    if (contractUpdateError) {
+      return { ok: false, error: contractUpdateError.message };
+    }
+
+    // Sem pagamentos ainda (garantido acima): seguro apagar e regenerar
+    // todas as parcelas a partir do novo valor.
+    const { error: deleteInstallmentsError } = await supabase
+      .from("installments")
+      .delete()
+      .eq("contract_id", contractId);
+    if (deleteInstallmentsError) {
+      return { ok: false, error: deleteInstallmentsError.message };
+    }
+
+    const newInstallments = generateInstallments({
+      totalAmount: totalFinanced,
+      installmentsCount: contract.installments_count,
+      periodicity: contract.periodicity,
+      firstDueDate: contract.first_due_date,
+    }).map((installment) => ({
+      contract_id: contractId,
+      number: installment.number,
+      amount: installment.amount,
+      due_date: installment.due_date,
+    }));
+
+    const { error: installmentsError } = await supabase.from("installments").insert(newInstallments);
+    if (installmentsError) {
+      return { ok: false, error: installmentsError.message };
+    }
   }
 
   revalidatePath("/phones");
-  return { ok: true };
-}
-
-export async function deletePhone(phoneId: string): Promise<ActionResult> {
-  const supabase = await createClient();
-
-  const { data: phone, error: phoneError } = await supabase
-    .from("phones")
-    .select("status")
-    .eq("id", phoneId)
-    .single();
-
-  if (phoneError || !phone) {
-    return { ok: false, error: phoneError?.message ?? "Celular não encontrado." };
-  }
-  if (phone.status === "vendido") {
-    return { ok: false, error: "Não é possível excluir um celular já vendido (histórico de lucro)." };
-  }
-
-  const { error } = await supabase.from("phones").delete().eq("id", phoneId);
-  if (error) {
-    return { ok: false, error: error.message };
-  }
-
-  revalidatePath("/phones");
-  return { ok: true };
-}
-
-/**
- * Venda direta de um celular do estoque, fora do sistema de parcelas (à
- * vista, sem contrato/cliente cadastrado). O lucro é calculado sob demanda
- * (sale_amount - cost_amount), nunca persistido, para nunca divergir.
- */
-export async function sellPhoneDirect(input: SellPhoneDirectInput): Promise<ActionResult> {
-  const parsed = sellPhoneDirectSchema.safeParse(input);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
-  }
-  const data = parsed.data;
-  const supabase = await createClient();
-
-  const { data: phone, error: phoneError } = await supabase
-    .from("phones")
-    .select("status")
-    .eq("id", data.phoneId)
-    .single();
-
-  if (phoneError || !phone) {
-    return { ok: false, error: phoneError?.message ?? "Celular não encontrado." };
-  }
-  if (phone.status === "vendido") {
-    return { ok: false, error: "Este celular já foi vendido." };
-  }
-
-  const { error } = await supabase
-    .from("phones")
-    .update({
-      status: "vendido",
-      sale_amount: roundCents(data.saleAmount),
-      sale_method: data.saleMethod,
-      buyer_name: data.buyerName || null,
-      sold_at: new Date().toISOString(),
-    })
-    .eq("id", data.phoneId);
-
-  if (error) {
-    return { ok: false, error: error.message };
-  }
-
-  revalidatePath("/phones");
-  return { ok: true };
+  revalidatePath(`/contracts/${contractId}`);
+  revalidatePath("/");
+  return { ok: true, contractId };
 }
 
 export async function updateClientAddress(clientId: string, input: ClientAddressInput): Promise<ActionResult> {

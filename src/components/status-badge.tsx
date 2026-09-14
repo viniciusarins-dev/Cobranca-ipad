@@ -3,11 +3,11 @@ import type { CSSProperties } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   CONTRACT_STATUS_LABELS,
+  CONTRACT_TYPE_LABELS,
   INSTALLMENT_STATUS_LABELS,
-  PHONE_STATUS_LABELS,
   type ContractStatus,
+  type ContractType,
   type InstallmentStatus,
-  type PhoneStatus,
 } from "@/lib/types";
 
 const CONTRACT_VARIANT: Record<ContractStatus, "success" | "warning" | "destructive" | "secondary"> = {
@@ -24,9 +24,9 @@ const INSTALLMENT_VARIANT: Record<InstallmentStatus, "success" | "warning" | "de
   atrasado: "destructive",
 };
 
-const PHONE_VARIANT: Record<PhoneStatus, "secondary" | "success"> = {
-  estoque: "secondary",
-  vendido: "success",
+const CONTRACT_TYPE_VARIANT: Record<ContractType, "secondary" | "outline"> = {
+  emprestimo: "secondary",
+  venda_iphone: "outline",
 };
 
 /** Ponto pulsante (estilo uiverse.io) para chamar atenção a status críticos. */
@@ -63,6 +63,6 @@ export function InstallmentStatusBadge({ status }: { status: InstallmentStatus }
   );
 }
 
-export function PhoneStatusBadge({ status }: { status: PhoneStatus }) {
-  return <Badge variant={PHONE_VARIANT[status]}>{PHONE_STATUS_LABELS[status]}</Badge>;
+export function ContractTypeBadge({ type }: { type: ContractType }) {
+  return <Badge variant={CONTRACT_TYPE_VARIANT[type]}>{CONTRACT_TYPE_LABELS[type]}</Badge>;
 }

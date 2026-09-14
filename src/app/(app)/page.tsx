@@ -11,22 +11,19 @@ import { businessMonthStartUTC } from "@/lib/date-utils";
 import { getDashboardMetrics } from "@/lib/dashboard-metrics";
 import { getTodayDebtors } from "@/lib/debtors";
 import { createClient } from "@/lib/supabase/server";
-import type { ContractWithInstallments, Phone } from "@/lib/types";
+import type { ContractWithInstallments } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [{ data, error }, metrics, { data: availablePhonesData }, { summary: debtorsSummary, debtors }] =
-    await Promise.all([
+  const [{ data, error }, metrics, { summary: debtorsSummary, debtors }] = await Promise.all([
     supabase.from("contracts").select("*, client:clients(*), installments(*)").order("created_at", { ascending: false }),
     getDashboardMetrics(supabase),
-    supabase.from("phones").select("*").eq("status", "estoque").order("model", { ascending: true }),
     getTodayDebtors(supabase),
   ]);
 
   const contracts = (data ?? []) as ContractWithInstallments[];
-  const availablePhones = (availablePhonesData ?? []) as Phone[];
 
   // Contratos cancelados (ex.: cadastrados errado e excluídos) não devem
   // continuar contando como saldo em aberto.
@@ -63,7 +60,7 @@ export default async function DashboardPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <ExpenseDialog />
-          <NewTransactionDialog availablePhones={availablePhones} />
+          <NewTransactionDialog />
         </div>
       </div>
 

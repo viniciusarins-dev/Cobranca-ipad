@@ -185,6 +185,7 @@ export function DebtorsView({ debtors, paidToday }: { debtors: Debtor[]; paidTod
                         <span className="font-semibold">{formatCurrency(row.totalDue)}</span>
                         <RegisterPaymentDialog
                           installment={row.installment}
+                          contractType={row.contract.type}
                           contractPrincipalAmount={row.contract.principal_amount}
                           triggerLabel="Marcar como pago"
                           clientName={debtor.client.name}

@@ -143,6 +143,7 @@ export async function getTodayDebtors(
     if (outstandingPrincipal <= 0) continue;
 
     const interestOwed = calculateLateInterest({
+      contractType: installment.contract.type,
       originalPrincipalAmount: installment.contract.principal_amount,
       dueDate: installment.due_date,
       status: installment.status,

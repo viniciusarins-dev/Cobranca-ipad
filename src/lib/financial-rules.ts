@@ -90,6 +90,14 @@ export function daysLate(dueDate: string, referenceDate: Date = new Date()): num
 
 export interface LateInterestInstallmentInput {
   /**
+   * Juros de atraso é regra EXCLUSIVA de empréstimo — venda de iPhone nunca
+   * gera juros de atraso (item 10 do pedido: "essas regras pertencem
+   * exclusivamente aos empréstimos"). Uma parcela de venda de iPhone em
+   * atraso continua aparecendo como pendente/atrasada, só que sem nenhum
+   * acréscimo — o lucro dela vem exclusivamente de venda − custo.
+   */
+  contractType: ContractType;
+  /**
    * Valor originalmente emprestado no CONTRATO (`contracts.principal_amount`)
    * — base do juros de atraso. NUNCA o valor da parcela, nem o saldo em
    * aberto dela: o juros de atraso é 1% ao dia sobre o valor total que foi
@@ -105,6 +113,7 @@ export interface LateInterestInstallmentInput {
  * Juros de 1% ao dia sobre o valor ORIGINALMENTE EMPRESTADO no contrato
  * (nunca sobre o valor da parcela nem sobre o saldo em aberto dela),
  * calculados a partir da diferença entre due_date e a data de referência.
+ * Só se aplica a empréstimos — venda de iPhone nunca gera juros de atraso.
  *
  * É uma função PURA e idempotente — parte sempre de due_date/hoje e do
  * valor original do contrato, nunca de um juros calculado anteriormente —
@@ -120,6 +129,10 @@ export function calculateLateInterest(
   installment: LateInterestInstallmentInput,
   referenceDate: Date = new Date(),
 ): number {
+  if (installment.contractType !== "emprestimo") {
+    return 0;
+  }
+
   if (installment.status === "pago") {
     return 0;
   }
