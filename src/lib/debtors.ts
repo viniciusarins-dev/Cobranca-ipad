@@ -147,6 +147,7 @@ export async function getTodayDebtors(
       originalPrincipalAmount: installment.contract.principal_amount,
       dueDate: installment.due_date,
       status: installment.status,
+      paidInterestAmount: installment.paid_interest_amount,
     });
     const late = daysLate(installment.due_date, now);
     const isOverdue = late > 0;

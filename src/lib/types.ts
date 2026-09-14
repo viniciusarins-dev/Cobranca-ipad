@@ -62,6 +62,14 @@ export interface Installment {
   status: InstallmentStatus;
   /** Soma do principal já pago desta parcela (permite pagamento parcial). */
   paid_principal_amount: number;
+  /**
+   * Soma do juros de atraso já efetivamente pago desta parcela. Necessário
+   * para o juros pendente (`calculateLateInterest`) nunca voltar a cobrar
+   * algo que o cliente já pagou — sem este campo, um pagamento parcial que
+   * incluísse juros "desaparecia": o juros continuava sendo recalculado do
+   * zero a cada consulta, como se nada tivesse sido pago.
+   */
+  paid_interest_amount: number;
   paid_at: string | null;
   reminder_sent_at: string | null;
   reminder_count: number;

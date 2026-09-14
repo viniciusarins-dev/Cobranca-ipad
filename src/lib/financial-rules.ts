@@ -107,23 +107,35 @@ export interface LateInterestInstallmentInput {
   originalPrincipalAmount: number;
   dueDate: string;
   status: InstallmentStatus;
+  /**
+   * Juros de atraso já efetivamente pago PARA ESTA PARCELA
+   * (`installments.paid_interest_amount`) — descontado do juros bruto
+   * calculado pela fórmula. Sem isso, um pagamento que já incluiu juros
+   * "desaparecia": o juros pendente era recalculado do zero a cada consulta
+   * (sempre a partir de due_date/hoje) e voltava a cobrar o que o cliente
+   * já tinha pago. Sempre 0 para uma parcela que nunca recebeu pagamento
+   * de juros.
+   */
+  paidInterestAmount: number;
 }
 
 /**
  * Juros de 1% ao dia sobre o valor ORIGINALMENTE EMPRESTADO no contrato
  * (nunca sobre o valor da parcela nem sobre o saldo em aberto dela),
- * calculados a partir da diferença entre due_date e a data de referência.
- * Só se aplica a empréstimos — venda de iPhone nunca gera juros de atraso.
+ * calculados a partir da diferença entre due_date e a data de referência,
+ * MENOS o que já foi efetivamente pago de juros nesta parcela — o
+ * resultado é sempre o juros PENDENTE agora, nunca o juros bruto acumulado
+ * desde o vencimento. Só se aplica a empréstimos — venda de iPhone nunca
+ * gera juros de atraso.
  *
- * É uma função PURA e idempotente — parte sempre de due_date/hoje e do
- * valor original do contrato, nunca de um juros calculado anteriormente —
- * por isso é segura para chamar a cada renderização de tela sem risco de
- * "juros sobre juros": abrir a tela de novo no mesmo dia sempre devolve o
- * mesmo valor, nunca soma em cima do que já tinha sido mostrado antes.
- * Cada parcela usa sua própria due_date, então parcelas diferentes do
- * mesmo contrato (mesmo que atrasadas ao mesmo tempo) contam seus próprios
- * dias de atraso separadamente — mas todas usam a MESMA base (o valor
- * original do contrato), conforme a regra de negócio.
+ * É uma função PURA e idempotente — parte sempre de due_date/hoje, do valor
+ * original do contrato e do juros já pago (nunca de um juros pendente
+ * calculado anteriormente) — por isso é segura para chamar a cada
+ * renderização de tela sem risco de "juros sobre juros": abrir a tela de
+ * novo no mesmo dia sempre devolve o mesmo valor, nunca soma em cima do que
+ * já tinha sido mostrado antes. Cada parcela usa sua própria due_date e seu
+ * próprio paidInterestAmount, então parcelas diferentes do mesmo contrato
+ * (mesmo que atrasadas ao mesmo tempo) nunca se misturam.
  */
 export function calculateLateInterest(
   installment: LateInterestInstallmentInput,
@@ -140,7 +152,8 @@ export function calculateLateInterest(
   const days = daysLate(installment.dueDate, referenceDate);
   if (days <= 0) return 0;
 
-  return roundCents(installment.originalPrincipalAmount * LATE_INTEREST_RATE_PER_DAY * days);
+  const grossInterest = roundCents(installment.originalPrincipalAmount * LATE_INTEREST_RATE_PER_DAY * days);
+  return roundCents(Math.max(grossInterest - installment.paidInterestAmount, 0));
 }
 
 export interface SplitPaymentResult {
@@ -151,18 +164,31 @@ export interface SplitPaymentResult {
 }
 
 /**
- * Distribui o valor pago primeiro sobre o juros de atraso em aberto e o
- * restante sobre o principal — nunca mais do que existe de saldo em cada um,
- * para não gerar valores negativos nem "sobra" perdida.
+ * Distribui o valor pago primeiro sobre o PRINCIPAL em aberto da parcela e
+ * só o que sobrar (se sobrar) vai para o juros de atraso — nunca mais do
+ * que existe de saldo em cada um, para não gerar valores negativos nem
+ * "sobra" perdida.
+ *
+ * Um pagamento PARCIAL (que não cobre principal + juros) portanto reduz
+ * exclusivamente o saldo principal da parcela; o juros de atraso continua
+ * sendo cobrado (calculado ao vivo, sem nenhum desconto) até que um
+ * pagamento cubra também o principal inteiro — só nesse momento o que
+ * sobrar do pagamento é aplicado ao juros. Isso evita a inconsistência de
+ * um pagamento parcial "absorver" parte do juros silenciosamente: antes,
+ * juros era descontado primeiro, então o saldo principal parecia maior do
+ * que o cliente esperava (ex.: pagou R$200 de uma parcela de R$325 com
+ * R$70 de juros, e o saldo principal ficava em R$195 em vez de R$125 —
+ * exatamente os R$70 de juros "sumiam" do principal sem aparecer como
+ * juros pago em lugar nenhum, e continuavam sendo cobrados de novo).
  */
 export function splitPayment(
   amountPaid: number,
   interestOwed: number,
   principalOwed: number,
 ): SplitPaymentResult {
-  const interestPortion = roundCents(Math.min(Math.max(amountPaid, 0), Math.max(interestOwed, 0)));
-  const remaining = roundCents(Math.max(amountPaid - interestPortion, 0));
-  const principalPortion = roundCents(Math.min(remaining, Math.max(principalOwed, 0)));
+  const principalPortion = roundCents(Math.min(Math.max(amountPaid, 0), Math.max(principalOwed, 0)));
+  const remaining = roundCents(Math.max(amountPaid - principalPortion, 0));
+  const interestPortion = roundCents(Math.min(remaining, Math.max(interestOwed, 0)));
 
   return { interestPortion, principalPortion };
 }

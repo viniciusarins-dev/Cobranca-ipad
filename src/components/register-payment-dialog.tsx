@@ -72,8 +72,9 @@ export function RegisterPaymentDialog({
         originalPrincipalAmount: contractPrincipalAmount,
         dueDate: installment.due_date,
         status: installment.status,
+        paidInterestAmount: installment.paid_interest_amount,
       }),
-    [contractType, contractPrincipalAmount, installment.due_date, installment.status],
+    [contractType, contractPrincipalAmount, installment.due_date, installment.status, installment.paid_interest_amount],
   );
   const totalDue = roundCents(outstandingPrincipal + interestOwed);
 
@@ -133,8 +134,9 @@ export function RegisterPaymentDialog({
           <DialogTitle>Registrar pagamento — Parcela {installment.number}</DialogTitle>
           <DialogDescription>
             {clientName && `${clientName} · `}
-            Valor da parcela: {formatCurrency(installment.amount)}
-            {installment.paid_principal_amount > 0 && ` · Já pago: ${formatCurrency(installment.paid_principal_amount)}`}
+            Valor original da parcela: {formatCurrency(installment.amount)}
+            {installment.paid_principal_amount + installment.paid_interest_amount > 0 &&
+              ` · Já pago: ${formatCurrency(roundCents(installment.paid_principal_amount + installment.paid_interest_amount))}`}
           </DialogDescription>
         </DialogHeader>
 

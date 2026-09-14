@@ -384,6 +384,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     contract_id: string;
     amount: number;
     paid_principal_amount: number;
+    paid_interest_amount: number;
     due_date: string;
     status: InstallmentStatus;
     contract: { client_id: string; type: ContractType; principal_amount: number } | null;
@@ -396,7 +397,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     supabase
       .from("installments")
       .select(
-        "id, contract_id, amount, paid_principal_amount, due_date, status, contract:contracts(client_id, type, principal_amount)",
+        "id, contract_id, amount, paid_principal_amount, paid_interest_amount, due_date, status, contract:contracts(client_id, type, principal_amount)",
       )
       .eq("id", data.installmentId)
       .single(),
@@ -427,12 +428,16 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   // da confirmação, nunca um total pré-calculado que ficou desatualizado.
   // O juros de atraso usa o valor ORIGINALMENTE EMPRESTADO no contrato como
   // base (nunca o valor da parcela) e só existe para empréstimo — venda de
-  // iPhone nunca gera juros de atraso.
+  // iPhone nunca gera juros de atraso. `paidInterestAmount` garante que
+  // juros já pago nunca volte a ser cobrado (sem isso, um pagamento parcial
+  // que incluísse juros "desaparecia" e era recalculado do zero na consulta
+  // seguinte — a causa raiz do total R$590 em vez de R$520 num caso real).
   const interestOwed = calculateLateInterest({
     contractType: contract.type,
     originalPrincipalAmount: contract.principal_amount,
     dueDate: installment.due_date,
     status: installment.status,
+    paidInterestAmount: installment.paid_interest_amount,
   });
   const principalOwed = roundCents(Math.max(installment.amount - installment.paid_principal_amount, 0));
 
@@ -475,6 +480,11 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     roundCents(installment.paid_principal_amount + principalPortion),
     roundCents(installment.amount),
   );
+  // `principalPortion` só "vaza" para o juros (via splitPayment, que aplica
+  // primeiro no principal) quando o principal já foi totalmente coberto
+  // nesta mesma operação — por isso persistir o juros pago aqui nunca sobe
+  // sem que o principal também tenha chegado ao total da parcela.
+  const newPaidInterest = roundCents(installment.paid_interest_amount + interestPortion);
   const isFullyPaid = newPaidPrincipal >= roundCents(installment.amount);
   const isStillLate = daysLate(installment.due_date) > 0;
 
@@ -484,6 +494,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     .from("installments")
     .update({
       paid_principal_amount: newPaidPrincipal,
+      paid_interest_amount: newPaidInterest,
       status: newStatus,
       paid_at: isFullyPaid ? new Date().toISOString() : null,
     })

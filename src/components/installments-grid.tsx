@@ -52,9 +52,9 @@ function InstallmentRow({
         <span className="text-sm text-muted-foreground">
           {formatCurrency(installment.amount)} · Vencimento: {formatDate(installment.due_date)}
         </span>
-        {installment.paid_principal_amount > 0 && installment.status !== "pago" && (
+        {installment.paid_principal_amount + installment.paid_interest_amount > 0 && installment.status !== "pago" && (
           <span className="text-xs text-muted-foreground">
-            Pago parcialmente: {formatCurrency(installment.paid_principal_amount)}
+            Pago parcialmente: {formatCurrency(installment.paid_principal_amount + installment.paid_interest_amount)}
           </span>
         )}
         {installment.reminder_sent_at && (

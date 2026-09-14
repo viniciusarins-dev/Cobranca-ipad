@@ -12,6 +12,7 @@ import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RegisterPaymentDialog } from "@/components/register-payment-dialog";
 import type { Debtor, PaidTodayRow } from "@/lib/debtors";
+import { roundCents } from "@/lib/financial-rules";
 import { PAYMENT_METHOD_LABELS } from "@/lib/types";
 import { formatCurrency, formatDate, formatDateTime, formatPhone, onlyDigits } from "@/lib/utils";
 
@@ -151,49 +152,64 @@ export function DebtorsView({ debtors, paidToday }: { debtors: Debtor[]; paidTod
                 </div>
 
                 <div className="mt-3 flex flex-col gap-2">
-                  {debtor.rows.map((row) => (
-                    <div
-                      key={row.installment.id}
-                      className="flex flex-col gap-2 rounded-lg border border-border bg-card/60 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                          {row.isOverdue ? (
-                            <Badge variant="destructive">🔴 Atrasada</Badge>
-                          ) : (
-                            <Badge variant="warning">🟡 Vence hoje</Badge>
-                          )}
-                          <span className="font-medium">
-                            Parcela {row.installment.number}/{row.contract.installments_count}
-                          </span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          Vencimento: {formatDate(row.installment.due_date)}
-                          {row.isOverdue && ` · Atraso: ${row.daysLate} dia${row.daysLate > 1 ? "s" : ""}`}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          Valor original da parcela: {formatCurrency(row.outstandingPrincipal)}
-                        </span>
-                        {row.interestOwed > 0 && (
+                  {debtor.rows.map((row) => {
+                    // Cada campo abaixo representa um conceito distinto — nunca
+                    // um já contém o outro embutido: valor original nunca
+                    // muda, pago é o que o cliente já entregou de fato (principal
+                    // + juros já quitados), saldo é só o principal que falta,
+                    // juros é só o que ainda está em aberto agora, e o total
+                    // devido (mostrado à direita) é sempre saldo + juros — nunca
+                    // soma o total com o juros de novo.
+                    const totalPaid = roundCents(row.installment.paid_principal_amount + row.installment.paid_interest_amount);
+                    return (
+                      <div
+                        key={row.installment.id}
+                        className="flex flex-col gap-2 rounded-lg border border-border bg-card/60 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            {row.isOverdue ? (
+                              <Badge variant="destructive">🔴 Atrasada</Badge>
+                            ) : (
+                              <Badge variant="warning">🟡 Vence hoje</Badge>
+                            )}
+                            <span className="font-medium">
+                              Parcela {row.installment.number}/{row.contract.installments_count}
+                            </span>
+                          </div>
                           <span className="text-xs text-muted-foreground">
-                            Valor originalmente emprestado: {formatCurrency(row.contract.principal_amount)} · Juros
-                            de atraso (1%/dia): {formatCurrency(row.interestOwed)}
+                            Vencimento: {formatDate(row.installment.due_date)}
+                            {row.isOverdue && ` · Atraso: ${row.daysLate} dia${row.daysLate > 1 ? "s" : ""}`}
                           </span>
-                        )}
+                          <span className="text-xs text-muted-foreground">
+                            Original: {formatCurrency(row.installment.amount)}
+                            {totalPaid > 0 && ` · Pago: ${formatCurrency(totalPaid)}`} · Saldo:{" "}
+                            {formatCurrency(row.outstandingPrincipal)}
+                          </span>
+                          {row.interestOwed > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              Juros de atraso (1%/dia sobre o valor originalmente emprestado,{" "}
+                              {formatCurrency(row.contract.principal_amount)}): {formatCurrency(row.interestOwed)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total devido</p>
+                            <span className="font-semibold">{formatCurrency(row.totalDue)}</span>
+                          </div>
+                          <RegisterPaymentDialog
+                            installment={row.installment}
+                            contractType={row.contract.type}
+                            contractPrincipalAmount={row.contract.principal_amount}
+                            triggerLabel="Marcar como pago"
+                            clientName={debtor.client.name}
+                            onPaid={() => router.refresh()}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold">{formatCurrency(row.totalDue)}</span>
-                        <RegisterPaymentDialog
-                          installment={row.installment}
-                          contractType={row.contract.type}
-                          contractPrincipalAmount={row.contract.principal_amount}
-                          triggerLabel="Marcar como pago"
-                          clientName={debtor.client.name}
-                          onPaid={() => router.refresh()}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </SpotlightCard>
             );
