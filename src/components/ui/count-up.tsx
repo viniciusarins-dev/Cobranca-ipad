@@ -29,7 +29,7 @@ function useReducedMotion() {
  */
 export function CountUp({
   value,
-  duration = 1200,
+  duration = 400,
   format,
   className,
 }: {

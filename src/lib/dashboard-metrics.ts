@@ -1,7 +1,6 @@
 import { businessDayRangeUTC, businessMonthStartUTC, businessWeekStartUTC, getBusinessToday } from "@/lib/date-utils";
 import { calculateFinancedAmount, roundCents } from "@/lib/financial-rules";
-import type { createClient } from "@/lib/supabase/server";
-import type { Contract, Expense, Payment, PaymentMethod, Phone } from "@/lib/types";
+import type { ContractWithInstallments, Expense, Payment, PaymentMethod, Phone } from "@/lib/types";
 
 export interface PeriodAmounts {
   today: number;
@@ -103,50 +102,33 @@ const EMPTY_METHOD_TOTALS: Record<PaymentMethod, number> = {
   outro: 0,
 };
 
-export async function getDashboardMetrics(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<DashboardMetrics> {
+/**
+ * Função pura (sem I/O): recebe os dados já buscados do banco e só
+ * calcula os indicadores. Extraída da antiga `getDashboardMetrics` para
+ * que a página do dashboard possa reaproveitar os `contracts` (com
+ * `installments` aninhadas) que ela já busca para a tabela de clientes,
+ * em vez de o dashboard buscar `contracts`/`installments` de novo — duas
+ * queries a menos por carregamento do dashboard, sem mudar nenhum valor
+ * calculado (a lógica abaixo é idêntica à anterior, só a origem dos dados
+ * de contratos/parcelas mudou de "buscar aqui" para "receber como parâmetro").
+ */
+export function computeDashboardMetrics(
+  allContracts: ContractWithInstallments[],
+  payments: Payment[],
+  expenses: Expense[],
+  phones: Pick<Phone, "id" | "contract_id" | "cost_amount">[],
+): DashboardMetrics {
   const now = new Date();
   const boundaries = getPeriodBoundaries(now);
 
-  const [
-    { data: contractsData },
-    { data: paymentsData },
-    { data: installmentsData },
-    { data: expensesData },
-    { data: phonesData },
-  ] = await Promise.all([
-    supabase
-      .from("contracts")
-      .select(
-        "id, type, status, principal_amount, installments_count, has_down_payment, down_payment_amount, total_amount",
-      ),
-    supabase.from("payments").select("*"),
-    supabase.from("installments").select("contract_id, amount, paid_principal_amount, status"),
-    supabase.from("expenses").select("*"),
-    supabase.from("phones").select("id, contract_id, cost_amount"),
-  ]);
-
-  const allContracts = (contractsData ?? []) as Pick<
-    Contract,
-    | "id"
-    | "type"
-    | "status"
-    | "principal_amount"
-    | "installments_count"
-    | "has_down_payment"
-    | "down_payment_amount"
-    | "total_amount"
-  >[];
-  const payments = (paymentsData ?? []) as Payment[];
-  const allInstallments = (installmentsData ?? []) as {
-    contract_id: string;
-    amount: number;
-    paid_principal_amount: number;
-    status: string;
-  }[];
-  const expenses = (expensesData ?? []) as Expense[];
-  const phones = (phonesData ?? []) as Pick<Phone, "id" | "contract_id" | "cost_amount">[];
+  const allInstallments = allContracts.flatMap((c) =>
+    c.installments.map((i) => ({
+      contract_id: c.id,
+      amount: i.amount,
+      paid_principal_amount: i.paid_principal_amount,
+      status: i.status,
+    })),
+  );
 
   // Um empréstimo cancelado (ex.: cadastrado errado e excluído) nunca deve
   // continuar contando nos indicadores de empréstimos — o histórico de

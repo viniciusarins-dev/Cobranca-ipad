@@ -8,22 +8,40 @@ import { GradientHeading } from "@/components/ui/gradient-heading";
 import { ShinyText } from "@/components/ui/shiny-text";
 import { StatTile } from "@/components/ui/stat-tile";
 import { businessMonthStartUTC } from "@/lib/date-utils";
-import { getDashboardMetrics } from "@/lib/dashboard-metrics";
+import { computeDashboardMetrics } from "@/lib/dashboard-metrics";
 import { getTodayDebtors } from "@/lib/debtors";
 import { createClient } from "@/lib/supabase/server";
-import type { ContractWithInstallments } from "@/lib/types";
+import type { ContractWithInstallments, Expense, Payment, Phone } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [{ data, error }, metrics, { summary: debtorsSummary, debtors }] = await Promise.all([
+
+  // Todas as queries independentes desta página disparam juntas, numa
+  // única rodada de ida-e-volta ao banco. `contracts` (com `installments`
+  // aninhadas) é reaproveitado tanto pela tabela de clientes quanto pelo
+  // cálculo dos indicadores do dashboard (`computeDashboardMetrics`),
+  // evitando buscar contratos/parcelas duas vezes.
+  const [
+    { data, error },
+    { data: paymentsData },
+    { data: expensesData },
+    { data: phonesData },
+    { summary: debtorsSummary, debtors },
+  ] = await Promise.all([
     supabase.from("contracts").select("*, client:clients(*), installments(*)").order("created_at", { ascending: false }),
-    getDashboardMetrics(supabase),
+    supabase.from("payments").select("*"),
+    supabase.from("expenses").select("*"),
+    supabase.from("phones").select("id, contract_id, cost_amount"),
     getTodayDebtors(supabase),
   ]);
 
   const contracts = (data ?? []) as ContractWithInstallments[];
+  const payments = (paymentsData ?? []) as Payment[];
+  const expenses = (expensesData ?? []) as Expense[];
+  const phones = (phonesData ?? []) as Pick<Phone, "id" | "contract_id" | "cost_amount">[];
+  const metrics = computeDashboardMetrics(contracts, payments, expenses, phones);
 
   // Contratos cancelados (ex.: cadastrados errado e excluídos) não devem
   // continuar contando como saldo em aberto.

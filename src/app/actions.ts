@@ -28,14 +28,25 @@ import {
   type IphoneSaleUpdateInput,
   type ClientAddressInput,
 } from "@/lib/validations";
-import type { ContractStatus, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
+import type { ContractStatus, ContractType, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
 import { onlyDigits } from "@/lib/utils";
 
+/**
+ * E-mail do usuário autenticado, só para preencher `created_by_email`
+ * (rótulo de auditoria — quem registrou o quê). Usa `getSession()` em vez
+ * de `getUser()` de propósito: `getSession()` lê a sessão já decodificada
+ * dos cookies, sem round-trip de rede até o servidor de Auth do Supabase;
+ * `getUser()` sempre revalida o token contra o Auth (uma requisição extra,
+ * tipicamente mais lenta que a própria query no banco). Isso é seguro aqui
+ * porque esta função NUNCA é usada para autorizar nada — quem decide se a
+ * operação pode acontecer é sempre o RLS do Postgres — e o proxy.ts já
+ * validou a sessão com `getUser()` uma vez no início desta mesma requisição.
+ */
 async function getCurrentUserEmail(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.email ?? null;
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.user?.email ?? null;
 }
 
 /** ISO 8601 (1=segunda ... 7=domingo), com fins de semana ajustados para o dia útil mais próximo. */
@@ -137,59 +148,67 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     due_date: installment.due_date,
   }));
 
-  const { error: installmentsError } = await supabase.from("installments").insert(installments);
-  if (installmentsError) {
-    return { ok: false, error: installmentsError.message };
-  }
+  const createdByEmail = hasDownPayment && data.downPaymentAmount > 0 ? await getCurrentUserEmail(supabase) : null;
 
-  if (hasDownPayment && data.downPaymentAmount > 0) {
-    const { error: downPaymentError } = await supabase.from("payments").insert({
-      installment_id: null,
-      contract_id: contract.id,
-      client_id: clientId,
-      principal_amount: roundCents(data.downPaymentAmount),
-      interest_amount: 0,
-      method: data.downPaymentMethod,
-      notes: "Entrada",
-      created_by_email: await getCurrentUserEmail(supabase),
-    });
-    if (downPaymentError) {
-      return { ok: false, error: downPaymentError.message };
-    }
-  }
+  // As quatro gravações abaixo (parcelas, entrada, aparelho, disparo
+  // semanal) só dependem do contrato já criado — nenhuma lê o resultado
+  // das outras —, então rodam em paralelo em vez de uma esperar a
+  // anterior. A ordem de checagem dos erros abaixo é a mesma prioridade
+  // que o código sequencial anterior usava, então o erro reportado ao
+  // usuário quando algo dá errado continua sendo o mesmo.
+  const [installmentsResult, downPaymentResult, phoneResult, weeklyChargeResult] = await Promise.all([
+    supabase.from("installments").insert(installments),
+    hasDownPayment && data.downPaymentAmount > 0
+      ? supabase.from("payments").insert({
+          installment_id: null,
+          contract_id: contract.id,
+          client_id: clientId,
+          principal_amount: roundCents(data.downPaymentAmount),
+          interest_amount: 0,
+          method: data.downPaymentMethod,
+          notes: "Entrada",
+          created_by_email: createdByEmail,
+        })
+      : Promise.resolve({ error: null }),
+    // Venda de iPhone é uma operação individual (sem estoque): o aparelho é
+    // cadastrado junto com a própria venda, já vinculado ao contrato. O
+    // lucro (venda − custo) é sempre calculado sob demanda a partir daqui,
+    // nunca dependente de quanto o cliente já pagou.
+    data.type === "venda_iphone"
+      ? supabase.from("phones").insert({
+          model: data.phoneModel,
+          color: data.phoneColor || null,
+          battery_percent: data.phoneBatteryPercent ?? null,
+          cost_amount: roundCents(data.phoneCostAmount ?? 0),
+          status: "vendido",
+          sale_amount: roundCents(data.totalAmount),
+          sold_at: new Date().toISOString(),
+          acquired_at: getBusinessToday(),
+          contract_id: contract.id,
+        })
+      : Promise.resolve({ error: null }),
+    data.periodicity === "semanal"
+      ? supabase.from("weekly_charges").insert({
+          contract_id: contract.id,
+          client_id: clientId,
+          dia_semana_disparo: toBusinessWeekday(data.firstDueDate),
+          proximo_disparo: data.firstDueDate,
+          status: "PENDENTE",
+        })
+      : Promise.resolve({ error: null }),
+  ]);
 
-  // Venda de iPhone é uma operação individual (sem estoque): o aparelho é
-  // cadastrado junto com a própria venda, já vinculado ao contrato. O lucro
-  // (venda − custo) é sempre calculado sob demanda a partir daqui, nunca
-  // dependente de quanto o cliente já pagou.
-  if (data.type === "venda_iphone") {
-    const { error: phoneError } = await supabase.from("phones").insert({
-      model: data.phoneModel,
-      color: data.phoneColor || null,
-      battery_percent: data.phoneBatteryPercent ?? null,
-      cost_amount: roundCents(data.phoneCostAmount ?? 0),
-      status: "vendido",
-      sale_amount: roundCents(data.totalAmount),
-      sold_at: new Date().toISOString(),
-      acquired_at: getBusinessToday(),
-      contract_id: contract.id,
-    });
-    if (phoneError) {
-      return { ok: false, error: phoneError.message };
-    }
+  if (installmentsResult.error) {
+    return { ok: false, error: installmentsResult.error.message };
   }
-
-  if (data.periodicity === "semanal") {
-    const { error: weeklyChargeError } = await supabase.from("weekly_charges").insert({
-      contract_id: contract.id,
-      client_id: clientId,
-      dia_semana_disparo: toBusinessWeekday(data.firstDueDate),
-      proximo_disparo: data.firstDueDate,
-      status: "PENDENTE",
-    });
-    if (weeklyChargeError) {
-      return { ok: false, error: weeklyChargeError.message };
-    }
+  if (downPaymentResult.error) {
+    return { ok: false, error: downPaymentResult.error.message };
+  }
+  if (phoneResult.error) {
+    return { ok: false, error: phoneResult.error.message };
+  }
+  if (weeklyChargeResult.error) {
+    return { ok: false, error: weeklyChargeResult.error.message };
   }
 
   revalidatePath("/");
@@ -232,8 +251,12 @@ async function recalculateContractStatus(supabase: Awaited<ReturnType<typeof cre
     status = "inadimplente";
   }
 
-  await supabase.from("contracts").update({ status }).eq("id", contractId);
-  await syncWeeklyChargeStatus(supabase, contractId, status);
+  // As duas atualizações são independentes entre si (nenhuma lê o
+  // resultado da outra) — rodam em paralelo em vez de uma esperar a outra.
+  await Promise.all([
+    supabase.from("contracts").update({ status }).eq("id", contractId),
+    syncWeeklyChargeStatus(supabase, contractId, status),
+  ]);
 }
 
 /**
@@ -350,25 +373,39 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   const data = parsed.data;
   const supabase = await createClient();
 
-  // Protege contra clique duplo / reenvio / duas requisições simultâneas:
-  // se esta mesma tentativa de pagamento (mesma idempotencyKey) já foi
-  // processada, não cria um segundo lançamento — apenas confirma sucesso.
-  if (data.idempotencyKey) {
-    const { data: existingPayment } = await supabase
-      .from("payments")
-      .select("contract_id")
-      .eq("idempotency_key", data.idempotencyKey)
-      .maybeSingle();
-    if (existingPayment) {
-      return { ok: true, contractId: existingPayment.contract_id };
-    }
-  }
+  // A checagem de idempotência (clique duplo/reenvio) e a busca da parcela
+  // (já com o contrato embutido via join, numa única query em vez de duas)
+  // não dependem uma da outra — disparadas em paralelo. A garantia real
+  // contra duplicidade continua sendo o índice único de `idempotency_key`
+  // no banco (ver o tratamento do erro 23505 mais abaixo); esta checagem
+  // aqui só evita o round-trip extra de inserir e falhar no caso comum.
+  type InstallmentWithContract = {
+    id: string;
+    contract_id: string;
+    amount: number;
+    paid_principal_amount: number;
+    due_date: string;
+    status: InstallmentStatus;
+    contract: { client_id: string; type: ContractType; principal_amount: number } | null;
+  };
 
-  const { data: installment, error: installmentError } = await supabase
-    .from("installments")
-    .select("id, contract_id, amount, paid_principal_amount, due_date, status")
-    .eq("id", data.installmentId)
-    .single();
+  const [{ data: existingPayment }, { data: installmentData, error: installmentError }] = await Promise.all([
+    data.idempotencyKey
+      ? supabase.from("payments").select("contract_id").eq("idempotency_key", data.idempotencyKey).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("installments")
+      .select(
+        "id, contract_id, amount, paid_principal_amount, due_date, status, contract:contracts(client_id, type, principal_amount)",
+      )
+      .eq("id", data.installmentId)
+      .single(),
+  ]);
+  const installment = installmentData as unknown as InstallmentWithContract | null;
+
+  if (existingPayment) {
+    return { ok: true, contractId: existingPayment.contract_id };
+  }
 
   if (installmentError || !installment) {
     return { ok: false, error: installmentError?.message ?? "Parcela não encontrada." };
@@ -378,14 +415,9 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     return { ok: false, error: "Esta parcela já está totalmente paga." };
   }
 
-  const { data: contract, error: contractError } = await supabase
-    .from("contracts")
-    .select("client_id, type, principal_amount")
-    .eq("id", installment.contract_id)
-    .single();
-
-  if (contractError || !contract) {
-    return { ok: false, error: contractError?.message ?? "Contrato não encontrado." };
+  const contract = installment.contract;
+  if (!contract) {
+    return { ok: false, error: "Contrato não encontrado." };
   }
 
   // Juros de atraso e saldo em aberto SEMPRE recalculados agora, no servidor
