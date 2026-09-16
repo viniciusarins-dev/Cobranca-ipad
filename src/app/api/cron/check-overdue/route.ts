@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getBusinessToday } from "@/lib/date-utils";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { sendCollectionReminder } from "@/lib/whatsapp";
 import type { ContractStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-function isAuthorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true; // sem segredo configurado: MVP/dev only, ajuste antes de produção
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
@@ -35,7 +30,10 @@ export async function GET(request: NextRequest) {
     .select("id, contract_id");
 
   if (overdueError) {
-    return NextResponse.json({ error: overdueError.message }, { status: 500 });
+    // Nunca repassa a mensagem crua do Postgres (pode conter nomes de
+    // tabela/constraint) — o detalhe fica só no retorno interno da função,
+    // que quem tem o CRON_SECRET pode ver via logs da Vercel, não na resposta.
+    return NextResponse.json({ error: "Erro ao processar parcelas em atraso." }, { status: 500 });
   }
 
   // 2. Recalcula o status geral dos contratos afetados

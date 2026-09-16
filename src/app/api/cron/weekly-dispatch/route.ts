@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { runWeeklyDispatchQueue } from "@/lib/scheduling/weekly-dispatch-queue";
 
@@ -12,14 +13,8 @@ export const dynamic = "force-dynamic";
 // este valor caso seu plano permita mais tempo.
 export const maxDuration = 300;
 
-function isAuthorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return true; // sem segredo configurado: MVP/dev only, ajuste antes de produção
-  return request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 

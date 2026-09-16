@@ -206,7 +206,7 @@ function DocumentSection({
         </div>
         {isReplacing && (
           <div className="flex flex-wrap items-center gap-2">
-            <Input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="max-w-xs" />
+            <Input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="max-w-xs" />
             <Button type="button" size="sm" disabled={isUploading} onClick={handleUpload}>
               <UploadIcon />
               {isUploading ? "Enviando..." : "Enviar novo documento"}
@@ -219,7 +219,7 @@ function DocumentSection({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="max-w-xs" />
+      <Input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="max-w-xs" />
       <Button type="button" size="sm" disabled={isUploading} onClick={handleUpload}>
         <UploadIcon />
         {isUploading ? "Enviando..." : "Enviar documento"}

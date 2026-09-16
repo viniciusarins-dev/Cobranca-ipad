@@ -141,6 +141,11 @@ Ao fazer deploy na Vercel, o arquivo `vercel.json` já registra o cron job
 Vercel — ela é enviada automaticamente pelo cron como `Authorization: Bearer $CRON_SECRET` e
 validada pela rota.
 
+**`CRON_SECRET` é obrigatória** (não apenas recomendada): sem ela configurada, as rotas
+`/api/cron/*` respondem sempre `401 Não autorizado` — elas usam a service role key (acesso
+total ao banco, ignora RLS) e disparam mensagens reais de WhatsApp, então falham fechadas por
+padrão em vez de ficarem abertas por engano.
+
 O job:
 1. Marca como **Atrasado** toda parcela **Pendente** cujo vencimento já passou.
 2. Recalcula o status geral do contrato (Ativo / Inadimplente / Quitado).

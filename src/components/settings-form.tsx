@@ -49,7 +49,17 @@ const PROVIDER_FIELDS: Record<WhatsAppProviderName, { label: string; key: keyof 
   ],
 };
 
-export function SettingsForm({ initialSettings }: { initialSettings: MessageSettings | null }) {
+export function SettingsForm({
+  initialSettings,
+  hasApiKey,
+  hasAuthToken,
+}: {
+  initialSettings: MessageSettings | null;
+  /** Já existe api_key salvo no servidor — o campo fica vazio aqui mesmo assim (nunca é reenviado ao navegador). */
+  hasApiKey: boolean;
+  /** Mesma ideia de `hasApiKey`, para o auth_token (usado só pelo Twilio). */
+  hasAuthToken: boolean;
+}) {
   const [testPhone, setTestPhone] = useState("");
   const [isTesting, setIsTesting] = useState(false);
 
@@ -64,10 +74,13 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
     defaultValues: {
       provider: initialSettings?.provider ?? "evolution",
       baseUrl: initialSettings?.base_url ?? "",
-      apiKey: initialSettings?.api_key ?? "",
+      // Nunca pré-preenchido: um segredo já salvo não é reenviado ao
+      // navegador. Deixar em branco no envio mantém o valor atual (ver
+      // `saveMessageSettings`); só é sobrescrito se o usuário digitar um novo.
+      apiKey: "",
       instanceId: initialSettings?.instance_id ?? "",
       senderNumber: initialSettings?.sender_number ?? "",
-      authToken: initialSettings?.auth_token ?? "",
+      authToken: "",
       messageTemplate: initialSettings?.message_template ?? DEFAULT_TEMPLATE,
       templateName: initialSettings?.template_name ?? "",
       templateLanguage: initialSettings?.template_language ?? "pt_BR",
@@ -76,6 +89,10 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
 
   const provider = watch("provider");
   const fields = PROVIDER_FIELDS[provider];
+  const SECRET_PLACEHOLDER: Partial<Record<keyof MessageSettingsInput, string>> = {
+    apiKey: hasApiKey ? "•••••••• (já configurado — deixe em branco para manter)" : undefined,
+    authToken: hasAuthToken ? "•••••••• (já configurado — deixe em branco para manter)" : undefined,
+  };
 
   const onSubmit = handleSubmit(async (data) => {
     const result = await saveMessageSettings(data);
@@ -138,7 +155,13 @@ export function SettingsForm({ initialSettings }: { initialSettings: MessageSett
             {fields.map((field) => (
               <div key={field.key} className="grid gap-1.5">
                 <Label htmlFor={field.key}>{field.label}</Label>
-                <Input id={field.key} {...register(field.key)} />
+                <Input
+                  id={field.key}
+                  type={field.key === "apiKey" || field.key === "authToken" ? "password" : "text"}
+                  placeholder={SECRET_PLACEHOLDER[field.key]}
+                  autoComplete="off"
+                  {...register(field.key)}
+                />
               </div>
             ))}
           </div>

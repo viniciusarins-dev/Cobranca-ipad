@@ -16,6 +16,8 @@ export default async function SettingsPage() {
     .eq("is_active", true)
     .maybeSingle();
 
+  const settings = data as MessageSettings | null;
+
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
       <div>
@@ -34,7 +36,14 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SettingsForm initialSettings={data as MessageSettings | null} />
+      {/* api_key/auth_token nunca são enviados para o navegador — só um sinalizador
+          de "já configurado". O valor real só sai do servidor no envio à API do
+          provedor (registerReminder/sendTestMessage), nunca aparece na tela. */}
+      <SettingsForm
+        initialSettings={settings ? { ...settings, api_key: null, auth_token: null } : null}
+        hasApiKey={Boolean(settings?.api_key)}
+        hasAuthToken={Boolean(settings?.auth_token)}
+      />
     </main>
   );
 }

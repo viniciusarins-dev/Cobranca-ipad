@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { getISODay, parseISO } from "date-fns";
 
 import { createClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit-log";
 import { getBusinessToday } from "@/lib/date-utils";
+import { detectSafeDocumentType } from "@/lib/file-validation";
 import { generateInstallments } from "@/lib/installments";
 import { sendCollectionReminder } from "@/lib/whatsapp";
 import {
@@ -47,6 +49,20 @@ async function getCurrentUserEmail(supabase: Awaited<ReturnType<typeof createCli
     data: { session },
   } = await supabase.auth.getSession();
   return session?.user?.email ?? null;
+}
+
+/**
+ * Nunca repassa a mensagem crua de um erro do Postgres/Supabase para o
+ * navegador — pode revelar nomes de tabela, coluna, constraint ou outro
+ * detalhe interno do schema. O usuário sempre recebe uma mensagem genérica
+ * e segura; o detalhe técnico vai só para o log do servidor (visível nos
+ * logs da Vercel/Supabase, nunca na resposta da API).
+ */
+function safeError(error: { message: string } | null | undefined, fallback: string): string {
+  if (error) {
+    console.error(`[actions] ${fallback} —`, error.message);
+  }
+  return fallback;
 }
 
 /** ISO 8601 (1=segunda ... 7=domingo), com fins de semana ajustados para o dia útil mais próximo. */
@@ -95,7 +111,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
         .single();
 
       if (clientError || !newClient) {
-        return { ok: false, error: clientError?.message ?? "Erro ao criar cliente." };
+        return { ok: false, error: safeError(clientError, "Erro ao criar cliente.") };
       }
       clientId = newClient.id;
     }
@@ -133,7 +149,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     .single();
 
   if (contractError || !contract) {
-    return { ok: false, error: contractError?.message ?? "Erro ao criar contrato." };
+    return { ok: false, error: safeError(contractError, "Erro ao criar contrato.") };
   }
 
   const installments = generateInstallments({
@@ -199,22 +215,29 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   ]);
 
   if (installmentsResult.error) {
-    return { ok: false, error: installmentsResult.error.message };
+    return { ok: false, error: safeError(installmentsResult.error, "Erro ao gerar parcelas.") };
   }
   if (downPaymentResult.error) {
-    return { ok: false, error: downPaymentResult.error.message };
+    return { ok: false, error: safeError(downPaymentResult.error, "Erro ao registrar a entrada.") };
   }
   if (phoneResult.error) {
-    return { ok: false, error: phoneResult.error.message };
+    return { ok: false, error: safeError(phoneResult.error, "Erro ao cadastrar o iPhone.") };
   }
   if (weeklyChargeResult.error) {
-    return { ok: false, error: weeklyChargeResult.error.message };
+    return { ok: false, error: safeError(weeklyChargeResult.error, "Erro ao agendar cobrança semanal.") };
   }
 
   revalidatePath("/");
   if (data.type === "venda_iphone") {
     revalidatePath("/phones");
   }
+  await logAudit(supabase, {
+    actorEmail: await getCurrentUserEmail(supabase),
+    action: data.type === "venda_iphone" ? "iphone_sale_created" : "loan_created",
+    resourceType: "contract",
+    resourceId: contract.id,
+    metadata: { totalAmount: data.totalAmount, installmentsCount: data.installmentsCount },
+  });
   return { ok: true, contractId: contract.id };
 }
 
@@ -283,7 +306,7 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
     .maybeSingle();
 
   if (contractError) {
-    return { ok: false, error: contractError.message };
+    return { ok: false, error: safeError(contractError, "Erro ao buscar empréstimo.") };
   }
   if (!contract) {
     return { ok: false, error: "Empréstimo não encontrado (talvez já tenha sido excluído)." };
@@ -295,7 +318,7 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
     .eq("contract_id", contractId);
 
   if (countError) {
-    return { ok: false, error: countError.message };
+    return { ok: false, error: safeError(countError, "Erro ao verificar pagamentos.") };
   }
 
   if ((paymentsCount ?? 0) > 0) {
@@ -304,9 +327,16 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
       .update({ status: "cancelado" })
       .eq("id", contractId);
     if (cancelError) {
-      return { ok: false, error: cancelError.message };
+      return { ok: false, error: safeError(cancelError, "Erro ao cancelar empréstimo.") };
     }
     await syncWeeklyChargeStatus(supabase, contractId, "cancelado");
+    await logAudit(supabase, {
+      actorEmail: await getCurrentUserEmail(supabase),
+      action: "contract_cancelled",
+      resourceType: "contract",
+      resourceId: contractId,
+      metadata: { reason: "tinha pagamentos registrados — histórico preservado" },
+    });
 
     revalidatePath("/");
     revalidatePath("/debtors");
@@ -320,13 +350,20 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
   const { error: phoneDeleteError } = await supabase.from("phones").delete().eq("contract_id", contractId);
 
   if (phoneDeleteError) {
-    return { ok: false, error: phoneDeleteError.message };
+    return { ok: false, error: safeError(phoneDeleteError, "Erro ao excluir iPhone vinculado.") };
   }
 
   const { error: deleteError } = await supabase.from("contracts").delete().eq("id", contractId);
   if (deleteError) {
-    return { ok: false, error: deleteError.message };
+    return { ok: false, error: safeError(deleteError, "Erro ao excluir empréstimo.") };
   }
+  await logAudit(supabase, {
+    actorEmail: await getCurrentUserEmail(supabase),
+    action: "contract_deleted",
+    resourceType: "contract",
+    resourceId: contractId,
+    metadata: { reason: "sem pagamentos registrados" },
+  });
 
   revalidatePath("/");
   revalidatePath("/debtors");
@@ -348,7 +385,7 @@ export async function updateInstallmentStatus(
     .single();
 
   if (error || !installment) {
-    return { ok: false, error: error?.message ?? "Erro ao atualizar parcela." };
+    return { ok: false, error: safeError(error, "Erro ao atualizar parcela.") };
   }
 
   await recalculateContractStatus(supabase, installment.contract_id);
@@ -409,7 +446,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   }
 
   if (installmentError || !installment) {
-    return { ok: false, error: installmentError?.message ?? "Parcela não encontrada." };
+    return { ok: false, error: safeError(installmentError, "Parcela não encontrada.") };
   }
 
   if (installment.status === "pago") {
@@ -470,7 +507,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     if (paymentError.code === "23505" && data.idempotencyKey) {
       return { ok: true, contractId: installment.contract_id };
     }
-    return { ok: false, error: paymentError.message };
+    return { ok: false, error: safeError(paymentError, "Erro ao registrar pagamento.") };
   }
 
   // Nunca deixa passar de `installment.amount` (mesmo por causa de ruído de
@@ -501,7 +538,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     .eq("id", installment.id);
 
   if (updateError) {
-    return { ok: false, error: updateError.message };
+    return { ok: false, error: safeError(updateError, "Erro ao atualizar parcela.") };
   }
 
   await recalculateContractStatus(supabase, installment.contract_id);
@@ -512,6 +549,18 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   if (contract.type === "venda_iphone") {
     revalidatePath("/phones");
   }
+  await logAudit(supabase, {
+    actorEmail: createdByEmail,
+    action: "payment_registered",
+    resourceType: "installment",
+    resourceId: installment.id,
+    metadata: {
+      principalAmount: principalPortion,
+      interestAmount: interestPortion,
+      method: data.method,
+      newStatus,
+    },
+  });
   return { ok: true, contractId: installment.contract_id };
 }
 
@@ -535,7 +584,7 @@ export async function registerExpense(input: ExpenseInput): Promise<ActionResult
   });
 
   if (error) {
-    return { ok: false, error: error.message };
+    return { ok: false, error: safeError(error, "Erro ao registrar despesa.") };
   }
 
   revalidatePath("/");
@@ -566,7 +615,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
     .single();
 
   if (contractError || !contract) {
-    return { ok: false, error: contractError?.message ?? "Venda não encontrada." };
+    return { ok: false, error: safeError(contractError, "Venda não encontrada.") };
   }
   if (contract.type !== "venda_iphone") {
     return { ok: false, error: "Esta operação não é uma venda de iPhone." };
@@ -574,12 +623,12 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
 
   const { data: phone, error: phoneError } = await supabase
     .from("phones")
-    .select("id")
+    .select("id, cost_amount")
     .eq("contract_id", contractId)
     .maybeSingle();
 
   if (phoneError || !phone) {
-    return { ok: false, error: phoneError?.message ?? "Celular vinculado não encontrado." };
+    return { ok: false, error: safeError(phoneError, "Celular vinculado não encontrado.") };
   }
 
   const newSaleAmount = roundCents(data.saleAmount);
@@ -592,7 +641,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
       .eq("contract_id", contractId);
 
     if (countError) {
-      return { ok: false, error: countError.message };
+      return { ok: false, error: safeError(countError, "Erro ao verificar pagamentos.") };
     }
     if ((paymentsCount ?? 0) > 0) {
       return {
@@ -617,7 +666,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
     .eq("id", phone.id);
 
   if (phoneUpdateError) {
-    return { ok: false, error: phoneUpdateError.message };
+    return { ok: false, error: safeError(phoneUpdateError, "Erro ao atualizar dados do iPhone.") };
   }
 
   if (saleValueChanged) {
@@ -634,7 +683,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
       .update({ principal_amount: newSaleAmount, total_amount: totalFinanced })
       .eq("id", contractId);
     if (contractUpdateError) {
-      return { ok: false, error: contractUpdateError.message };
+      return { ok: false, error: safeError(contractUpdateError, "Erro ao atualizar venda.") };
     }
 
     // Sem pagamentos ainda (garantido acima): seguro apagar e regenerar
@@ -644,7 +693,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
       .delete()
       .eq("contract_id", contractId);
     if (deleteInstallmentsError) {
-      return { ok: false, error: deleteInstallmentsError.message };
+      return { ok: false, error: safeError(deleteInstallmentsError, "Erro ao recalcular parcelas.") };
     }
 
     const newInstallments = generateInstallments({
@@ -661,13 +710,23 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
 
     const { error: installmentsError } = await supabase.from("installments").insert(newInstallments);
     if (installmentsError) {
-      return { ok: false, error: installmentsError.message };
+      return { ok: false, error: safeError(installmentsError, "Erro ao gerar novas parcelas.") };
     }
   }
 
   revalidatePath("/phones");
   revalidatePath(`/contracts/${contractId}`);
   revalidatePath("/");
+  await logAudit(supabase, {
+    actorEmail: await getCurrentUserEmail(supabase),
+    action: "iphone_sale_updated",
+    resourceType: "contract",
+    resourceId: contractId,
+    metadata: {
+      costAmount: { before: phone.cost_amount, after: roundCents(data.costAmount) },
+      saleAmount: { before: contract.principal_amount, after: newSaleAmount },
+    },
+  });
   return { ok: true, contractId };
 }
 
@@ -692,7 +751,7 @@ export async function updateClientAddress(clientId: string, input: ClientAddress
     .eq("id", clientId);
 
   if (error) {
-    return { ok: false, error: error.message };
+    return { ok: false, error: safeError(error, "Erro ao atualizar endereço.") };
   }
 
   revalidatePath("/");
@@ -712,11 +771,18 @@ export async function uploadClientDocument(clientId: string, formData: FormData)
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: "Selecione um arquivo." };
   }
-  if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
-    return { ok: false, error: "Envie uma imagem ou PDF." };
-  }
   if (file.size > DOCUMENT_MAX_SIZE_BYTES) {
     return { ok: false, error: "Arquivo muito grande (máx. 8MB)." };
+  }
+
+  // Nunca confia no `file.type` (Content-Type declarado pelo navegador) nem
+  // na extensão do nome do arquivo — ambos podem ser forjados por quem
+  // monta a requisição manualmente. O conteúdo real é inspecionado pela
+  // assinatura de bytes; SVG e qualquer outro formato fora da lista
+  // (inclusive HTML/executáveis disfarçados de imagem) são rejeitados.
+  const detected = await detectSafeDocumentType(file);
+  if (!detected) {
+    return { ok: false, error: "Envie um arquivo JPG, PNG, WEBP ou PDF válido." };
   }
 
   const supabase = await createClient();
@@ -728,18 +794,20 @@ export async function uploadClientDocument(clientId: string, formData: FormData)
     .single();
 
   if (clientError || !client) {
-    return { ok: false, error: clientError?.message ?? "Cliente não encontrado." };
+    return { ok: false, error: safeError(clientError, "Cliente não encontrado.") };
   }
 
-  const extension = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-  const path = `${clientId}/${Date.now()}.${extension}`;
+  // Nome sempre gerado pelo servidor (timestamp + extensão detectada, nunca
+  // o nome enviado pelo usuário) — elimina qualquer risco de path traversal
+  // ou colisão proposital com outro arquivo.
+  const path = `${clientId}/${Date.now()}.${detected.extension}`;
 
   const { error: uploadError } = await supabase.storage
     .from("client-documents")
-    .upload(path, file, { contentType: file.type, upsert: false });
+    .upload(path, file, { contentType: detected.mimeType, upsert: false });
 
   if (uploadError) {
-    return { ok: false, error: uploadError.message };
+    return { ok: false, error: safeError(uploadError, "Erro ao enviar arquivo.") };
   }
 
   const { error: updateError } = await supabase
@@ -750,7 +818,7 @@ export async function uploadClientDocument(clientId: string, formData: FormData)
   if (updateError) {
     // Reverte o upload para não deixar um arquivo órfão sem referência.
     await supabase.storage.from("client-documents").remove([path]);
-    return { ok: false, error: updateError.message };
+    return { ok: false, error: safeError(updateError, "Erro ao vincular documento ao cliente.") };
   }
 
   if (client.document_photo_path) {
@@ -758,6 +826,13 @@ export async function uploadClientDocument(clientId: string, formData: FormData)
   }
 
   revalidatePath("/");
+  await logAudit(supabase, {
+    actorEmail: await getCurrentUserEmail(supabase),
+    action: "client_document_uploaded",
+    resourceType: "client",
+    resourceId: clientId,
+    metadata: { mimeType: detected.mimeType },
+  });
   return { ok: true };
 }
 
@@ -771,7 +846,7 @@ export async function deleteClientDocument(clientId: string): Promise<ActionResu
     .single();
 
   if (clientError || !client) {
-    return { ok: false, error: clientError?.message ?? "Cliente não encontrado." };
+    return { ok: false, error: safeError(clientError, "Cliente não encontrado.") };
   }
   if (!client.document_photo_path) {
     return { ok: true };
@@ -785,10 +860,16 @@ export async function deleteClientDocument(clientId: string): Promise<ActionResu
     .eq("id", clientId);
 
   if (updateError) {
-    return { ok: false, error: updateError.message };
+    return { ok: false, error: safeError(updateError, "Erro ao remover documento.") };
   }
 
   revalidatePath("/");
+  await logAudit(supabase, {
+    actorEmail: await getCurrentUserEmail(supabase),
+    action: "client_document_deleted",
+    resourceType: "client",
+    resourceId: clientId,
+  });
   return { ok: true };
 }
 
@@ -817,15 +898,25 @@ export async function saveMessageSettings(input: MessageSettingsInput): Promise<
   const data = parsed.data;
   const supabase = await createClient();
 
+  // O formulário nunca reenvia um segredo já salvo (settings-form.tsx só
+  // mostra um placeholder) — "em branco" aqui sempre significa "manter o
+  // valor atual", nunca "apagar". Só é sobrescrito se o usuário digitar um
+  // valor novo.
+  const { data: current } = await supabase
+    .from("message_settings")
+    .select("api_key, auth_token")
+    .eq("is_active", true)
+    .maybeSingle();
+
   await supabase.from("message_settings").update({ is_active: false }).eq("is_active", true);
 
   const { error } = await supabase.from("message_settings").insert({
     provider: data.provider,
     base_url: data.baseUrl || null,
-    api_key: data.apiKey || null,
+    api_key: data.apiKey || current?.api_key || null,
     instance_id: data.instanceId || null,
     sender_number: data.senderNumber || null,
-    auth_token: data.authToken || null,
+    auth_token: data.authToken || current?.auth_token || null,
     message_template: data.messageTemplate,
     template_name: data.templateName || null,
     template_language: data.templateLanguage || "pt_BR",
@@ -833,7 +924,7 @@ export async function saveMessageSettings(input: MessageSettingsInput): Promise<
   });
 
   if (error) {
-    return { ok: false, error: error.message };
+    return { ok: false, error: safeError(error, "Erro ao salvar configurações.") };
   }
 
   revalidatePath("/settings");

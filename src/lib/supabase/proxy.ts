@@ -15,6 +15,13 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Mesmo hardening de src/lib/supabase/server.ts: o cookie de sessão
+      // nunca precisa ser lido por JavaScript no navegador neste app.
+      cookieOptions: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();
