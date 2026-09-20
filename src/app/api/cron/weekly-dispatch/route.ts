@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { isCronAuthorized } from "@/lib/cron-auth";
+import { isAuthorizedBySecret } from "@/lib/cron-auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { runWeeklyDispatchQueue } from "@/lib/scheduling/weekly-dispatch-queue";
 
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
-  if (!isCronAuthorized(request)) {
+  if (!isAuthorizedBySecret(request, "CRON_SECRET")) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 

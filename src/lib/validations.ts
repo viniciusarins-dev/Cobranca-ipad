@@ -116,6 +116,8 @@ export const messageSettingsSchema = z.object({
   messageTemplate: z.string().trim().min(10, "O template não pode ficar vazio."),
   templateName: z.string().trim().optional().or(z.literal("")),
   templateLanguage: z.string().trim().optional().or(z.literal("")),
+  /** Recebe alerta via WhatsApp quando o backup automático falhar. Opcional. */
+  adminAlertPhone: z.string().trim().optional().or(z.literal("")),
 });
 
 export type MessageSettingsInput = z.infer<typeof messageSettingsSchema>;

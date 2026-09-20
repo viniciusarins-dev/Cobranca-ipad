@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getBusinessToday } from "@/lib/date-utils";
-import { isCronAuthorized } from "@/lib/cron-auth";
+import { isAuthorizedBySecret } from "@/lib/cron-auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { sendCollectionReminder } from "@/lib/whatsapp";
 import type { ContractStatus } from "@/lib/types";
@@ -9,7 +9,7 @@ import type { ContractStatus } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  if (!isCronAuthorized(request)) {
+  if (!isAuthorizedBySecret(request, "CRON_SECRET")) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 

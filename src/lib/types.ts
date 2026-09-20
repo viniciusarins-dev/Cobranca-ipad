@@ -150,6 +150,8 @@ export interface MessageSettings {
   /** Código de idioma do template aprovado (ex: "pt_BR"). Só usado por provider "meta". */
   template_language: string | null;
   is_active: boolean;
+  /** Telefone (com DDI/DDD) para receber alertas de sistema via WhatsApp — hoje, só falha de backup. Opcional. */
+  admin_alert_phone: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -181,6 +183,30 @@ export interface MessageLog {
   status: "sent" | "failed";
   provider_response: unknown;
   sent_at: string;
+}
+
+export type BackupRunStatus = "running" | "success" | "failed";
+
+/**
+ * Uma execução do backup automático (a cada 2h, via GitHub Actions —
+ * ver scripts/backup/). Nunca contém a chave de criptografia, a connection
+ * string do banco nem credenciais do armazenamento externo — só metadados
+ * seguros para exibir numa tela de histórico.
+ */
+export interface BackupRun {
+  id: string;
+  started_at: string;
+  finished_at: string | null;
+  status: BackupRunStatus;
+  tiers: string[];
+  size_bytes: number | null;
+  duration_seconds: number | null;
+  destination: string | null;
+  checksum: string | null;
+  validation: Record<string, boolean> | null;
+  error_message: string | null;
+  restore_tested: boolean;
+  created_at: string;
 }
 
 export interface ClientWithContracts extends Client {

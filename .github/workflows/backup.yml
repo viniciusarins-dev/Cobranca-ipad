@@ -1,0 +1,56 @@
+name: Backup automático (a cada 2h)
+
+# Roda independente da Vercel/navegador — o GitHub Actions é quem dispara,
+# 24/7, mesmo sem ninguém acessando o sistema. `workflow_dispatch` permite
+# rodar manualmente (ex.: para testar) pela aba Actions do repositório.
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch: {}
+
+# Nunca deixa duas execuções rodarem ao mesmo tempo (item 9 da auditoria de
+# backup): se uma execução ainda estiver rodando quando a próxima horária
+# chegar, a nova FICA NA FILA em vez de rodar em paralelo (cancel-in-progress:
+# false) — nunca corrompe/duplica um backup em andamento.
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    # Se o backup passar disso, o job é encerrado e marcado como falha —
+    # dispara o alerta (e-mail automático do GitHub para execuções
+    # agendadas com falha) para investigar a causa, em vez de deixar rodar
+    # indefinidamente competindo com a próxima execução agendada.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # postgresql-client traz pg_dump/pg_restore — as ferramentas nativas
+      # do Postgres, não uma reimplementação caseira de dump (item 3).
+      - name: Instalar cliente Postgres
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Instalar dependências do script de backup
+        working-directory: scripts/backup
+        run: npm install
+
+      - name: Executar backup
+        working-directory: scripts/backup
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          APP_URL: ${{ secrets.APP_URL }}
+          BACKUP_REPORT_SECRET: ${{ secrets.BACKUP_REPORT_SECRET }}
+        run: node backup.mjs

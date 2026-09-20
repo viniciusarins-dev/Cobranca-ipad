@@ -1,16 +1,16 @@
 import { NextRequest } from "next/server";
 
 /**
- * Autoriza as rotas de cron (`/api/cron/*`, fora do proxy.ts de sessão —
- * elas rodam sem usuário logado, com a service role key). Antes, quando
- * `CRON_SECRET` não estava configurado, a rota ficava aberta para
- * qualquer um (`return true`) — um endpoint público com acesso de service
- * role (ignora RLS) e capaz de disparar mensagens de WhatsApp para
- * clientes reais. Agora nega por padrão: sem segredo configurado, a rota
- * fica bloqueada (falha fechada), nunca aberta por engano.
+ * Autoriza uma rota chamada por um processo externo (cron, GitHub Actions),
+ * nunca por um usuário logado — comparação por `Bearer <secret>`. Nega por
+ * padrão quando o segredo não está configurado (fail-closed): antes, uma
+ * rota assim ficava aberta para qualquer um quando alguém esquecia de
+ * configurar a variável de ambiente — um endpoint público com acesso de
+ * service role (ignora RLS). Cada chamador externo usa seu PRÓPRIO segredo
+ * (nunca o mesmo em dois lugares), então vazar um não compromete o outro.
  */
-export function isCronAuthorized(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
+export function isAuthorizedBySecret(request: NextRequest, secretEnvVar: string): boolean {
+  const secret = process.env[secretEnvVar];
   if (!secret) return false;
   return request.headers.get("authorization") === `Bearer ${secret}`;
 }

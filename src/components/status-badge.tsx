@@ -5,6 +5,7 @@ import {
   CONTRACT_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
   INSTALLMENT_STATUS_LABELS,
+  type BackupRunStatus,
   type ContractStatus,
   type ContractType,
   type InstallmentStatus,
@@ -65,4 +66,25 @@ export function InstallmentStatusBadge({ status }: { status: InstallmentStatus }
 
 export function ContractTypeBadge({ type }: { type: ContractType }) {
   return <Badge variant={CONTRACT_TYPE_VARIANT[type]}>{CONTRACT_TYPE_LABELS[type]}</Badge>;
+}
+
+const BACKUP_RUN_VARIANT: Record<BackupRunStatus, "success" | "warning" | "destructive"> = {
+  success: "success",
+  running: "warning",
+  failed: "destructive",
+};
+
+const BACKUP_RUN_LABELS: Record<BackupRunStatus, string> = {
+  success: "Concluído",
+  running: "Em andamento",
+  failed: "Falhou",
+};
+
+export function BackupRunStatusBadge({ status }: { status: BackupRunStatus }) {
+  return (
+    <Badge variant={BACKUP_RUN_VARIANT[status]}>
+      {status === "failed" && <PulseDot />}
+      {BACKUP_RUN_LABELS[status]}
+    </Badge>
+  );
 }

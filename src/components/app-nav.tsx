@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarClockIcon, LogOutIcon, SettingsIcon, SmartphoneIcon, UsersIcon } from "lucide-react";
+import { CalendarClockIcon, LogOutIcon, SettingsIcon, ShieldCheckIcon, SmartphoneIcon, UsersIcon } from "lucide-react";
 
 import { signOut } from "@/app/auth-actions";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Clientes", icon: UsersIcon, exact: true },
   { href: "/debtors", label: "Devedores", icon: CalendarClockIcon, exact: false },
   { href: "/phones", label: "Celulares", icon: SmartphoneIcon, exact: false },
+  { href: "/backups", label: "Backups", icon: ShieldCheckIcon, exact: false },
   { href: "/settings", label: "Configurações", icon: SettingsIcon, exact: false },
 ] as const;
 

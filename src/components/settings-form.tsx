@@ -84,6 +84,7 @@ export function SettingsForm({
       messageTemplate: initialSettings?.message_template ?? DEFAULT_TEMPLATE,
       templateName: initialSettings?.template_name ?? "",
       templateLanguage: initialSettings?.template_language ?? "pt_BR",
+      adminAlertPhone: initialSettings?.admin_alert_phone ?? "",
     },
   });
 
@@ -192,6 +193,23 @@ export function SettingsForm({
           {errors.messageTemplate && (
             <p className="mt-1.5 text-xs text-destructive">{errors.messageTemplate.message}</p>
           )}
+        </CardContent>
+      </SpotlightCard>
+
+      <SpotlightCard>
+        <CardHeader>
+          <CardTitle>Alertas de sistema</CardTitle>
+          <CardDescription>
+            Reaproveita o provedor de WhatsApp configurado acima para avisar você se o backup automático falhar.
+            Deixe em branco se não quiser esse alerta — a notificação por e-mail do GitHub continua funcionando de
+            qualquer forma.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-1.5 sm:max-w-xs">
+            <Label htmlFor="adminAlertPhone">Telefone para alertas (opcional)</Label>
+            <Input id="adminAlertPhone" placeholder="(11) 91234-5678" {...register("adminAlertPhone")} />
+          </div>
         </CardContent>
       </SpotlightCard>
 

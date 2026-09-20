@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+# scripts/backup tem seu próprio package.json (dependências isoladas do
+# script de backup, à parte do app) — ignora o node_modules dele também.
+node_modules
 /.pnp
 .pnp.*
 .yarn/*
