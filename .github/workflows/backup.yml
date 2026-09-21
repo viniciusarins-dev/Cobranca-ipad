@@ -33,8 +33,18 @@ jobs:
 
       # postgresql-client traz pg_dump/pg_restore — as ferramentas nativas
       # do Postgres, não uma reimplementação caseira de dump (item 3).
-      - name: Instalar cliente Postgres
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      # O repositório padrão do Ubuntu só tem a versão 16, mas o Supabase já
+      # roda Postgres 17 — e o pg_dump recusa rodar contra um servidor mais
+      # novo que ele mesmo ("server version mismatch"). Por isso instala a
+      # versão 17 direto do repositório oficial do PostgreSQL (PGDG).
+      - name: Instalar cliente Postgres 17
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl ca-certificates gnupg
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
 
       - name: Instalar dependências do script de backup
         working-directory: scripts/backup
