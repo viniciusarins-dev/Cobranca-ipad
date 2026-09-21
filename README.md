@@ -207,7 +207,7 @@ semanal automatizado. A cada execução:
 > várias vezes ao dia (recomendado para volumes grandes com Evolution API), troque a expressão de
 > volta para algo como `*/15 12-21 * * 1-5`.
 
-### 7. Backup automático (a cada 2h)
+### 7. Backup automático (a cada 6h)
 
 Backup completo do banco + documentos, criptografado, enviado a um armazenamento externo
 (Cloudflare R2) via GitHub Actions — roda sozinho, 24/7, sem depender da Vercel nem de

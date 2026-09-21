@@ -100,7 +100,7 @@ async function main() {
     // 6) Upload para o armazenamento externo (R2) + camadas de retenção.
     const timestampLabel = startedAt.toISOString().replace(/[:.]/g, "-");
     const tiers = tiersForRun(startedAt);
-    const objectKey = `2h/${timestampLabel}.enc`;
+    const objectKey = `6h/${timestampLabel}.enc`;
     const storageClient = createStorageClient({
       accountId: r2AccountId,
       accessKeyId: r2AccessKeyId,

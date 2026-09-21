@@ -188,7 +188,7 @@ export interface MessageLog {
 export type BackupRunStatus = "running" | "success" | "failed";
 
 /**
- * Uma execução do backup automático (a cada 2h, via GitHub Actions —
+ * Uma execução do backup automático (a cada 6h, via GitHub Actions —
  * ver scripts/backup/). Nunca contém a chave de criptografia, a connection
  * string do banco nem credenciais do armazenamento externo — só metadados
  * seguros para exibir numa tela de histórico.

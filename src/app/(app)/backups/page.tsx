@@ -12,9 +12,9 @@ import type { BackupRun } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const EXPECTED_INTERVAL_HOURS = 2;
+const EXPECTED_INTERVAL_HOURS = 6;
 /** Margem de tolerância antes de considerar o backup "atrasado" (execuções raramente caem no minuto exato). */
-const OVERDUE_TOLERANCE_HOURS = 1;
+const OVERDUE_TOLERANCE_HOURS = 2;
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) return "—";
@@ -35,7 +35,7 @@ function formatDuration(seconds: number | null): string {
 }
 
 function tierLabel(tiers: string[]): string {
-  const labels: Record<string, string> = { "2h": "2h", daily: "Diário", monthly: "Mensal" };
+  const labels: Record<string, string> = { "6h": "6h", daily: "Diário", monthly: "Mensal" };
   return tiers.map((t) => labels[t] ?? t).join(" + ") || "—";
 }
 
@@ -68,7 +68,7 @@ export default async function BackupsPage() {
         <ShinyText className="text-xs font-semibold uppercase tracking-widest">Cobrança iPad</ShinyText>
         <GradientHeading className="text-3xl sm:text-4xl">Backups</GradientHeading>
         <p className="mt-1 text-sm text-muted-foreground">
-          Histórico das execuções do backup automático (a cada 2h, via GitHub Actions). Só metadados — nunca o
+          Histórico das execuções do backup automático (a cada 6h, via GitHub Actions). Só metadados — nunca o
           conteúdo, a chave de criptografia ou as credenciais de armazenamento.
         </p>
       </div>

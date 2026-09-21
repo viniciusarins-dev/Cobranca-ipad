@@ -1,11 +1,11 @@
-name: Backup automático (a cada 2h)
+name: Backup automático (a cada 6h)
 
 # Roda independente da Vercel/navegador — o GitHub Actions é quem dispara,
 # 24/7, mesmo sem ninguém acessando o sistema. `workflow_dispatch` permite
 # rodar manualmente (ex.: para testar) pela aba Actions do repositório.
 on:
   schedule:
-    - cron: "0 */2 * * *"
+    - cron: "0 */6 * * *"
   workflow_dispatch: {}
 
 # Nunca deixa duas execuções rodarem ao mesmo tempo (item 9 da auditoria de

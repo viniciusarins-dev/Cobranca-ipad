@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Recebe o RESULTADO de uma execução do backup automático (scripts/backup/,
- * disparado pelo GitHub Actions a cada 2h) — nunca o conteúdo do backup em
+ * disparado pelo GitHub Actions a cada 6h) — nunca o conteúdo do backup em
  * si. Chamado só pelo workflow, autenticado por `BACKUP_REPORT_SECRET`
  * (segredo próprio, separado do `CRON_SECRET` usado pelos crons da Vercel —
  * cada chamador externo com sua própria credencial).
@@ -18,7 +18,7 @@ const reportSchema = z.object({
   startedAt: z.string(),
   finishedAt: z.string(),
   status: z.enum(["success", "failed"]),
-  tiers: z.array(z.enum(["2h", "daily", "monthly"])).default([]),
+  tiers: z.array(z.enum(["6h", "daily", "monthly"])).default([]),
   sizeBytes: z.number().int().nonnegative().optional(),
   durationSeconds: z.number().int().nonnegative().optional(),
   destination: z.string().optional(),

@@ -4,7 +4,7 @@
 // o banco de destino (nunca assume produção por padrão).
 //
 // Uso:
-//   node restore.mjs --key 2h/2026-09-20T10-00-00Z.enc --target-db "postgres://...:5432/postgres" [--documents-dir ./restored-documents] [--yes]
+//   node restore.mjs --key 6h/2026-09-20T10-00-00Z.enc --target-db "postgres://...:5432/postgres" [--documents-dir ./restored-documents] [--yes]
 //
 // Variáveis de ambiente necessárias (as mesmas do backup):
 //   BACKUP_ENCRYPTION_KEY, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
@@ -56,7 +56,7 @@ async function confirm(message) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.key) throw new Error("Informe --key <caminho do backup no R2>, ex.: 2h/2026-09-20T10-00-00Z.enc");
+  if (!args.key) throw new Error("Informe --key <caminho do backup no R2>, ex.: 6h/2026-09-20T10-00-00Z.enc");
   if (!args.targetDb) {
     throw new Error(
       "Informe --target-db com a connection string do banco de DESTINO (nunca assumido — não existe padrão de produção aqui).",

@@ -2,19 +2,19 @@
 
 Backup completo do banco (Postgres) + documentos dos clientes (Storage),
 criptografado e enviado para um armazenamento externo (Cloudflare R2),
-rodando a cada 2h via GitHub Actions — independente da Vercel, do
+rodando a cada 6h via GitHub Actions — independente da Vercel, do
 navegador ou de alguém estar logado.
 
 ## Arquitetura
 
 ```
-GitHub Actions (cron a cada 2h)
+GitHub Actions (cron a cada 6h)
   -> pg_dump (conexão direta ao Postgres do Supabase, schemas public + auth)
   -> baixa todos os arquivos do bucket privado client-documents
   -> empacota tudo num .tar
   -> criptografa com AES-256-GCM
   -> verifica que consegue descriptografar de volta (nunca sobe um arquivo não verificado)
-  -> envia para Cloudflare R2 (backups/2h/, .../daily/, .../monthly/)
+  -> envia para Cloudflare R2 (backups/6h/, .../daily/, .../monthly/)
   -> aplica a política de retenção
   -> reporta o resultado para /api/backup/report (fica visível em /backups no app)
 ```
@@ -84,13 +84,13 @@ usado pelos outros crons.
 
 ## 6. Testar manualmente antes de confiar no agendamento
 
-No repositório → aba **Actions** → **Backup automático (a cada 2h)** →
+No repositório → aba **Actions** → **Backup automático (a cada 6h)** →
 **Run workflow**. Acompanhe o log; ao final, confira em **/backups** no
 app se a execução aparece como "Concluído".
 
 ## 7. Retenção
 
-- Backups de 2 em 2 horas: mantidos por 7 dias.
+- Backups de 6 em 6 horas: mantidos por 7 dias.
 - O primeiro backup de cada dia (00:00 UTC) também vira o backup "diário": mantido por 30 dias.
 - O primeiro backup de cada mês (dia 1º, 00:00 UTC) também vira o "mensal": mantido por 12 meses.
 
@@ -122,7 +122,7 @@ export R2_SECRET_ACCESS_KEY="..."
 export R2_BUCKET_NAME="..."
 
 node restore.mjs \
-  --key "2h/2026-09-20T10-00-00Z.enc" \
+  --key "6h/2026-09-20T10-00-00Z.enc" \
   --target-db "postgres://usuario:senha@host:5432/postgres" \
   --documents-dir ./restored-documents
 ```

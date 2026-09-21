@@ -1,6 +1,6 @@
 -- Histórico de execuções do backup automático (item 13 da auditoria de
 -- backup: área de consulta, sem expor caminhos/credenciais). Cada linha é
--- uma execução do workflow de backup (GitHub Actions, a cada 2h) reportando
+-- uma execução do workflow de backup (GitHub Actions, a cada 6h) reportando
 -- o resultado via /api/backup/report — nunca contém a chave de criptografia,
 -- a connection string do banco nem as credenciais do armazenamento externo.
 --
@@ -12,13 +12,13 @@ create table if not exists backup_runs (
   finished_at timestamptz,
   status text not null check (status in ('running', 'success', 'failed')),
   -- Camada de retenção que este backup alimenta (item 6): todo backup vira
-  -- "2h"; o primeiro de cada dia também vira "daily"; o primeiro do mês
+  -- "6h"; o primeiro de cada dia também vira "daily"; o primeiro do mês
   -- também vira "monthly" (cópia do lado do armazenamento, sem duplicar
   -- processamento).
   tiers text[] not null default '{}',
   size_bytes bigint,
   duration_seconds integer,
-  -- Identificação do destino (ex.: "r2:cobranca-ipad-backups/2h/2026-09-20T10-00-00Z.enc")
+  -- Identificação do destino (ex.: "r2:cobranca-ipad-backups/6h/2026-09-20T10-00-00Z.enc")
   -- — nunca a URL assinada nem a credencial de acesso.
   destination text,
   -- SHA-256 do arquivo ANTES da criptografia — usado para conferir
