@@ -17,11 +17,18 @@ function requireEnv(name) {
 
 async function reportResult(appUrl, reportSecret, payload) {
   try {
-    await fetch(`${appUrl.replace(/\/$/, "")}/api/backup/report`, {
+    const response = await fetch(`${appUrl.replace(/\/$/, "")}/api/backup/report`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${reportSecret}` },
       body: JSON.stringify(payload),
     });
+    // fetch só lança exceção em falha de rede — uma resposta HTTP de erro
+    // (401 secret errado, 500 etc.) precisa ser checada explicitamente,
+    // senão o problema fica invisível no log do Actions.
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      console.error(`Falha ao reportar resultado do backup para a aplicação: HTTP ${response.status} — ${body}`);
+    }
   } catch (error) {
     // Nunca deixa uma falha ao REPORTAR virar a causa de o job falhar por um
     // motivo diferente do real — só avisa no log do próprio Actions.
