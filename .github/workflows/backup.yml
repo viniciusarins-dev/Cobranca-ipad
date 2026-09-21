@@ -45,6 +45,13 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
+          # O runner já vem com um pg_dump mais antigo em /usr/bin — garante
+          # que os passos seguintes usem o binário da versão 17 (evita
+          # depender do mecanismo de "versão padrão" do postgresql-common).
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Conferir versão do pg_dump
+        run: pg_dump --version
 
       - name: Instalar dependências do script de backup
         working-directory: scripts/backup
