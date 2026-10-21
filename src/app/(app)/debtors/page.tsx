@@ -24,7 +24,7 @@ export default async function DebtorsPage() {
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
       <div>
-        <ShinyText className="text-xs font-semibold uppercase tracking-widest">Cobrança iPad</ShinyText>
+        <ShinyText className="text-xs font-semibold uppercase tracking-widest">Painel · RECEBE</ShinyText>
         <GradientHeading className="text-3xl sm:text-4xl">📅 Devedores do Dia</GradientHeading>
         <p className="mt-1 text-sm text-muted-foreground">
           Clientes com parcela vencendo hoje ou já em atraso — a tela principal para a cobrança diária.

@@ -8,7 +8,7 @@ type StatAccent = "primary" | "cyan" | "success" | "destructive" | "warning";
 
 const ACCENT_TEXT: Record<StatAccent, string> = {
   primary: "text-primary",
-  cyan: "text-accent-cyan",
+  cyan: "text-foreground",
   success: "text-success",
   destructive: "text-destructive",
   warning: "text-warning",

@@ -228,6 +228,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   }
 
   revalidatePath("/");
+  revalidatePath("/clientes");
   if (data.type === "venda_iphone") {
     revalidatePath("/phones");
   }
@@ -339,6 +340,7 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
     });
 
     revalidatePath("/");
+  revalidatePath("/clientes");
     revalidatePath("/debtors");
     revalidatePath(`/contracts/${contractId}`);
     return { ok: true };
@@ -366,6 +368,7 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
   });
 
   revalidatePath("/");
+  revalidatePath("/clientes");
   revalidatePath("/debtors");
   revalidatePath("/phones");
   return { ok: true };
@@ -392,6 +395,7 @@ export async function updateInstallmentStatus(
 
   revalidatePath(`/contracts/${installment.contract_id}`);
   revalidatePath("/");
+  revalidatePath("/clientes");
   return { ok: true };
 }
 
@@ -545,6 +549,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
 
   revalidatePath(`/contracts/${installment.contract_id}`);
   revalidatePath("/");
+  revalidatePath("/clientes");
   revalidatePath("/debtors");
   if (contract.type === "venda_iphone") {
     revalidatePath("/phones");
@@ -588,6 +593,7 @@ export async function registerExpense(input: ExpenseInput): Promise<ActionResult
   }
 
   revalidatePath("/");
+  revalidatePath("/clientes");
   return { ok: true };
 }
 
@@ -717,6 +723,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
   revalidatePath("/phones");
   revalidatePath(`/contracts/${contractId}`);
   revalidatePath("/");
+  revalidatePath("/clientes");
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
     action: "iphone_sale_updated",
@@ -755,6 +762,7 @@ export async function updateClientAddress(clientId: string, input: ClientAddress
   }
 
   revalidatePath("/");
+  revalidatePath("/clientes");
   return { ok: true };
 }
 
@@ -826,6 +834,7 @@ export async function uploadClientDocument(clientId: string, formData: FormData)
   }
 
   revalidatePath("/");
+  revalidatePath("/clientes");
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
     action: "client_document_uploaded",
@@ -864,6 +873,7 @@ export async function deleteClientDocument(clientId: string): Promise<ActionResu
   }
 
   revalidatePath("/");
+  revalidatePath("/clientes");
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
     action: "client_document_deleted",

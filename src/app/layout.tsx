@@ -1,11 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cinzel, Geist_Mono, Inter } from "next/font/google";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const cinzel = Cinzel({
+  variable: "--font-cinzel",
+  weight: ["600", "700", "900"],
   subsets: ["latin"],
 });
 
@@ -15,7 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cobrança iPad — Gestão de Empréstimos e Vendas",
+  title: "RECEBE — Gestão de Empréstimos e Vendas",
   description: "Gerencie clientes, empréstimos e vendas de iPhone parceladas com cobrança automática via WhatsApp.",
   manifest: "/manifest.json",
   icons: {
@@ -25,7 +31,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Cobrança iPad",
+    title: "RECEBE",
   },
 };
 
@@ -34,14 +40,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#0e0c1a",
+  themeColor: "#080809",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${cinzel.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <AuroraBackground />

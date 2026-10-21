@@ -1,9 +1,7 @@
-import { AlertTriangleIcon, TrendingUpIcon, UsersIcon, WalletIcon } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangleIcon, ArrowRightIcon, TrendingUpIcon, UsersIcon, WalletIcon } from "lucide-react";
 
-import { ClientsTable } from "@/components/clients-table";
 import { DashboardOverview } from "@/components/dashboard-overview";
-import { ExpenseDialog } from "@/components/expense-dialog";
-import { NewTransactionDialog } from "@/components/new-transaction-dialog";
 import { GradientHeading } from "@/components/ui/gradient-heading";
 import { ShinyText } from "@/components/ui/shiny-text";
 import { StatTile } from "@/components/ui/stat-tile";
@@ -20,9 +18,8 @@ export default async function DashboardPage() {
 
   // Todas as queries independentes desta página disparam juntas, numa
   // única rodada de ida-e-volta ao banco. `contracts` (com `installments`
-  // aninhadas) é reaproveitado tanto pela tabela de clientes quanto pelo
-  // cálculo dos indicadores do dashboard (`computeDashboardMetrics`),
-  // evitando buscar contratos/parcelas duas vezes.
+  // aninhadas) é reaproveitado pelo cálculo dos indicadores do dashboard
+  // (`computeDashboardMetrics`).
   const [
     { data, error },
     { data: paymentsData },
@@ -70,16 +67,19 @@ export default async function DashboardPage() {
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
-          <ShinyText className="text-xs font-semibold uppercase tracking-widest">Cobrança iPad</ShinyText>
-          <GradientHeading className="text-3xl sm:text-4xl">Clientes</GradientHeading>
+          <ShinyText className="text-xs font-semibold uppercase tracking-widest">Painel · RECEBE</ShinyText>
+          <GradientHeading className="text-3xl sm:text-4xl">Visão Geral</GradientHeading>
           <p className="mt-1 text-sm text-muted-foreground">
-            Empréstimos e vendas de iPhone parceladas — visão geral e status de cobrança.
+            O resumo completo do negócio — empréstimos, juros, caixa e loja de iPhones.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <ExpenseDialog />
-          <NewTransactionDialog />
-        </div>
+        <Link
+          href="/clientes"
+          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
+        >
+          Ver todos os clientes
+          <ArrowRightIcon className="size-4" />
+        </Link>
       </div>
 
       {error ? (
@@ -105,11 +105,6 @@ export default async function DashboardPage() {
           </div>
 
           <DashboardOverview metrics={metrics} debtorsSummary={debtorsSummary} debtors={debtors} />
-
-          <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Clientes</h2>
-            <ClientsTable contracts={contracts} />
-          </div>
         </>
       )}
     </main>

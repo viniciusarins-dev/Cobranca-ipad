@@ -1,12 +1,12 @@
 {
-  "name": "Cobrança iPad — Gestão de Empréstimos e Vendas",
-  "short_name": "Cobrança iPad",
+  "name": "RECEBE — Gestão de Empréstimos e Vendas",
+  "short_name": "RECEBE",
   "description": "Gerencie clientes, empréstimos e vendas de iPhone parceladas com cobrança automática via WhatsApp.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0e0c1a",
-  "theme_color": "#0e0c1a",
+  "background_color": "#080809",
+  "theme_color": "#080809",
   "icons": [
     {
       "src": "/icon-192.png",

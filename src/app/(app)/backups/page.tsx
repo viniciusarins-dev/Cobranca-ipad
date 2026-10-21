@@ -65,7 +65,7 @@ export default async function BackupsPage() {
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
       <div>
-        <ShinyText className="text-xs font-semibold uppercase tracking-widest">Cobrança iPad</ShinyText>
+        <ShinyText className="text-xs font-semibold uppercase tracking-widest">Painel · RECEBE</ShinyText>
         <GradientHeading className="text-3xl sm:text-4xl">Backups</GradientHeading>
         <p className="mt-1 text-sm text-muted-foreground">
           Histórico das execuções do backup automático (a cada 6h, via GitHub Actions). Só metadados — nunca o
