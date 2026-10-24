@@ -129,6 +129,15 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const clientInfoSchema = z.object({
+  name: z.string().trim().min(2, "Informe o nome do cliente."),
+  phone: z.string().trim().min(10, "Informe um telefone/WhatsApp válido."),
+  email: z.string().trim().email("E-mail inválido.").optional().or(z.literal("")),
+  notes: z.string().trim().optional().or(z.literal("")),
+});
+
+export type ClientInfoInput = z.infer<typeof clientInfoSchema>;
+
 export const clientAddressSchema = z.object({
   street: z.string().trim().optional().or(z.literal("")),
   streetNumber: z.string().trim().optional().or(z.literal("")),

@@ -1,38 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { MessageCircleIcon, Loader2Icon } from "lucide-react";
+import { MessageCircleIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { InstallmentStatusBadge } from "@/components/status-badge";
 import { RegisterPaymentDialog } from "@/components/register-payment-dialog";
-import { type ContractType, type Installment } from "@/lib/types";
+import { type Client, type Contract, type Installment } from "@/lib/types";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import { sendReminderAction } from "@/app/actions";
+import { buildWhatsAppReminderLink } from "@/lib/whatsapp-reminder-link";
+import { markReminderOpened } from "@/app/actions";
+
+type ReminderContract = Pick<
+  Contract,
+  "type" | "principal_amount" | "has_down_payment" | "down_payment_amount" | "installments_count"
+>;
+type ReminderClient = Pick<Client, "name" | "phone">;
 
 function InstallmentRow({
   installment,
-  totalInstallments,
-  contractType,
-  contractPrincipalAmount,
+  contract,
+  client,
 }: {
   installment: Installment;
-  totalInstallments: number;
-  contractType: ContractType;
-  contractPrincipalAmount: number;
+  contract: ReminderContract;
+  client: ReminderClient;
 }) {
-  const [isSending, setIsSending] = useState(false);
-
-  async function handleSendReminder() {
-    setIsSending(true);
-    const result = await sendReminderAction(installment.id);
-    setIsSending(false);
-    if (result.ok) {
-      toast.success("Lembrete de cobrança enviado.");
-    } else {
-      toast.error(result.error ?? "Erro ao enviar lembrete.");
+  function handleSendReminder() {
+    // Monta o link e abre o WhatsApp de forma síncrona, na mesma interação
+    // de clique — qualquer `await` antes do `window.open` faz o navegador
+    // tratar a nova aba como pop-up e bloqueá-la.
+    const result = buildWhatsAppReminderLink(client, contract, installment);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
     }
+
+    window.open(result.url, "_blank", "noopener,noreferrer");
+    toast.success("WhatsApp aberto com a mensagem preenchida. Confira e envie por lá.");
+
+    // Best-effort: só registra que o lembrete foi iniciado (não comprova
+    // envio nem entrega). Nunca bloqueia nem desfaz a abertura do WhatsApp.
+    void markReminderOpened(installment.id);
   }
 
   return (
@@ -45,7 +54,7 @@ function InstallmentRow({
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="font-semibold">
-            Parcela {installment.number}/{totalInstallments}
+            Parcela {installment.number}/{contract.installments_count}
           </span>
           <InstallmentStatusBadge status={installment.status} />
         </div>
@@ -59,7 +68,8 @@ function InstallmentRow({
         )}
         {installment.reminder_sent_at && (
           <span className="text-xs text-muted-foreground">
-            Último lembrete enviado em {formatDate(installment.reminder_sent_at)} ({installment.reminder_count}x)
+            Último lembrete iniciado em {formatDate(installment.reminder_sent_at)} ({installment.reminder_count}x) —
+            isso só confirma que o WhatsApp foi aberto, não que a mensagem foi enviada.
           </span>
         )}
       </div>
@@ -68,8 +78,8 @@ function InstallmentRow({
         {installment.status !== "pago" && (
           <RegisterPaymentDialog
             installment={installment}
-            contractType={contractType}
-            contractPrincipalAmount={contractPrincipalAmount}
+            contractType={contract.type}
+            contractPrincipalAmount={contract.principal_amount}
           />
         )}
 
@@ -77,10 +87,10 @@ function InstallmentRow({
           type="button"
           variant={installment.status === "atrasado" ? "glow" : "outline"}
           size="sm"
-          disabled={installment.status === "pago" || isSending}
+          disabled={installment.status === "pago"}
           onClick={handleSendReminder}
         >
-          {isSending ? <Loader2Icon className="animate-spin" /> : <MessageCircleIcon />}
+          <MessageCircleIcon />
           Enviar Lembrete
         </Button>
       </div>
@@ -90,23 +100,17 @@ function InstallmentRow({
 
 export function InstallmentsGrid({
   installments,
-  contractType,
-  contractPrincipalAmount,
+  contract,
+  client,
 }: {
   installments: Installment[];
-  contractType: ContractType;
-  contractPrincipalAmount: number;
+  contract: ReminderContract;
+  client: ReminderClient;
 }) {
   return (
     <div className="flex flex-col gap-3">
       {installments.map((installment) => (
-        <InstallmentRow
-          key={installment.id}
-          installment={installment}
-          totalInstallments={installments.length}
-          contractType={contractType}
-          contractPrincipalAmount={contractPrincipalAmount}
-        />
+        <InstallmentRow key={installment.id} installment={installment} contract={contract} client={client} />
       ))}
     </div>
   );

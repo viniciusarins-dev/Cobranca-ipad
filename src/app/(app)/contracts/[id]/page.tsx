@@ -4,6 +4,7 @@ import { ArrowLeftIcon, MessageCircleIcon } from "lucide-react";
 
 import { ClientDetailsCard } from "@/components/client-details-card";
 import { DeleteContractDialog } from "@/components/delete-contract-dialog";
+import { EditClientInfoDialog } from "@/components/edit-client-info-dialog";
 import { InstallmentsGrid } from "@/components/installments-grid";
 import { PaymentHistory } from "@/components/payment-history";
 import { ContractStatusBadge, ContractTypeBadge } from "@/components/status-badge";
@@ -13,7 +14,7 @@ import { getClientDocumentSignedUrl } from "@/lib/client-documents";
 import { createClient } from "@/lib/supabase/server";
 import { calculateFinancedAmount, roundCents } from "@/lib/financial-rules";
 import { PERIODICITY_LABELS, type ContractWithInstallments, type Payment, type Phone } from "@/lib/types";
-import { formatCurrency, formatDate, formatPhone, initials, onlyDigits } from "@/lib/utils";
+import { formatCurrency, formatDate, formatPhone, initials, toWhatsAppDigits } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const contract = data as ContractWithInstallments;
   const installments = [...contract.installments].sort((a, b) => a.number - b.number);
   const paidCount = installments.filter((i) => i.status === "pago").length;
-  const whatsappLink = `https://wa.me/${onlyDigits(contract.client.phone)}`;
+  const whatsappDigits = toWhatsAppDigits(contract.client.phone);
 
   const { markupAmount, ratePercent } = calculateFinancedAmount({
     contractType: contract.type,
@@ -88,19 +89,27 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             </span>
             <div>
               <CardTitle className="text-xl">{contract.client.name}</CardTitle>
-              <a
-                href={whatsappLink}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-              >
-                <MessageCircleIcon className="size-4" />
-                {formatPhone(contract.client.phone)}
-              </a>
+              {whatsappDigits ? (
+                <a
+                  href={`https://wa.me/${whatsappDigits}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  <MessageCircleIcon className="size-4" />
+                  {formatPhone(contract.client.phone)}
+                </a>
+              ) : (
+                <span className="mt-1 inline-flex items-center gap-1.5 text-sm text-destructive">
+                  <MessageCircleIcon className="size-4" />
+                  {formatPhone(contract.client.phone)} (telefone inválido)
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <ContractStatusBadge status={contract.status} />
+            <EditClientInfoDialog client={contract.client} />
             <DeleteContractDialog contract={contract} clientName={contract.client.name} />
           </div>
         </CardHeader>
@@ -212,11 +221,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
 
       <div>
         <h2 className="mb-3 text-lg font-bold tracking-tight text-foreground">Parcelas</h2>
-        <InstallmentsGrid
-          installments={installments}
-          contractType={contract.type}
-          contractPrincipalAmount={contract.principal_amount}
-        />
+        <InstallmentsGrid installments={installments} contract={contract} client={contract.client} />
       </div>
 
       <div>

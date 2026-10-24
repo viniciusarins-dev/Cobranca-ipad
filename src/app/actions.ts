@@ -23,12 +23,14 @@ import {
   expenseSchema,
   iphoneSaleUpdateSchema,
   clientAddressSchema,
+  clientInfoSchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
   type ExpenseInput,
   type IphoneSaleUpdateInput,
   type ClientAddressInput,
+  type ClientInfoInput,
 } from "@/lib/validations";
 import type { ContractStatus, ContractType, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
 import { onlyDigits } from "@/lib/utils";
@@ -766,6 +768,48 @@ export async function updateClientAddress(clientId: string, input: ClientAddress
   return { ok: true };
 }
 
+/**
+ * Edita os dados cadastrais do cliente (nome, telefone, e-mail, notas) —
+ * nunca toca em contratos, parcelas ou pagamentos: é sempre um UPDATE na
+ * própria linha de `clients`, então os empréstimos/vendas já vinculados
+ * continuam associados ao mesmo `client_id`, sem duplicar nem recriar nada.
+ * O telefone é normalizado (só dígitos) antes de salvar, igual ao cadastro
+ * inicial em `createTransaction` — os próximos lembretes usam o número novo.
+ */
+export async function updateClientInfo(clientId: string, input: ClientInfoInput): Promise<ActionResult> {
+  const parsed = clientInfoSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("clients")
+    .update({
+      name: data.name,
+      phone: onlyDigits(data.phone),
+      email: data.email || null,
+      notes: data.notes || null,
+    })
+    .eq("id", clientId);
+
+  if (error) {
+    return { ok: false, error: safeError(error, "Erro ao atualizar cliente.") };
+  }
+
+  await logAudit(supabase, {
+    actorEmail: await getCurrentUserEmail(supabase),
+    action: "client_updated",
+    resourceType: "client",
+    resourceId: clientId,
+  });
+
+  revalidatePath("/");
+  revalidatePath("/clientes");
+  return { ok: true };
+}
+
 const DOCUMENT_MAX_SIZE_BYTES = 8 * 1024 * 1024;
 
 /**
@@ -898,6 +942,43 @@ export async function sendReminderAction(installmentId: string): Promise<ActionR
   }
 
   return result.ok ? { ok: true } : { ok: false, error: result.error };
+}
+
+/**
+ * Registra que o usuário abriu o WhatsApp para cobrar uma parcela (botão
+ * "Enviar Lembrete", que agora monta um link `wa.me` com a mensagem
+ * preenchida em vez de enviar pela API automaticamente). Isto só prova que
+ * a conversa foi aberta no navegador/app do usuário — NUNCA que a
+ * mensagem foi de fato enviada ou recebida pelo cliente, por isso a tela
+ * rotula como "lembrete iniciado", nunca "enviado".
+ */
+export async function markReminderOpened(installmentId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const { data: installment, error: fetchError } = await supabase
+    .from("installments")
+    .select("contract_id, reminder_count")
+    .eq("id", installmentId)
+    .maybeSingle();
+
+  if (fetchError || !installment) {
+    return { ok: false, error: safeError(fetchError, "Parcela não encontrada.") };
+  }
+
+  const { error } = await supabase
+    .from("installments")
+    .update({
+      reminder_sent_at: new Date().toISOString(),
+      reminder_count: (installment.reminder_count ?? 0) + 1,
+    })
+    .eq("id", installmentId);
+
+  if (error) {
+    return { ok: false, error: safeError(error, "Erro ao registrar lembrete.") };
+  }
+
+  revalidatePath(`/contracts/${installment.contract_id}`);
+  return { ok: true };
 }
 
 export async function saveMessageSettings(input: MessageSettingsInput): Promise<ActionResult> {
