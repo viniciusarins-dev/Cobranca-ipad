@@ -16,6 +16,8 @@ export type PhoneStatus = "estoque" | "vendido";
 
 export interface Client {
   id: string;
+  /** Dono do registro (auth.users.id) — isolamento entre usuários via RLS. */
+  owner_id: string;
   name: string;
   phone: string;
   /** Não é mais exibido na tela (Fase 1) — mantido no banco por compatibilidade com dados existentes. */
@@ -35,6 +37,8 @@ export interface Client {
 
 export interface Contract {
   id: string;
+  /** Dono do registro (auth.users.id) — isolamento entre usuários via RLS. */
+  owner_id: string;
   client_id: string;
   type: ContractType;
   description: string | null;
@@ -55,6 +59,8 @@ export interface Contract {
 
 export interface Installment {
   id: string;
+  /** Dono do registro (auth.users.id) — isolamento entre usuários via RLS. */
+  owner_id: string;
   contract_id: string;
   number: number;
   amount: number;
@@ -80,6 +86,8 @@ export interface Installment {
 /** Um pagamento registrado contra uma parcela (histórico completo, item 16). */
 export interface Payment {
   id: string;
+  /** Dono do registro (auth.users.id) — isolamento entre usuários via RLS. */
+  owner_id: string;
   /** null representa a entrada (down payment) de um contrato de venda de iPhone. */
   installment_id: string | null;
   contract_id: string;
@@ -103,6 +111,8 @@ export interface Payment {
  */
 export interface Phone {
   id: string;
+  /** Dono do registro (auth.users.id) — isolamento entre usuários via RLS. */
+  owner_id: string;
   model: string;
   color: string | null;
   /** Saúde da bateria em %, de 0 a 100. */
@@ -124,6 +134,8 @@ export interface Phone {
 /** Saída manual (combustível, celular, manutenção, despesa pessoal, etc). */
 export interface Expense {
   id: string;
+  /** Dono do registro (auth.users.id) — isolamento entre usuários via RLS. */
+  owner_id: string;
   description: string;
   category: string | null;
   amount: number;
@@ -138,6 +150,8 @@ export interface Expense {
 
 export interface MessageSettings {
   id: string;
+  /** Dono do registro (auth.users.id) — cada usuário tem sua própria configuração de WhatsApp. */
+  owner_id: string;
   provider: WhatsAppProviderName;
   base_url: string | null;
   api_key: string | null;
@@ -165,6 +179,8 @@ export interface MessageSettings {
  */
 export interface WeeklyCharge {
   id: string;
+  /** Dono do registro (auth.users.id) — isolamento entre usuários via RLS. */
+  owner_id: string;
   contract_id: string;
   client_id: string;
   status: WeeklyChargeStatus;

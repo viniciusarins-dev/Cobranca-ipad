@@ -27,12 +27,22 @@ export async function sendCollectionReminder(
     return { ok: false, error: "Parcela não encontrada." };
   }
 
-  const contract = installment.contract as { installments_count: number; client: { id: string; name: string; phone: string } };
+  const contract = installment.contract as {
+    owner_id: string;
+    installments_count: number;
+    client: { id: string; name: string; phone: string };
+  };
   const client = contract.client;
 
+  // Cada usuário tem a sua própria configuração ativa de WhatsApp — essencial
+  // aqui porque esta função também roda pelo cron com um cliente de
+  // service-role (que ignora RLS, então sem este filtro explícito pegaria
+  // a configuração "ativa" de QUALQUER usuário, não necessariamente a do
+  // dono real desta parcela).
   const { data: settings, error: settingsError } = await supabase
     .from("message_settings")
     .select("*")
+    .eq("owner_id", contract.owner_id)
     .eq("is_active", true)
     .maybeSingle();
 

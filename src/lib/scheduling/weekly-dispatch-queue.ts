@@ -53,6 +53,12 @@ function emptySummary(reason: string): WeeklyDispatchSummary {
  * banimento) — a Meta Cloud API é oficial e não precisa desse cuidado, então
  * a fila roda bem mais rápido quando esse é o provedor ativo.
  *
+ * Multiusuário: cada usuário tem sua própria configuração de WhatsApp, então
+ * a fila é agrupada por dono (`owner_id`) e processada um usuário de cada
+ * vez, cada um com seu próprio healthcheck/provedor/delay — um usuário sem
+ * WhatsApp configurado (ou com o provedor fora do ar) só tem os disparos
+ * DELE pulados, nunca trava a fila dos demais.
+ *
  * Processa em lote respeitando um orçamento de tempo (`maxDurationMs`),
  * já que o delay do Evolution API pode facilmente ultrapassar o limite de
  * execução de uma function serverless. O que não for processado nesta
@@ -71,35 +77,12 @@ export async function runWeeklyDispatchQueue(
     return emptySummary("Fora da janela de disparo (segunda a sexta, 09h-18h).");
   }
 
-  const { data: settings, error: settingsError } = await supabase
-    .from("message_settings")
-    .select("*")
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (settingsError || !settings) {
-    return emptySummary("Nenhuma configuração de WhatsApp ativa. Configure em Ajustes.");
-  }
-
-  if (settings.provider !== "evolution" && settings.provider !== "meta") {
-    return emptySummary(
-      "O disparo automático semanal está disponível apenas para os provedores Evolution API ou Meta Cloud API.",
-    );
-  }
-
-  const health =
-    settings.provider === "evolution" ? await checkEvolutionConnection(settings) : await checkMetaConnection(settings);
-
-  if (!health.ok) {
-    return emptySummary(health.error ?? "Não foi possível confirmar a conexão com o provedor de WhatsApp.");
-  }
-
   const todayDateString = getBrazilDateString();
   const todayIsoWeekday = getBrazilIsoWeekday();
 
   const { data: dueCharges, error: dueError } = await supabase
     .from("weekly_charges")
-    .select("id")
+    .select("id, owner_id")
     .eq("status", "PENDENTE")
     .eq("dia_semana_disparo", todayIsoWeekday)
     .lte("proximo_disparo", todayDateString)
@@ -110,25 +93,63 @@ export async function runWeeklyDispatchQueue(
   }
 
   const queue = dueCharges ?? [];
+  if (queue.length === 0) {
+    return { ok: true, totalDue: 0, sent: 0, skipped: 0, failed: 0, remaining: 0 };
+  }
+
+  const chargeIdsByOwner = new Map<string, string[]>();
+  for (const charge of queue) {
+    const list = chargeIdsByOwner.get(charge.owner_id) ?? [];
+    list.push(charge.id);
+    chargeIdsByOwner.set(charge.owner_id, list);
+  }
+
   let sent = 0;
   let skipped = 0;
   let failed = 0;
   let processed = 0;
 
-  for (const charge of queue) {
+  ownerLoop: for (const [ownerId, chargeIds] of chargeIdsByOwner) {
     if (!isWithinDispatchWindow()) break; // janela fechou durante o processamento
     if (Date.now() - startedAt > budgetMs) break; // orçamento de tempo da invocação esgotado
 
-    processed += 1;
-    const result = await dispatchWeeklyCharge(supabase, charge.id, settings);
+    const { data: settings } = await supabase
+      .from("message_settings")
+      .select("*")
+      .eq("owner_id", ownerId)
+      .eq("is_active", true)
+      .maybeSingle();
 
-    if (result.ok) sent += 1;
-    else if (result.skippedReason) skipped += 1;
-    else failed += 1;
+    if (!settings || (settings.provider !== "evolution" && settings.provider !== "meta")) {
+      // Esse usuário não tem WhatsApp configurado (ou usa um provedor sem
+      // disparo automático) — pula só os disparos dele, sem travar os outros.
+      skipped += chargeIds.length;
+      continue;
+    }
 
-    const isLast = processed === queue.length;
-    if (!isLast) {
-      await sleep(delayForProvider(settings.provider));
+    const health =
+      settings.provider === "evolution" ? await checkEvolutionConnection(settings) : await checkMetaConnection(settings);
+
+    if (!health.ok) {
+      skipped += chargeIds.length;
+      continue;
+    }
+
+    for (const chargeId of chargeIds) {
+      if (!isWithinDispatchWindow()) break ownerLoop;
+      if (Date.now() - startedAt > budgetMs) break ownerLoop;
+
+      processed += 1;
+      const result = await dispatchWeeklyCharge(supabase, chargeId, settings);
+
+      if (result.ok) sent += 1;
+      else if (result.skippedReason) skipped += 1;
+      else failed += 1;
+
+      const isVeryLast = processed === queue.length;
+      if (!isVeryLast) {
+        await sleep(delayForProvider(settings.provider));
+      }
     }
   }
 

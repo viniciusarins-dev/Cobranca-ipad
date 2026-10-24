@@ -57,11 +57,16 @@ src/
 3. Em **Authentication → Providers**, confirme que "Email" está habilitado (é o padrão).
 4. Em **Authentication → Users → Add user**, crie o usuário administrador (e-mail + senha) que vai
    operar o app. Marque "Auto Confirm User" para não precisar confirmar por e-mail. **Não existe
-   tela de cadastro público no app** — isso é intencional: as policies de RLS liberam acesso total
-   a qualquer usuário autenticado (é uma ferramenta single-tenant, para um único operador), então
-   um cadastro aberto exporia os dados financeiros dos clientes a qualquer pessoa que se
-   registrasse. Para adicionar mais operadores, crie mais usuários da mesma forma; para múltiplos
-   operadores com permissões diferentes, ajuste as policies de RLS antes de produção.
+   tela de cadastro público no app** — isso é intencional: um cadastro aberto exporia o sistema a
+   qualquer pessoa que se registrasse. Para adicionar mais usuários, crie mais contas da mesma
+   forma, em **Authentication → Users**.
+   Desde a migration `0015`, o sistema é **multiusuário com isolamento total**: cada usuário
+   autenticado só enxerga e só edita os próprios clientes, empréstimos, parcelas, pagamentos,
+   despesas, vendas de iPhone e configuração de WhatsApp — nunca os de outro usuário, aplicado
+   pelas próprias policies de RLS no banco (não só na tela). Cada usuário precisa configurar o
+   próprio WhatsApp em **Configurações** depois do primeiro login. `backup_runs`, `message_logs` e
+   `audit_logs` continuam compartilhados entre todos os usuários — são logs internos/operacionais,
+   nunca exibidos em nenhuma tela do app.
 5. Copie `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY`
    em Project Settings → API.
 

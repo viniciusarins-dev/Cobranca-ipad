@@ -54,6 +54,24 @@ async function getCurrentUserEmail(supabase: Awaited<ReturnType<typeof createCli
 }
 
 /**
+ * Id do usuário autenticado (auth.users.id) — preenche `owner_id` em todo
+ * registro novo (cliente, contrato, parcela, pagamento, despesa, venda de
+ * iPhone, configuração de WhatsApp, disparo semanal), a coluna que o RLS
+ * usa para isolar os dados de cada usuário dos demais. Mesma justificativa
+ * de `getCurrentUserEmail` para usar `getSession()` em vez de `getUser()` —
+ * nunca é usada para autorizar nada, só para rotular de quem é o registro;
+ * quem efetivamente barra o acesso é sempre o RLS do Postgres (então mesmo
+ * que esta função retornasse errado, não haveria vazamento de dado — o
+ * INSERT seria rejeitado pelo `with check (owner_id = auth.uid())`).
+ */
+async function getCurrentUserId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.user?.id ?? null;
+}
+
+/**
  * Nunca repassa a mensagem crua de um erro do Postgres/Supabase para o
  * navegador — pode revelar nomes de tabela, coluna, constraint ou outro
  * detalhe interno do schema. O usuário sempre recebe uma mensagem genérica
@@ -89,9 +107,17 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   const data = parsed.data;
   const supabase = await createClient();
 
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
+
   let clientId = data.clientId;
 
   if (!clientId) {
+    // A busca por telefone já é implicitamente restrita ao próprio usuário
+    // pelo RLS — nunca reaproveita (nem enxerga) um cliente de outro dono
+    // com o mesmo telefone.
     const phoneDigits = onlyDigits(data.clientPhone);
     const { data: existing } = await supabase
       .from("clients")
@@ -105,6 +131,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
       const { data: newClient, error: clientError } = await supabase
         .from("clients")
         .insert({
+          owner_id: ownerId,
           name: data.clientName,
           phone: phoneDigits,
           email: data.clientEmail || null,
@@ -131,6 +158,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
     .insert({
+      owner_id: ownerId,
       client_id: clientId,
       type: data.type,
       description: data.description || null,
@@ -160,6 +188,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     periodicity: data.periodicity,
     firstDueDate: data.firstDueDate,
   }).map((installment) => ({
+    owner_id: ownerId,
     contract_id: contract.id,
     number: installment.number,
     amount: installment.amount,
@@ -178,6 +207,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     supabase.from("installments").insert(installments),
     hasDownPayment && data.downPaymentAmount > 0
       ? supabase.from("payments").insert({
+          owner_id: ownerId,
           installment_id: null,
           contract_id: contract.id,
           client_id: clientId,
@@ -194,6 +224,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     // nunca dependente de quanto o cliente já pagou.
     data.type === "venda_iphone"
       ? supabase.from("phones").insert({
+          owner_id: ownerId,
           model: data.phoneModel,
           color: data.phoneColor || null,
           battery_percent: data.phoneBatteryPercent ?? null,
@@ -207,6 +238,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
       : Promise.resolve({ error: null }),
     data.periodicity === "semanal"
       ? supabase.from("weekly_charges").insert({
+          owner_id: ownerId,
           contract_id: contract.id,
           client_id: clientId,
           dia_semana_disparo: toBusinessWeekday(data.firstDueDate),
@@ -492,9 +524,14 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     return { ok: false, error: "Não há saldo em aberto nesta parcela." };
   }
 
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
   const createdByEmail = await getCurrentUserEmail(supabase);
 
   const { error: paymentError } = await supabase.from("payments").insert({
+    owner_id: ownerId,
     installment_id: installment.id,
     contract_id: installment.contract_id,
     client_id: contract.client_id,
@@ -578,9 +615,14 @@ export async function registerExpense(input: ExpenseInput): Promise<ActionResult
   }
   const data = parsed.data;
   const supabase = await createClient();
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
   const createdByEmail = await getCurrentUserEmail(supabase);
 
   const { error } = await supabase.from("expenses").insert({
+    owner_id: ownerId,
     description: data.description,
     category: data.category || null,
     amount: roundCents(data.amount),
@@ -618,7 +660,9 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
 
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
-    .select("id, type, principal_amount, installments_count, periodicity, first_due_date, has_down_payment, down_payment_amount")
+    .select(
+      "id, owner_id, type, principal_amount, installments_count, periodicity, first_due_date, has_down_payment, down_payment_amount",
+    )
     .eq("id", contractId)
     .single();
 
@@ -710,6 +754,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
       periodicity: contract.periodicity,
       firstDueDate: contract.first_due_date,
     }).map((installment) => ({
+      owner_id: contract.owner_id,
       contract_id: contractId,
       number: installment.number,
       amount: installment.amount,
@@ -988,11 +1033,17 @@ export async function saveMessageSettings(input: MessageSettingsInput): Promise<
   }
   const data = parsed.data;
   const supabase = await createClient();
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
 
   // O formulário nunca reenvia um segredo já salvo (settings-form.tsx só
   // mostra um placeholder) — "em branco" aqui sempre significa "manter o
   // valor atual", nunca "apagar". Só é sobrescrito se o usuário digitar um
-  // valor novo.
+  // valor novo. O RLS já restringe as duas operações abaixo à própria
+  // configuração do usuário autenticado — nunca enxerga nem desativa a de
+  // outro usuário.
   const { data: current } = await supabase
     .from("message_settings")
     .select("api_key, auth_token")
@@ -1002,6 +1053,7 @@ export async function saveMessageSettings(input: MessageSettingsInput): Promise<
   await supabase.from("message_settings").update({ is_active: false }).eq("is_active", true);
 
   const { error } = await supabase.from("message_settings").insert({
+    owner_id: ownerId,
     provider: data.provider,
     base_url: data.baseUrl || null,
     api_key: data.apiKey || current?.api_key || null,
