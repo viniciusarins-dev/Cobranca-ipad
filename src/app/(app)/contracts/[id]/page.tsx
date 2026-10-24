@@ -184,7 +184,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       {linkedPhone && (
         <SpotlightCard>
           <CardHeader>
-            <CardTitle className="text-base">Detalhes do iPhone vendido</CardTitle>
+            <CardTitle className="text-base">Detalhes do produto vendido</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
@@ -203,7 +203,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
                 </dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">Custo do iPhone</dt>
+                <dt className="text-muted-foreground">Custo do produto</dt>
                 <dd className="font-medium">{formatCurrency(linkedPhone.cost_amount)}</dd>
               </div>
               {phoneProfit !== null && (

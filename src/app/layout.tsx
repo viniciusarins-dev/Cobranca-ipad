@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "RECEBE — Gestão de Empréstimos e Vendas",
-  description: "Gerencie clientes, empréstimos e vendas de iPhone parceladas com cobrança automática via WhatsApp.",
+  description: "Gerencie clientes, empréstimos e vendas de produtos parceladas com cobrança automática via WhatsApp.",
   manifest: "/manifest.json",
   icons: {
     icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],

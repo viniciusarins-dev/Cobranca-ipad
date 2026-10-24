@@ -29,7 +29,7 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
   return (
     <div className="flex flex-col gap-4">
       <Input
-        placeholder="Buscar por cliente, modelo ou cor..."
+        placeholder="Buscar por cliente, produto ou cor..."
         className="sm:w-72"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -40,7 +40,7 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
           <TableHeader>
             <TableRow>
               <TableHead>Cliente</TableHead>
-              <TableHead>iPhone</TableHead>
+              <TableHead>Produto</TableHead>
               <TableHead>Custo</TableHead>
               <TableHead>Venda</TableHead>
               <TableHead>Lucro</TableHead>
@@ -54,7 +54,7 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
             {filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
-                  Nenhuma venda de iPhone encontrada.
+                  Nenhuma venda de produto encontrada.
                 </TableCell>
               </TableRow>
             )}

@@ -33,7 +33,7 @@ export const transactionSchema = z
     phoneCostAmount: z.number().min(0, "O custo não pode ser negativo.").optional(),
   })
   .refine((data) => data.type === "venda_iphone" || !data.hasDownPayment, {
-    message: "Entrada só se aplica a venda de iPhone.",
+    message: "Entrada só se aplica a venda de produto.",
     path: ["hasDownPayment"],
   })
   .refine((data) => !data.hasDownPayment || data.downPaymentAmount > 0, {
@@ -45,11 +45,11 @@ export const transactionSchema = z
     path: ["downPaymentAmount"],
   })
   .refine((data) => data.type !== "venda_iphone" || (data.phoneModel && data.phoneModel.length > 0), {
-    message: "Informe o modelo do iPhone.",
+    message: "Informe o nome do produto.",
     path: ["phoneModel"],
   })
   .refine((data) => data.type !== "venda_iphone" || data.phoneCostAmount !== undefined, {
-    message: "Informe o custo do iPhone.",
+    message: "Informe o custo do produto.",
     path: ["phoneCostAmount"],
   });
 
@@ -97,10 +97,10 @@ export type ExpenseInput = z.infer<typeof expenseSchema>;
  * nenhum pagamento registrado — ver `updateIphoneSale`.
  */
 export const iphoneSaleUpdateSchema = z.object({
-  model: z.string().trim().min(1, "Informe o modelo do iPhone."),
+  model: z.string().trim().min(1, "Informe o nome do produto."),
   color: z.string().trim().optional().or(z.literal("")),
   batteryPercent: z.number().min(0, "Mínimo 0%.").max(100, "Máximo 100%.").optional(),
-  costAmount: z.number({ error: "Informe o custo do iPhone." }).min(0, "O custo não pode ser negativo."),
+  costAmount: z.number({ error: "Informe o custo do produto." }).min(0, "O custo não pode ser negativo."),
   saleAmount: z.number({ error: "Informe o valor da venda." }).positive("O valor da venda deve ser maior que zero."),
 });
 

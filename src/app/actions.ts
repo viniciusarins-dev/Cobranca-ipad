@@ -255,7 +255,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     return { ok: false, error: safeError(downPaymentResult.error, "Erro ao registrar a entrada.") };
   }
   if (phoneResult.error) {
-    return { ok: false, error: safeError(phoneResult.error, "Erro ao cadastrar o iPhone.") };
+    return { ok: false, error: safeError(phoneResult.error, "Erro ao cadastrar o produto.") };
   }
   if (weeklyChargeResult.error) {
     return { ok: false, error: safeError(weeklyChargeResult.error, "Erro ao agendar cobrança semanal.") };
@@ -386,7 +386,7 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
   const { error: phoneDeleteError } = await supabase.from("phones").delete().eq("contract_id", contractId);
 
   if (phoneDeleteError) {
-    return { ok: false, error: safeError(phoneDeleteError, "Erro ao excluir iPhone vinculado.") };
+    return { ok: false, error: safeError(phoneDeleteError, "Erro ao excluir produto vinculado.") };
   }
 
   const { error: deleteError } = await supabase.from("contracts").delete().eq("id", contractId);
@@ -670,7 +670,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
     return { ok: false, error: safeError(contractError, "Venda não encontrada.") };
   }
   if (contract.type !== "venda_iphone") {
-    return { ok: false, error: "Esta operação não é uma venda de iPhone." };
+    return { ok: false, error: "Esta operação não é uma venda de produto." };
   }
 
   const { data: phone, error: phoneError } = await supabase
@@ -718,7 +718,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
     .eq("id", phone.id);
 
   if (phoneUpdateError) {
-    return { ok: false, error: safeError(phoneUpdateError, "Erro ao atualizar dados do iPhone.") };
+    return { ok: false, error: safeError(phoneUpdateError, "Erro ao atualizar dados do produto.") };
   }
 
   if (saleValueChanged) {

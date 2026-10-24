@@ -70,7 +70,7 @@ export default async function DashboardPage() {
           <ShinyText className="text-xs font-semibold uppercase tracking-widest">Painel · RECEBE</ShinyText>
           <GradientHeading className="text-3xl sm:text-4xl">Visão Geral</GradientHeading>
           <p className="mt-1 text-sm text-muted-foreground">
-            O resumo completo do negócio — empréstimos, juros, caixa e loja de iPhones.
+            O resumo completo do negócio — empréstimos, juros, caixa e vendas de produtos.
           </p>
         </div>
         <Link

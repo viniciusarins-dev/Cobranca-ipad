@@ -239,7 +239,7 @@ export interface ContractWithInstallments extends ContractWithClient {
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
   emprestimo: "Empréstimo",
-  venda_iphone: "Venda de iPhone",
+  venda_iphone: "Venda de Produto",
 };
 
 export const PERIODICITY_LABELS: Record<Periodicity, string> = {

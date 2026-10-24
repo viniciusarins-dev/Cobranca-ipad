@@ -161,7 +161,7 @@ export function NewTransactionDialog() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="emprestimo">Empréstimo</SelectItem>
-                      <SelectItem value="venda_iphone">Venda de iPhone</SelectItem>
+                      <SelectItem value="venda_iphone">Venda de Produto</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -169,7 +169,7 @@ export function NewTransactionDialog() {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="description">Descrição (opcional)</Label>
-              <Input id="description" placeholder="Ex: iPhone 13 Pro 256GB" {...register("description")} />
+              <Input id="description" placeholder="Ex: iPhone 13 Pro, Sofá 3 lugares" {...register("description")} />
             </div>
           </div>
 
@@ -234,8 +234,8 @@ export function NewTransactionDialog() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="phoneModel">Modelo do iPhone</Label>
-                  <Input id="phoneModel" placeholder="Ex: iPhone 13 Pro 256GB" {...register("phoneModel")} />
+                  <Label htmlFor="phoneModel">Nome do produto</Label>
+                  <Input id="phoneModel" placeholder="Ex: iPhone 13 Pro, Sofá 3 lugares" {...register("phoneModel")} />
                   {errors.phoneModel && <p className="text-xs text-destructive">{errors.phoneModel.message}</p>}
                 </div>
                 <div className="grid gap-1.5">
@@ -260,7 +260,7 @@ export function NewTransactionDialog() {
                   )}
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="phoneCostAmount">Custo do iPhone (R$)</Label>
+                  <Label htmlFor="phoneCostAmount">Custo do produto (R$)</Label>
                   <Input
                     id="phoneCostAmount"
                     type="number"
@@ -341,7 +341,7 @@ export function NewTransactionDialog() {
               </p>
               {isIphoneSale && phoneCostAmount > 0 && (
                 <p className="font-medium">
-                  Custo do iPhone: {formatCurrency(phoneCostAmount)} ·{" "}
+                  Custo do produto: {formatCurrency(phoneCostAmount)} ·{" "}
                   <span className={iphoneProfit >= 0 ? "text-success" : "text-destructive"}>
                     {iphoneProfit >= 0 ? "Lucro" : "Prejuízo"}: {formatCurrency(Math.abs(iphoneProfit))}
                   </span>

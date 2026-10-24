@@ -25,7 +25,7 @@ export default async function ClientesPage() {
           <ShinyText className="text-xs font-semibold uppercase tracking-widest">Painel · RECEBE</ShinyText>
           <GradientHeading className="text-3xl sm:text-4xl">Clientes</GradientHeading>
           <p className="mt-1 text-sm text-muted-foreground">
-            Empréstimos e vendas de iPhone parceladas — visão geral e status de cobrança.
+            Empréstimos e vendas de produtos parceladas — visão geral e status de cobrança.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

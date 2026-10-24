@@ -74,7 +74,7 @@ export function IphoneSaleEditDialog({ sale }: { sale: IphoneSale }) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Editar venda de iPhone</DialogTitle>
+          <DialogTitle>Editar venda</DialogTitle>
           <DialogDescription>
             Modelo, cor, bateria e custo sempre podem ser corrigidos.
             {hasPayments
@@ -85,8 +85,8 @@ export function IphoneSaleEditDialog({ sale }: { sale: IphoneSale }) {
 
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="grid gap-1.5">
-            <Label htmlFor="model">Modelo</Label>
-            <Input id="model" placeholder="Ex: iPhone 16 Pro" {...register("model")} />
+            <Label htmlFor="model">Produto</Label>
+            <Input id="model" placeholder="Ex: iPhone 16 Pro, Sofá 3 lugares" {...register("model")} />
             {errors.model && <p className="text-xs text-destructive">{errors.model.message}</p>}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -109,7 +109,7 @@ export function IphoneSaleEditDialog({ sale }: { sale: IphoneSale }) {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="costAmount">Custo do iPhone (R$)</Label>
+              <Label htmlFor="costAmount">Custo do produto (R$)</Label>
               <Input
                 id="costAmount"
                 type="number"

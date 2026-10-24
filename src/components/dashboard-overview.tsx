@@ -10,9 +10,9 @@ import {
   CoinsIcon,
   HandCoinsIcon,
   PackageCheckIcon,
+  PackageIcon,
   PiggyBankIcon,
   ReceiptIcon,
-  SmartphoneIcon,
   TrendingUpIcon,
   WalletIcon,
 } from "lucide-react";
@@ -168,7 +168,7 @@ export function DashboardOverview({
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Vendas de iPhone (operações individuais, separado dos empréstimos)
+          Vendas de Produtos (operações individuais, separado dos empréstimos)
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <StatTile label="Vendas" value={metrics.phones.count} icon={BoxIcon} accent="cyan" />
@@ -176,7 +176,7 @@ export function DashboardOverview({
             label="Total investido"
             value={metrics.phones.totalCost}
             format="currency"
-            icon={SmartphoneIcon}
+            icon={PackageIcon}
             accent="primary"
           />
           <StatTile

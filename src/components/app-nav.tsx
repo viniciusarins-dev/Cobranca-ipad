@@ -8,9 +8,9 @@ import {
   LayoutDashboardIcon,
   LogOutIcon,
   MenuIcon,
+  PackageIcon,
   SettingsIcon,
   ShieldCheckIcon,
-  SmartphoneIcon,
   UsersIcon,
   XIcon,
 } from "lucide-react";
@@ -26,7 +26,7 @@ const FINANCEIRO_ITEMS: NavItem[] = [
   { href: "/debtors", label: "Devedores do Dia", icon: CalendarClockIcon, exact: false },
 ];
 
-const LOJA_ITEMS: NavItem[] = [{ href: "/phones", label: "Vendas de iPhone", icon: SmartphoneIcon, exact: false }];
+const LOJA_ITEMS: NavItem[] = [{ href: "/phones", label: "Vendas de Produtos", icon: PackageIcon, exact: false }];
 
 const SISTEMA_ITEMS: NavItem[] = [
   { href: "/backups", label: "Backups", icon: ShieldCheckIcon, exact: false },
