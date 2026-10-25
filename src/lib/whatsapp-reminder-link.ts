@@ -1,6 +1,5 @@
 import { calculateLateInterest, daysLate, roundCents } from "@/lib/financial-rules";
 import { formatCurrency, formatDate, toWhatsAppDigits } from "@/lib/utils";
-import { pickGreeting } from "@/lib/whatsapp/spintax";
 import type { Client, Contract, Installment } from "@/lib/types";
 
 export type ReminderLinkResult = { ok: true; url: string } | { ok: false; error: string };
@@ -23,13 +22,12 @@ type ReminderInstallment = Pick<
  * (`calculateLateInterest`) — nunca uma fórmula nova — e nunca cobra de
  * novo o que já foi pago: o "valor atualizado da parcela" final é sempre
  * o saldo realmente em aberto agora (principal pendente + juros de
- * atraso pendente, se houver). Mensagem enxuta e casual a pedido de um
- * devedor real: achou versões anteriores formais demais ("tudo bem?",
- * "obrigado") e com informação demais — só mostra valor da parcela,
- * dias de atraso, juros do dia e valor atualizado (sem detalhar juros
- * do contrato embutidos na parcela), com saudação por horário (mesma
- * função do disparo automático, `pickGreeting`) em vez de nome + "tudo
- * bem?".
+ * atraso pendente, se houver). Mensagem enxuta e direta a pedido de um
+ * devedor real: achou toda formalidade desnecessária — sem saudação
+ * (nem "bom dia/boa tarde"), sem "tudo bem?"/"obrigado", e "favor" em
+ * vez de "por favor" — só mostra valor da parcela, dias de atraso,
+ * juros do dia e valor atualizado (sem detalhar juros do contrato
+ * embutidos na parcela).
  */
 export function buildWhatsAppReminderLink(
   client: Pick<Client, "phone">,
@@ -55,11 +53,10 @@ export function buildWhatsAppReminderLink(
   const isOverdue = lateInterestOwed > 0;
   const totalDueNow = roundCents(outstandingPrincipal + lateInterestOwed);
 
-  const greeting = pickGreeting();
   const lines: string[] = [
     contract.installments_count > 1
-      ? `${greeting}, passando pra lembrar da parcela ${installment.number}/${contract.installments_count}.`
-      : `${greeting}, passando pra lembrar do vencimento do seu pagamento.`,
+      ? `Passando pra lembrar da parcela ${installment.number}/${contract.installments_count}.`
+      : "Passando pra lembrar do vencimento do seu pagamento.",
     "",
   ];
 
@@ -75,7 +72,7 @@ export function buildWhatsAppReminderLink(
 
   lines.push(`Data de vencimento: ${formatDate(installment.due_date)}`);
   lines.push(`Valor atualizado da parcela: ${formatCurrency(totalDueNow)}`);
-  lines.push("", "Por favor, envie o comprovante de pagamento.");
+  lines.push("", "Favor enviar o comprovante de pagamento.");
 
   const url = `https://wa.me/${waDigits}?text=${encodeURIComponent(lines.join("\n"))}`;
   return { ok: true, url };
