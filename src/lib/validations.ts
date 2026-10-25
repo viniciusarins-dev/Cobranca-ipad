@@ -17,6 +17,17 @@ export const transactionSchema = z
       .max(60, "Máximo de 60 parcelas."),
     periodicity: z.enum(["semanal", "quinzenal", "mensal"]),
     firstDueDate: z.string().min(10, "Informe a data do primeiro vencimento."),
+    /** Só relevante/obrigatório para empréstimo — venda_iphone nunca tem juros automático. */
+    interestRatePercent: z
+      .number({ error: "Informe a taxa de juros." })
+      .min(0, "A taxa não pode ser negativa.")
+      .max(1000, "Taxa muito alta — confira o valor digitado.")
+      .optional(),
+    /**
+     * Data em que o dinheiro emprestado já saiu da conta (vazio = ainda vai
+     * sair). Só relevante para empréstimo.
+     */
+    disbursedAt: z.string().trim().optional().or(z.literal("")),
     /** Só relevante para venda_iphone. */
     hasDownPayment: z.boolean(),
     downPaymentAmount: z.number().min(0, "A entrada não pode ser negativa."),
@@ -43,6 +54,10 @@ export const transactionSchema = z
   .refine((data) => !data.hasDownPayment || data.downPaymentAmount < data.totalAmount, {
     message: "A entrada deve ser menor que o valor total do produto.",
     path: ["downPaymentAmount"],
+  })
+  .refine((data) => data.type !== "emprestimo" || data.interestRatePercent !== undefined, {
+    message: "Informe a taxa de juros.",
+    path: ["interestRatePercent"],
   })
   .refine((data) => data.type !== "venda_iphone" || (data.phoneModel && data.phoneModel.length > 0), {
     message: "Informe o nome do produto.",
@@ -105,6 +120,17 @@ export const iphoneSaleUpdateSchema = z.object({
 });
 
 export type IphoneSaleUpdateInput = z.infer<typeof iphoneSaleUpdateSchema>;
+
+/**
+ * Edita a data em que o dinheiro de um empréstimo já cadastrado saiu de
+ * fato da conta (item do fluxo de caixa pedido pelo cliente). Vazio/undefined
+ * marca como "ainda vai sair" (volta a não debitar o saldo geral).
+ */
+export const contractDisbursementSchema = z.object({
+  disbursedAt: z.string().trim().optional().or(z.literal("")),
+});
+
+export type ContractDisbursementInput = z.infer<typeof contractDisbursementSchema>;
 
 export const messageSettingsSchema = z.object({
   provider: z.enum(["evolution", "zapi", "twilio", "wppconnect", "meta"]),

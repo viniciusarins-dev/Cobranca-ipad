@@ -24,6 +24,7 @@ import {
   iphoneSaleUpdateSchema,
   clientAddressSchema,
   clientInfoSchema,
+  contractDisbursementSchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
@@ -31,6 +32,7 @@ import {
   type IphoneSaleUpdateInput,
   type ClientAddressInput,
   type ClientInfoInput,
+  type ContractDisbursementInput,
 } from "@/lib/validations";
 import type { ContractStatus, ContractType, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
 import { onlyDigits } from "@/lib/utils";
@@ -147,13 +149,22 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   }
 
   const hasDownPayment = data.type === "venda_iphone" && data.hasDownPayment;
+  // Taxa de juros por parcela só existe para empréstimo (garantido pelo
+  // refine do schema) — venda_iphone sempre ignora este valor dentro de
+  // calculateFinancedAmount, então 0 aqui é só um placeholder inofensivo.
+  const interestRatePercent = data.type === "emprestimo" ? data.interestRatePercent! : 0;
   const { totalFinanced } = calculateFinancedAmount({
     contractType: data.type,
     principalAmount: data.totalAmount,
     installmentsCount: data.installmentsCount,
     hasDownPayment,
     downPaymentAmount: data.downPaymentAmount,
+    interestRatePercentPerInstallment: interestRatePercent,
   });
+  // "Ainda vai sair" (campo em branco) fica como null — não debita o saldo
+  // geral de caixa até o usuário confirmar a data real da saída, editando
+  // depois na tela do contrato.
+  const disbursedAt = data.type === "emprestimo" && data.disbursedAt ? data.disbursedAt : null;
 
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
@@ -166,14 +177,16 @@ export async function createTransaction(input: TransactionInput): Promise<Action
       has_down_payment: hasDownPayment,
       down_payment_amount: hasDownPayment ? data.downPaymentAmount : 0,
       // total_amount já sai com os juros aplicados quando for empréstimo
-      // (7,5%) ou exatamente o valor digitado quando for venda de iPhone
-      // (sem juros automático) — é isto que é dividido em parcelas. O juros
-      // nunca é recalculado por parcela.
+      // (taxa manual escolhida no formulário) ou exatamente o valor digitado
+      // quando for venda de iPhone (sem juros automático) — é isto que é
+      // dividido em parcelas. O juros nunca é recalculado por parcela.
       total_amount: totalFinanced,
       installments_count: data.installmentsCount,
       periodicity: data.periodicity,
       first_due_date: data.firstDueDate,
       status: "ativo",
+      interest_rate_percent: interestRatePercent,
+      disbursed_at: disbursedAt,
     })
     .select("id")
     .single();
@@ -728,6 +741,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
       installmentsCount: contract.installments_count,
       hasDownPayment: contract.has_down_payment,
       downPaymentAmount: contract.down_payment_amount,
+      interestRatePercentPerInstallment: 0,
     });
 
     const { error: contractUpdateError } = await supabase
@@ -780,6 +794,57 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
       costAmount: { before: phone.cost_amount, after: roundCents(data.costAmount) },
       saleAmount: { before: contract.principal_amount, after: newSaleAmount },
     },
+  });
+  return { ok: true, contractId };
+}
+
+/**
+ * Edita a data em que o dinheiro de um empréstimo já cadastrado saiu de
+ * fato da conta (item do fluxo de caixa pedido pelo cliente) — nunca
+ * inferida automaticamente, só o que o usuário digitar aqui. Campo vazio
+ * volta o contrato para "ainda vai sair" (deixa de debitar o saldo geral).
+ * Só se aplica a empréstimo — venda de iPhone tem o custo rastreado à parte
+ * em `phones`.
+ */
+export async function updateContractDisbursement(
+  contractId: string,
+  input: ContractDisbursementInput,
+): Promise<ActionResult> {
+  const parsed = contractDisbursementSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  const { data: contract, error: contractError } = await supabase
+    .from("contracts")
+    .select("id, type")
+    .eq("id", contractId)
+    .single();
+
+  if (contractError || !contract) {
+    return { ok: false, error: safeError(contractError, "Empréstimo não encontrado.") };
+  }
+  if (contract.type !== "emprestimo") {
+    return { ok: false, error: "Esta operação não é um empréstimo." };
+  }
+
+  const disbursedAt = data.disbursedAt || null;
+
+  const { error } = await supabase.from("contracts").update({ disbursed_at: disbursedAt }).eq("id", contractId);
+  if (error) {
+    return { ok: false, error: safeError(error, "Erro ao atualizar a data de saída do dinheiro.") };
+  }
+
+  revalidatePath(`/contracts/${contractId}`);
+  revalidatePath("/");
+  await logAudit(supabase, {
+    actorEmail: await getCurrentUserEmail(supabase),
+    action: "contract_disbursement_updated",
+    resourceType: "contract",
+    resourceId: contractId,
+    metadata: { disbursedAt },
   });
   return { ok: true, contractId };
 }

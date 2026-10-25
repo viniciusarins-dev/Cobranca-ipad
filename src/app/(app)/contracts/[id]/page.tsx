@@ -4,6 +4,7 @@ import { ArrowLeftIcon, MessageCircleIcon } from "lucide-react";
 
 import { ClientDetailsCard } from "@/components/client-details-card";
 import { DeleteContractDialog } from "@/components/delete-contract-dialog";
+import { DisbursementDialog } from "@/components/disbursement-dialog";
 import { EditClientInfoDialog } from "@/components/edit-client-info-dialog";
 import { InstallmentsGrid } from "@/components/installments-grid";
 import { PaymentHistory } from "@/components/payment-history";
@@ -43,6 +44,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     installmentsCount: contract.installments_count,
     hasDownPayment: contract.has_down_payment,
     downPaymentAmount: contract.down_payment_amount,
+    interestRatePercentPerInstallment: contract.interest_rate_percent,
   });
 
   // Valor da parcela lido da parcela real já persistida (não recalculado do
@@ -144,8 +146,8 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             {contract.type === "emprestimo" ? (
               <>
                 <div>
-                  <dt className="text-muted-foreground">Juros por semana</dt>
-                  <dd className="font-medium">7,5%</dd>
+                  <dt className="text-muted-foreground">Juros por parcela</dt>
+                  <dd className="font-medium">{contract.interest_rate_percent}%</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Juros acumulado</dt>
@@ -175,6 +177,19 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               <dt className="text-muted-foreground">1º vencimento</dt>
               <dd className="font-medium">{formatDate(contract.first_due_date)}</dd>
             </div>
+            {contract.type === "emprestimo" && (
+              <div className="col-span-2 sm:col-span-4">
+                <dt className="text-muted-foreground">Dinheiro emprestado</dt>
+                <dd className="mt-1 flex flex-wrap items-center gap-2">
+                  {contract.disbursed_at ? (
+                    <span className="font-medium text-success">Já saiu da conta em {formatDate(contract.disbursed_at)}</span>
+                  ) : (
+                    <span className="font-medium text-warning">Ainda vai sair — não debitado do saldo geral</span>
+                  )}
+                  <DisbursementDialog contractId={contract.id} disbursedAt={contract.disbursed_at} />
+                </dd>
+              </div>
+            )}
           </dl>
         </CardContent>
       </SpotlightCard>

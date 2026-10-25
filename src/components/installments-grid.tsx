@@ -13,7 +13,12 @@ import { markReminderOpened } from "@/app/actions";
 
 type ReminderContract = Pick<
   Contract,
-  "type" | "principal_amount" | "has_down_payment" | "down_payment_amount" | "installments_count"
+  | "type"
+  | "principal_amount"
+  | "has_down_payment"
+  | "down_payment_amount"
+  | "installments_count"
+  | "interest_rate_percent"
 >;
 type ReminderClient = Pick<Client, "name" | "phone">;
 

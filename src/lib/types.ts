@@ -53,6 +53,20 @@ export interface Contract {
   periodicity: Periodicity;
   first_due_date: string;
   status: ContractStatus;
+  /**
+   * Taxa de juros por parcela (%), escolhida manualmente pelo usuário no
+   * cadastro (sugestão inicial de 7,5%, mas livre para alterar). Ignorada
+   * para venda_iphone — venda nunca tem juros automático.
+   */
+  interest_rate_percent: number;
+  /**
+   * Data em que o dinheiro emprestado realmente saiu da conta — editada
+   * manualmente pelo usuário. null = "ainda vai sair" (não debita o saldo
+   * geral de caixa ainda); preenchida = debita o `principal_amount` do
+   * saldo geral nessa data. Só relevante para type = "emprestimo" — venda
+   * de iPhone tem o custo de aquisição rastreado à parte, em `Phone`.
+   */
+  disbursed_at: string | null;
   created_at: string;
   updated_at: string;
 }

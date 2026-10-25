@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { getBusinessToday } from "@/lib/date-utils";
 import { splitAmount } from "@/lib/installments";
-import { calculateFinancedAmount, roundCents } from "@/lib/financial-rules";
+import { calculateFinancedAmount, roundCents, DEFAULT_LOAN_INTEREST_RATE_PERCENT } from "@/lib/financial-rules";
 import { formatCurrency } from "@/lib/utils";
 import { PAYMENT_METHOD_LABELS } from "@/lib/types";
 import { transactionSchema, type TransactionInput } from "@/lib/validations";
@@ -40,6 +40,7 @@ export function NewTransactionDialog() {
     control,
     handleSubmit,
     watch,
+    getValues,
     reset,
     setValue,
     formState: { errors, isSubmitting },
@@ -50,6 +51,8 @@ export function NewTransactionDialog() {
       periodicity: "mensal",
       installmentsCount: 1,
       firstDueDate: today(),
+      interestRatePercent: DEFAULT_LOAN_INTEREST_RATE_PERCENT,
+      disbursedAt: "",
       hasDownPayment: false,
       downPaymentAmount: 0,
       downPaymentMethod: "dinheiro",
@@ -61,11 +64,13 @@ export function NewTransactionDialog() {
 
   const type = watch("type");
   const isIphoneSale = type === "venda_iphone";
+  const isLoan = type === "emprestimo";
   const hasDownPayment = isIphoneSale && Boolean(watch("hasDownPayment"));
   const totalAmount = Number(watch("totalAmount")) || 0;
   const downPaymentAmount = hasDownPayment ? Number(watch("downPaymentAmount")) || 0 : 0;
   const installmentsCount = Number(watch("installmentsCount")) || 1;
   const phoneCostAmount = isIphoneSale ? Number(watch("phoneCostAmount")) || 0 : 0;
+  const interestRatePercent = isLoan ? Number(watch("interestRatePercent")) || 0 : 0;
 
   const { totalFinanced, markupAmount, ratePercent } =
     totalAmount > 0
@@ -75,6 +80,7 @@ export function NewTransactionDialog() {
           installmentsCount,
           hasDownPayment,
           downPaymentAmount,
+          interestRatePercentPerInstallment: interestRatePercent,
         })
       : { totalFinanced: 0, markupAmount: 0, ratePercent: 0 };
 
@@ -96,6 +102,18 @@ export function NewTransactionDialog() {
       setValue("phoneCostAmount", 0);
     }
   }, [isIphoneSale, setValue]);
+
+  // Taxa de juros e data de saída só existem para empréstimo — ao trocar
+  // para venda de produto, zera para não deixar um valor "fantasma" que
+  // reprovaria a validação (venda nunca tem juros automático).
+  useEffect(() => {
+    if (!isLoan) {
+      setValue("interestRatePercent", undefined);
+      setValue("disbursedAt", "");
+    } else if (getValues("interestRatePercent") === undefined) {
+      setValue("interestRatePercent", DEFAULT_LOAN_INTEREST_RATE_PERCENT);
+    }
+  }, [isLoan, setValue, getValues]);
 
   const onSubmit = handleSubmit(async (data) => {
     const result = await createTransaction(data);
@@ -323,13 +341,42 @@ export function NewTransactionDialog() {
             {errors.firstDueDate && <p className="text-xs text-destructive">{errors.firstDueDate.message}</p>}
           </div>
 
+          {isLoan && (
+            <div className="grid gap-4 rounded-md border p-3 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="interestRatePercent">Taxa de juros por parcela (%)</Label>
+                <Input
+                  id="interestRatePercent"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="7,5"
+                  {...register("interestRatePercent", { valueAsNumber: true })}
+                />
+                {errors.interestRatePercent && (
+                  <p className="text-xs text-destructive">{errors.interestRatePercent.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Sugestão: 7,5%. Multiplicado pela quantidade de parcelas (ex.: 4 parcelas = {roundCents(interestRatePercent * installmentsCount)}%).
+                </p>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="disbursedAt">Dinheiro já saiu da conta? (opcional)</Label>
+                <Input id="disbursedAt" type="date" max={today()} {...register("disbursedAt")} />
+                <p className="text-xs text-muted-foreground">
+                  Deixe em branco se o dinheiro ainda vai saír — só debita o saldo geral de caixa depois de confirmado.
+                </p>
+              </div>
+            </div>
+          )}
+
           {previewAmounts.length > 0 && (
             <div className="grid gap-1 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
               <p>
                 {type === "venda_iphone" ? "Valor do produto" : "Valor emprestado"}: {formatCurrency(totalAmount)}
                 {hasDownPayment && downPaymentAmount > 0 ? ` · Entrada: ${formatCurrency(downPaymentAmount)}` : ""}
                 {ratePercent > 0
-                  ? ` · Juros 7,5%/semana × ${installmentsCount} = ${ratePercent}% (${formatCurrency(markupAmount)})`
+                  ? ` · Juros ${interestRatePercent}%/parcela × ${installmentsCount} = ${ratePercent}% (${formatCurrency(markupAmount)})`
                   : ""}
               </p>
               <p className="font-medium text-foreground">

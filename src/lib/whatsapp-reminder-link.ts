@@ -6,7 +6,12 @@ export type ReminderLinkResult = { ok: true; url: string } | { ok: false; error:
 
 type ReminderContract = Pick<
   Contract,
-  "type" | "principal_amount" | "has_down_payment" | "down_payment_amount" | "installments_count"
+  | "type"
+  | "principal_amount"
+  | "has_down_payment"
+  | "down_payment_amount"
+  | "installments_count"
+  | "interest_rate_percent"
 >;
 
 type ReminderInstallment = Pick<
@@ -47,11 +52,12 @@ export function buildWhatsAppReminderLink(
     installmentsCount: contract.installments_count,
     hasDownPayment: contract.has_down_payment,
     downPaymentAmount: contract.down_payment_amount,
+    interestRatePercentPerInstallment: contract.interest_rate_percent,
   });
 
-  // Juros do contrato (7,5% × parcelas, aplicado uma única vez) dividido
-  // igualmente entre as parcelas — mesma regra de `generateInstallments`,
-  // nunca recalculada por parcela.
+  // Juros do contrato (taxa manual do cadastro × parcelas, aplicado uma
+  // única vez) dividido igualmente entre as parcelas — mesma regra de
+  // `generateInstallments`, nunca recalculada por parcela.
   const installmentBase = roundCents(financedBase / contract.installments_count);
   const installmentInterest = roundCents(markupAmount / contract.installments_count);
 

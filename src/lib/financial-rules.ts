@@ -6,12 +6,15 @@ import type { ContractType, InstallmentStatus } from "@/lib/types";
  * evitar que cálculos divergentes apareçam em telas diferentes (dashboard,
  * criação de contrato, tela de pagamento).
  *
- * Empréstimo: juros CONTRATUAL de 7,5% por semana/parcela, ACUMULATIVO —
- * o percentual total cresce com a quantidade de parcelas
- * (percentual = quantidadeParcelas × 7,5%; ex.: 4 parcelas = 30%,
- * 8 parcelas = 60%, 12 parcelas = 90%). Esse percentual é aplicado UMA
- * ÚNICA VEZ sobre o valor emprestado, e o total resultante é dividido
- * igualmente entre as parcelas — nunca recalculado por parcela.
+ * Empréstimo: juros CONTRATUAL escolhido manualmente pelo usuário a cada
+ * cadastro (`contracts.interest_rate_percent`, sugestão inicial de 7,5% no
+ * formulário), por parcela, ACUMULATIVO — o percentual total cresce com a
+ * quantidade de parcelas (percentual = quantidadeParcelas × taxa digitada;
+ * ex.: taxa de 7,5% com 4 parcelas = 30%, com 8 parcelas = 60%). Esse
+ * percentual é aplicado UMA ÚNICA VEZ sobre o valor emprestado, e o total
+ * resultante é dividido igualmente entre as parcelas — nunca recalculado
+ * por parcela, nem depois de salvo (mudar a taxa não afeta contratos já
+ * cadastrados, só os próximos).
  *
  * Venda de iPhone: SEM juros automático — o valor digitado pelo usuário é
  * exatamente o que é dividido em parcelas (o lucro da venda do aparelho é
@@ -21,7 +24,7 @@ import type { ContractType, InstallmentStatus } from "@/lib/types";
  * (1%/dia, `LATE_INTEREST_RATE_PER_DAY`) — nunca são somados na mesma
  * fórmula; o de atraso só incide se uma parcela não for paga no vencimento.
  */
-export const LOAN_WEEKLY_INTEREST_RATE_PERCENT = 7.5;
+export const DEFAULT_LOAN_INTEREST_RATE_PERCENT = 7.5;
 export const LATE_INTEREST_RATE_PER_DAY = 0.01;
 
 /** Arredonda para centavos passando por inteiro, evitando erro de ponto flutuante. */
@@ -39,6 +42,13 @@ export interface FinancedAmountInput {
   hasDownPayment: boolean;
   /** Valor recebido à vista, fora das parcelas (ignorado se hasDownPayment = false). */
   downPaymentAmount: number;
+  /**
+   * Taxa de juros por parcela (%), escolhida manualmente pelo usuário no
+   * cadastro do empréstimo (`contracts.interest_rate_percent`). Ignorada
+   * para venda de iPhone — venda nunca tem juros automático, seja qual for
+   * o valor recebido aqui.
+   */
+  interestRatePercentPerInstallment: number;
 }
 
 export interface FinancedAmountResult {
@@ -56,18 +66,19 @@ export interface FinancedAmountResult {
 
 /**
  * Calcula o valor final a ser financiado (dividido em parcelas). Para
- * empréstimo, o percentual de juros é quantidadeParcelas × 7,5% — calculado
- * e aplicado UMA ÚNICA VEZ sobre o valor emprestado, nunca por parcela —
- * e o total resultante é então dividido em partes iguais (a divisão em si é
- * feita depois, por `splitAmount`, que ajusta a última parcela para a soma
- * bater exatamente com o total).
+ * empréstimo, o percentual de juros é quantidadeParcelas × taxa manual do
+ * cadastro (`interestRatePercentPerInstallment`) — calculado e aplicado UMA
+ * ÚNICA VEZ sobre o valor emprestado, nunca por parcela — e o total
+ * resultante é então dividido em partes iguais (a divisão em si é feita
+ * depois, por `splitAmount`, que ajusta a última parcela para a soma bater
+ * exatamente com o total).
  */
 export function calculateFinancedAmount(input: FinancedAmountInput): FinancedAmountResult {
   const downPayment = input.hasDownPayment ? Math.max(input.downPaymentAmount, 0) : 0;
   const financedBase = roundCents(Math.max(input.principalAmount - downPayment, 0));
   const ratePercent =
     input.contractType === "emprestimo"
-      ? Math.round(input.installmentsCount * LOAN_WEEKLY_INTEREST_RATE_PERCENT * 100) / 100
+      ? Math.round(input.installmentsCount * input.interestRatePercentPerInstallment * 100) / 100
       : 0;
   const rate = ratePercent / 100;
   const markupAmount = roundCents(financedBase * rate);

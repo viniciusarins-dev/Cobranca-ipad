@@ -71,6 +71,21 @@ export interface DashboardMetrics {
     expensesTotal: number;
     balance: number;
   };
+  /**
+   * Saldo geral de caixa — todas as formas de pagamento (diferente de
+   * `cash`, que é só espécie) — com débito automático do dinheiro
+   * emprestado que já saiu de fato da conta (`contracts.disbursed_at`
+   * preenchido). Um empréstimo com `disbursed_at` vazio ("ainda vai sair")
+   * nunca debita este saldo. Venda de produto não entra aqui: o custo dela
+   * já é rastreado separadamente em `phones`.
+   */
+  generalCash: {
+    income: number;
+    expensesTotal: number;
+    loansDisbursed: number;
+    loansPendingDisbursement: number;
+    balance: number;
+  };
   /** Total recebido (parcelas + juros + entradas) agrupado por forma de pagamento (item 9 e 12). */
   receivedByMethod: Record<PaymentMethod, number>;
   /**
@@ -160,8 +175,28 @@ export function computeDashboardMetrics(
       installmentsCount: contract.installments_count,
       hasDownPayment: contract.has_down_payment,
       downPaymentAmount: contract.down_payment_amount,
+      interestRatePercentPerInstallment: contract.interest_rate_percent,
     });
     markupRatioByContract.set(contract.id, contract.total_amount > 0 ? markupAmount / contract.total_amount : 0);
+  }
+
+  // Débito automático do saldo geral: só o que já saiu de fato da conta
+  // (`disbursed_at` preenchido) debita agora — "ainda vai sair" fica de
+  // fora até o usuário confirmar a data real da saída. Usa `allContracts`
+  // (não o `contracts` filtrado acima) de propósito: um empréstimo
+  // cancelado só existe cancelado porque já tinha pagamento registrado (ver
+  // `deleteContract`), ou seja, o dinheiro realmente saiu antes de o
+  // contrato ser cancelado — continua contando aqui, só não entra mais nos
+  // indicadores de empréstimo ativo.
+  let loansDisbursed = 0;
+  let loansPendingDisbursement = 0;
+  for (const contract of allContracts) {
+    if (contract.type !== "emprestimo") continue;
+    if (contract.disbursed_at) {
+      loansDisbursed = roundCents(loansDisbursed + contract.principal_amount);
+    } else if (contract.status !== "cancelado") {
+      loansPendingDisbursement = roundCents(loansPendingDisbursement + contract.principal_amount);
+    }
   }
 
   const totalReceivedPrincipal = roundCents(
@@ -254,6 +289,13 @@ export function computeDashboardMetrics(
       income: cashIncome,
       expensesTotal: cashExpensesTotal,
       balance: roundCents(cashIncome.total - cashExpensesTotal),
+    },
+    generalCash: {
+      income: income.total,
+      expensesTotal: expensesPeriod.total,
+      loansDisbursed,
+      loansPendingDisbursement,
+      balance: roundCents(income.total - expensesPeriod.total - loansDisbursed),
     },
     receivedByMethod,
     phones: {

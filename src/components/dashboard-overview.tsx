@@ -167,6 +167,35 @@ export function DashboardOverview({
       </section>
 
       <section>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">💰 Saldo geral (todas as formas de pagamento)</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatTile label="Entradas" value={metrics.generalCash.income} format="currency" icon={BanknoteIcon} accent="cyan" />
+              <StatTile label="Saídas (despesas)" value={metrics.generalCash.expensesTotal} format="currency" icon={ReceiptIcon} accent="destructive" />
+              <StatTile
+                label="Emprestado (já saiu)"
+                value={metrics.generalCash.loansDisbursed}
+                format="currency"
+                icon={HandCoinsIcon}
+                accent="warning"
+              />
+              <StatTile label="Saldo geral" value={metrics.generalCash.balance} format="currency" icon={PiggyBankIcon} accent="success" />
+            </div>
+            {metrics.generalCash.loansPendingDisbursement > 0 && (
+              <p className="text-sm text-muted-foreground">
+                <AlertTriangleIcon className="mr-1 inline size-4 text-warning" />
+                {formatCurrency(metrics.generalCash.loansPendingDisbursement)} em empréstimos marcados como
+                &quot;ainda vai sair&quot; — não debitado deste saldo até a data de saída ser confirmada no contrato.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Vendas de Produtos (operações individuais, separado dos empréstimos)
         </h2>
