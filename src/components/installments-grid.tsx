@@ -1,6 +1,7 @@
 "use client";
 
 import { MessageCircleIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,8 @@ function InstallmentRow({
   contract: ReminderContract;
   client: ReminderClient;
 }) {
+  const router = useRouter();
+
   function handleSendReminder() {
     // Monta o link e abre o WhatsApp de forma síncrona, na mesma interação
     // de clique — qualquer `await` antes do `window.open` faz o navegador
@@ -85,6 +88,7 @@ function InstallmentRow({
             installment={installment}
             contractType={contract.type}
             contractPrincipalAmount={contract.principal_amount}
+            onPaid={() => router.refresh()}
           />
         )}
 

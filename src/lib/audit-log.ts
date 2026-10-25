@@ -2,6 +2,13 @@ import type { createClient } from "@/lib/supabase/server";
 
 export interface AuditLogEntry {
   actorEmail: string | null;
+  /**
+   * Dono do registro (auth.users.id) — usado pela RLS da migration 0017
+   * para restringir a leitura de `audit_logs` ao próprio usuário. `null`
+   * só é válido para `login_failed` (gravado antes de existir sessão) —
+   * qualquer outra ação deve sempre passar o id do usuário autenticado.
+   */
+  ownerId: string | null;
   action: string;
   resourceType?: string;
   resourceId?: string | null;
@@ -26,6 +33,7 @@ export async function logAudit(
   try {
     await supabase.from("audit_logs").insert({
       actor_email: entry.actorEmail,
+      owner_id: entry.ownerId,
       action: entry.action,
       resource_type: entry.resourceType ?? null,
       resource_id: entry.resourceId ?? null,

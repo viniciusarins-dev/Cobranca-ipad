@@ -281,6 +281,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   }
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
+    ownerId,
     action: data.type === "venda_iphone" ? "iphone_sale_created" : "loan_created",
     resourceType: "contract",
     resourceId: contract.id,
@@ -346,6 +347,7 @@ async function recalculateContractStatus(supabase: Awaited<ReturnType<typeof cre
  */
 export async function deleteContract(contractId: string): Promise<ActionResult> {
   const supabase = await createClient();
+  const ownerId = await getCurrentUserId(supabase);
 
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
@@ -380,6 +382,7 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
     await syncWeeklyChargeStatus(supabase, contractId, "cancelado");
     await logAudit(supabase, {
       actorEmail: await getCurrentUserEmail(supabase),
+      ownerId,
       action: "contract_cancelled",
       resourceType: "contract",
       resourceId: contractId,
@@ -408,6 +411,7 @@ export async function deleteContract(contractId: string): Promise<ActionResult> 
   }
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
+    ownerId,
     action: "contract_deleted",
     resourceType: "contract",
     resourceId: contractId,
@@ -449,9 +453,10 @@ export async function updateInstallmentStatus(
 /**
  * Fluxo principal de recebimento de uma parcela: calcula o juros de atraso
  * em aberto no momento (ao vivo, via calculateLateInterest — nunca um valor
- * acumulado salvo), aplica o valor pago primeiro no juros e depois no
- * principal, e registra tudo em `payments` para o histórico (item 16),
- * suportando pagamento parcial e qualquer forma de pagamento.
+ * acumulado salvo), aplica o valor pago primeiro no PRINCIPAL e só o que
+ * sobrar no juros (ver `splitPayment` em financial-rules.ts, a regra real),
+ * e registra tudo em `payments` para o histórico (item 16), suportando
+ * pagamento parcial e qualquer forma de pagamento.
  */
 export async function registerPayment(input: PaymentInput): Promise<ActionResult> {
   const parsed = paymentSchema.safeParse(input);
@@ -543,29 +548,6 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   }
   const createdByEmail = await getCurrentUserEmail(supabase);
 
-  const { error: paymentError } = await supabase.from("payments").insert({
-    owner_id: ownerId,
-    installment_id: installment.id,
-    contract_id: installment.contract_id,
-    client_id: contract.client_id,
-    principal_amount: principalPortion,
-    interest_amount: interestPortion,
-    method: data.method,
-    notes: data.notes || null,
-    created_by_email: createdByEmail,
-    idempotency_key: data.idempotencyKey ?? null,
-  });
-
-  if (paymentError) {
-    // unique_violation: outra requisição com a mesma idempotencyKey venceu a
-    // corrida (ex.: duplo clique no mesmíssimo instante) — trata como
-    // sucesso, nunca como erro, e nunca duplica o pagamento.
-    if (paymentError.code === "23505" && data.idempotencyKey) {
-      return { ok: true, contractId: installment.contract_id };
-    }
-    return { ok: false, error: safeError(paymentError, "Erro ao registrar pagamento.") };
-  }
-
   // Nunca deixa passar de `installment.amount` (mesmo por causa de ruído de
   // ponto flutuante): parcela quitada sempre fecha com saldo exatamente
   // zero e status "pago", nunca um resíduo de centavos.
@@ -582,19 +564,58 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   const isStillLate = daysLate(installment.due_date) > 0;
 
   const newStatus: InstallmentStatus = isFullyPaid ? "pago" : isStillLate ? "atrasado" : "parcial";
+  const newPaidAt = isFullyPaid ? new Date().toISOString() : null;
 
-  const { error: updateError } = await supabase
-    .from("installments")
-    .update({
-      paid_principal_amount: newPaidPrincipal,
-      paid_interest_amount: newPaidInterest,
-      status: newStatus,
-      paid_at: isFullyPaid ? new Date().toISOString() : null,
+  // Grava o pagamento e atualiza a parcela ATOMICAMENTE numa única chamada
+  // (register_payment_atomic, migration 0018) — antes eram dois writes
+  // sequenciais e independentes; uma falha entre eles podia deixar o
+  // pagamento gravado sem a parcela refletir isso. A function também
+  // trava a linha da parcela e confere que o estado lido acima
+  // (`p_expected_*`) ainda é o atual antes de escrever — fecha a corrida
+  // entre dois pagamentos concorrentes na mesma parcela.
+  type RegisterPaymentRpcResult = { payment_id: string; already_existed: boolean };
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc("register_payment_atomic", {
+      p_installment_id: installment.id,
+      p_owner_id: ownerId,
+      p_contract_id: installment.contract_id,
+      p_client_id: contract.client_id,
+      p_principal_portion: principalPortion,
+      p_interest_portion: interestPortion,
+      p_method: data.method,
+      p_notes: data.notes || null,
+      p_created_by_email: createdByEmail,
+      p_idempotency_key: data.idempotencyKey ?? null,
+      p_expected_paid_principal: installment.paid_principal_amount,
+      p_expected_paid_interest: installment.paid_interest_amount,
+      p_expected_status: installment.status,
+      p_new_paid_principal: newPaidPrincipal,
+      p_new_paid_interest: newPaidInterest,
+      p_new_status: newStatus,
+      p_new_paid_at: newPaidAt,
     })
-    .eq("id", installment.id);
+    .single();
 
-  if (updateError) {
-    return { ok: false, error: safeError(updateError, "Erro ao atualizar parcela.") };
+  if (rpcError) {
+    if (rpcError.message?.includes("installment_changed_concurrently")) {
+      return {
+        ok: false,
+        error: "Esta parcela foi alterada por outro pagamento ao mesmo tempo. Atualize a tela e tente de novo.",
+      };
+    }
+    // unique_violation: rede de segurança final, caso duas requisições com
+    // a mesma idempotencyKey cheguem a ponto de colidir mesmo com a
+    // checagem já feita dentro da function — trata como sucesso, nunca
+    // como erro, e nunca duplica o pagamento.
+    if (rpcError.code === "23505" && data.idempotencyKey) {
+      return { ok: true, contractId: installment.contract_id };
+    }
+    return { ok: false, error: safeError(rpcError, "Erro ao registrar pagamento.") };
+  }
+
+  const rpcResult = rpcData as unknown as RegisterPaymentRpcResult | null;
+  if (rpcResult?.already_existed) {
+    return { ok: true, contractId: installment.contract_id };
   }
 
   await recalculateContractStatus(supabase, installment.contract_id);
@@ -608,6 +629,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   }
   await logAudit(supabase, {
     actorEmail: createdByEmail,
+    ownerId,
     action: "payment_registered",
     resourceType: "installment",
     resourceId: installment.id,
@@ -787,6 +809,7 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
   revalidatePath("/clientes");
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
+    ownerId: contract.owner_id,
     action: "iphone_sale_updated",
     resourceType: "contract",
     resourceId: contractId,
@@ -819,7 +842,7 @@ export async function updateContractDisbursement(
 
   const { data: contract, error: contractError } = await supabase
     .from("contracts")
-    .select("id, type")
+    .select("id, type, owner_id")
     .eq("id", contractId)
     .single();
 
@@ -841,6 +864,7 @@ export async function updateContractDisbursement(
   revalidatePath("/");
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
+    ownerId: contract.owner_id,
     action: "contract_disbursement_updated",
     resourceType: "contract",
     resourceId: contractId,
@@ -910,6 +934,7 @@ export async function updateClientInfo(clientId: string, input: ClientInfoInput)
 
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
+    ownerId: await getCurrentUserId(supabase),
     action: "client_updated",
     resourceType: "client",
     resourceId: clientId,
@@ -991,6 +1016,7 @@ export async function uploadClientDocument(clientId: string, formData: FormData)
   revalidatePath("/clientes");
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
+    ownerId: await getCurrentUserId(supabase),
     action: "client_document_uploaded",
     resourceType: "client",
     resourceId: clientId,
@@ -1030,6 +1056,7 @@ export async function deleteClientDocument(clientId: string): Promise<ActionResu
   revalidatePath("/clientes");
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
+    ownerId: await getCurrentUserId(supabase),
     action: "client_document_deleted",
     resourceType: "client",
     resourceId: clientId,

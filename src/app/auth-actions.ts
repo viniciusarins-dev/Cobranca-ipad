@@ -33,7 +33,7 @@ export async function signIn(input: LoginInput): Promise<ActionResult> {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
     // Resposta sempre genérica (item 4): nunca revela se o e-mail existe
@@ -45,12 +45,12 @@ export async function signIn(input: LoginInput): Promise<ActionResult> {
     // como "anon" e a RLS de `audit_logs` (só autenticado) descartaria a
     // gravação silenciosamente — exatamente o evento que mais importa
     // registrar continuaria sem nenhum rastro.
-    await logAudit(createServiceRoleClient(), { actorEmail: email, action: "login_failed" });
+    await logAudit(createServiceRoleClient(), { actorEmail: email, ownerId: null, action: "login_failed" });
     return { ok: false, error: "Credenciais inválidas." };
   }
 
   resetRateLimit(rateLimitKey);
-  await logAudit(supabase, { actorEmail: email, action: "login_success" });
+  await logAudit(supabase, { actorEmail: email, ownerId: data.user?.id ?? null, action: "login_success" });
   return { ok: true };
 }
 
@@ -59,7 +59,7 @@ export async function signOut(): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  await logAudit(supabase, { actorEmail: user?.email ?? null, action: "logout" });
+  await logAudit(supabase, { actorEmail: user?.email ?? null, ownerId: user?.id ?? null, action: "logout" });
   await supabase.auth.signOut();
   redirect("/login");
 }

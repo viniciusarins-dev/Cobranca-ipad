@@ -1,17 +1,17 @@
 # Graph Report - Cobranca-ipad  (2026-10-25)
 
 ## Corpus Check
-- 126 files · ~53,879 words
+- 128 files · ~55,422 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 3 file(s) not represented in the graph (top: (none) 1, .ico 1, .css 1)
 
 ## Summary
-- 790 nodes · 2295 edges · 43 communities (31 shown, 12 thin omitted)
+- 790 nodes · 2300 edges · 43 communities (31 shown, 12 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `098e3d8d`
+- Built from commit: `8ae9d038`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -64,7 +64,7 @@
 1. `cn()` - 65 edges
 2. `createClient()` - 40 edges
 3. `react` - 35 edges
-4. `next` - 30 edges
+4. `next` - 31 edges
 5. `formatCurrency()` - 30 edges
 6. `lucide-react` - 29 edges
 7. `Button()` - 28 edges
@@ -219,8 +219,8 @@ Nodes (5): ワークフロー1: 新機能開発（フルサイクル）, ワー�
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `next` connect `next` to `cn`, `types.ts`, `new-transaction-dialog.tsx`, `actions.ts`, `dependencies`, `package.json`, `app/layout.tsx`?**
-  _High betweenness centrality (0.070) - this node is a cross-community bridge._
+- **Why does `next` connect `next` to `cn`, `types.ts`, `providers.ts`, `new-transaction-dialog.tsx`, `actions.ts`, `dependencies`, `package.json`, `app/layout.tsx`?**
+  _High betweenness centrality (0.071) - this node is a cross-community bridge._
 - **Should `cn` be split into smaller, more focused modules?**
   _Cohesion score 0.0630673674151935 - nodes in this community are weakly interconnected._
 - **Why does `cn()` connect `cn` to `providers.ts`, `new-transaction-dialog.tsx`, `next`?**
@@ -232,4 +232,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `new-transaction-dialog.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.12309612983770288 - nodes in this community are weakly interconnected._
 - **Should `actions.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07936507936507936 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08141321044546851 - nodes in this community are weakly interconnected._
