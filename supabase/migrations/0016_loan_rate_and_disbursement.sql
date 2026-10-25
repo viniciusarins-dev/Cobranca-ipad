@@ -25,8 +25,18 @@
 -- repente ao publicar esta migration contando tudo como "pendente".
 
 alter table contracts add column if not exists interest_rate_percent numeric not null default 7.5;
-alter table contracts add column if not exists disbursed_at date;
 
-update contracts
-set disbursed_at = created_at::date
-where type = 'emprestimo' and disbursed_at is null;
+-- O backfill só roda na primeira vez (quando a coluna ainda não existe):
+-- depois que ela existe, um `disbursed_at` NULL passa a significar "o
+-- dinheiro ainda vai sair" (escolha do usuário) e não pode ser sobrescrito
+-- se esta migração for executada de novo.
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'contracts' and column_name = 'disbursed_at'
+  ) then
+    alter table contracts add column disbursed_at date;
+    update contracts set disbursed_at = created_at::date where type = 'emprestimo';
+  end if;
+end $$;
