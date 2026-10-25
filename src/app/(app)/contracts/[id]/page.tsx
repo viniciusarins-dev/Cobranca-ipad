@@ -23,11 +23,13 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("contracts")
-    .select("*, client:clients(*), installments(*)")
-    .eq("id", id)
-    .single();
+  // As três consultas só dependem do `id` da URL — disparadas juntas, numa
+  // única rodada de ida-e-volta ao banco, em vez de uma esperar a outra.
+  const [{ data, error }, { data: paymentsData }, { data: linkedPhoneData }] = await Promise.all([
+    supabase.from("contracts").select("*, client:clients(*), installments(*)").eq("id", id).single(),
+    supabase.from("payments").select("*").eq("contract_id", id).order("paid_at", { ascending: false }),
+    supabase.from("phones").select("*").eq("contract_id", id).maybeSingle(),
+  ]);
 
   if (error || !data) {
     notFound();
@@ -52,19 +54,9 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   // última parcela pode diferir em centavos por causa do arredondamento.
   const representativeInstallmentAmount = installments[0]?.amount ?? 0;
 
-  const { data: paymentsData } = await supabase
-    .from("payments")
-    .select("*")
-    .eq("contract_id", id)
-    .order("paid_at", { ascending: false });
   const payments = (paymentsData ?? []) as Payment[];
   const installmentNumberById = Object.fromEntries(installments.map((i) => [i.id, i.number]));
 
-  const { data: linkedPhoneData } = await supabase
-    .from("phones")
-    .select("*")
-    .eq("contract_id", id)
-    .maybeSingle();
   const linkedPhone = linkedPhoneData as Phone | null;
   const phoneProfit =
     linkedPhone && linkedPhone.sale_amount !== null

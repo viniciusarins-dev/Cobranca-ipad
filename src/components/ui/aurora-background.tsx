@@ -1,8 +1,10 @@
 /**
- * Fundo animado com blobs de gradiente ("aurora") + textura de grid sutil,
- * inspirado no efeito Aurora do reactbits.dev — reimplementado em CSS puro
- * (sem WebGL/ogl) para manter o peso baixo e o comportamento previsível no
- * Safari/iPad. Fixo, atrás de todo o conteúdo, não interativo.
+ * Fundo com brilhos de gradiente ("aurora") + textura de grid sutil, fixo
+ * atrás de todo o conteúdo. Estático de propósito: blobs grandes animados
+ * com `blur` obrigavam o navegador a redesenhar a tela inteira a cada
+ * quadro — e cada card com fundo translúcido em cima precisava refazer
+ * esse desfoque junto — o que pesava bastante no celular/iPad. O gradiente
+ * radial já termina em transparente, então o brilho continua suave sem blur.
  */
 export function AuroraBackground() {
   return (
@@ -10,16 +12,16 @@ export function AuroraBackground() {
       <div className="absolute inset-0 bg-background" />
       <div className="bg-grid-fade absolute inset-0" />
       <div
-        className="aurora-blob-1 absolute -top-1/4 left-[-15%] size-[65vw] rounded-full opacity-80 blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--primary), transparent 70%)" }}
+        className="absolute -top-1/4 left-[-15%] size-[65vw] rounded-full opacity-60"
+        style={{ background: "radial-gradient(circle, var(--primary), transparent 65%)" }}
       />
       <div
-        className="aurora-blob-2 absolute top-1/4 right-[-20%] size-[60vw] rounded-full opacity-60 blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--accent-cyan), transparent 70%)" }}
+        className="absolute top-1/4 right-[-20%] size-[60vw] rounded-full opacity-40"
+        style={{ background: "radial-gradient(circle, var(--accent-cyan), transparent 65%)" }}
       />
       <div
-        className="aurora-blob-3 absolute bottom-[-25%] left-1/4 size-[55vw] rounded-full opacity-55 blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--primary), transparent 70%)" }}
+        className="absolute bottom-[-25%] left-1/4 size-[55vw] rounded-full opacity-35"
+        style={{ background: "radial-gradient(circle, var(--primary), transparent 65%)" }}
       />
       <div className="absolute inset-0 bg-background/45" />
     </div>
