@@ -17,8 +17,13 @@ import { WHATSAPP_PROVIDER_LABELS, type MessageSettings, type WhatsAppProviderNa
 import { messageSettingsSchema, type MessageSettingsInput } from "@/lib/validations";
 import { saveMessageSettings, sendTestMessage } from "@/app/actions";
 
+// Sem saudação no início de propósito — quem envia (sendCollectionReminder,
+// dispatchWeeklyCharge) já prefixa "Bom dia/Boa tarde/Boa noite!" sozinho,
+// na hora do envio, igual ao lembrete manual (buildWhatsAppReminderLink).
+// Padrão enxuto pedido pelo usuário: sem "tudo bem?"/"obrigado", "favor"
+// em vez de "por favor".
 const DEFAULT_TEMPLATE =
-  "Olá {nome_cliente}, identificamos que a sua parcela {numero_parcela} no valor de R$ {valor} com vencimento em {data_vencimento} consta pendente. Por favor, entre em contato para regularizar.";
+  "Passando pra lembrar da parcela {numero_parcela}.\n\nValor da parcela: R$ {valor}\nDias de atraso: {dias_atraso}\nJuros do dia: R$ {juros_dia}\nData de vencimento: {data_vencimento}\nValor atualizado da parcela: R$ {valor_atualizado}\n\nFavor enviar o comprovante de pagamento.";
 
 const PROVIDER_FIELDS: Record<WhatsAppProviderName, { label: string; key: keyof MessageSettingsInput }[]> = {
   evolution: [
@@ -184,8 +189,11 @@ export function SettingsForm({
           <CardTitle>Template da mensagem</CardTitle>
           <CardDescription>
             Use os placeholders <code>{"{nome_cliente}"}</code>, <code>{"{numero_parcela}"}</code>,{" "}
-            <code>{"{valor}"}</code> e <code>{"{data_vencimento}"}</code>.
-            {provider === "meta" && " Para a Meta, isto é só referência — o envio real usa o template aprovado."}
+            <code>{"{valor}"}</code>, <code>{"{data_vencimento}"}</code>, <code>{"{dias_atraso}"}</code>,{" "}
+            <code>{"{juros_dia}"}</code> e <code>{"{valor_atualizado}"}</code>. A saudação (Bom dia/Boa tarde/Boa
+            noite) é adicionada automaticamente na hora do envio — não inclua uma no texto.
+            {provider === "meta" &&
+              " Para a Meta, isto é só referência — o envio real usa o template aprovado, que só aceita as 4 variáveis originais (nome, parcela, valor, vencimento)."}
           </CardDescription>
         </CardHeader>
         <CardContent>

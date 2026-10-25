@@ -107,9 +107,22 @@ escolhido:
 O template padrão da mensagem (usado como texto livre pelos provedores não-oficiais, ou como
 referência do conteúdo do template aprovado no caso da Meta) é:
 
-> Olá {nome_cliente}, identificamos que a sua parcela {numero_parcela} no valor de R$ {valor}
-> com vencimento em {data_vencimento} consta pendente. Por favor, entre em contato para
-> regularizar.
+> Passando pra lembrar da parcela {numero_parcela}.
+>
+> Valor da parcela: R$ {valor}
+> Dias de atraso: {dias_atraso}
+> Juros do dia: R$ {juros_dia}
+> Data de vencimento: {data_vencimento}
+> Valor atualizado da parcela: R$ {valor_atualizado}
+>
+> Favor enviar o comprovante de pagamento.
+
+A saudação ("Bom dia"/"Boa tarde"/"Boa noite", conforme o horário em Brasília) é adicionada
+automaticamente no envio — não faz parte do texto configurável. `{dias_atraso}` e `{juros_dia}`
+vêm da mesma fórmula de juros de atraso usada no resto do app; como esta substituição é só texto
+(sem condicional), eles aparecem mesmo quando a parcela ainda não está atrasada (como "0"/"R$
+0,00") — na prática isso só é visível se um disparo automático ocorrer no próprio dia do
+vencimento, já que o cron diário só dispara para parcela já marcada "Atrasada".
 
 #### Meta Cloud API (recomendado)
 

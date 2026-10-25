@@ -1,17 +1,17 @@
 # Graph Report - Cobranca-ipad  (2026-10-25)
 
 ## Corpus Check
-- 128 files · ~55,470 words
+- 128 files · ~55,905 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 3 file(s) not represented in the graph (top: (none) 1, .ico 1, .css 1)
 
 ## Summary
-- 790 nodes · 2301 edges · 43 communities (31 shown, 12 thin omitted)
+- 790 nodes · 2312 edges · 43 communities (31 shown, 12 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2e429175`
+- Built from commit: `0938f11f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -68,9 +68,9 @@
 5. `formatCurrency()` - 30 edges
 6. `lucide-react` - 29 edges
 7. `Button()` - 28 edges
-8. `Input()` - 27 edges
-9. `RegisterPaymentDialog()` - 26 edges
-10. `roundCents()` - 26 edges
+8. `roundCents()` - 28 edges
+9. `Input()` - 27 edges
+10. `RegisterPaymentDialog()` - 26 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `BackupsPage()` --calls--> `createClient()`  [EXTRACTED]
@@ -91,15 +91,15 @@
 
 ### Community 0 - "cn"
 Cohesion: 0.06
-Nodes (71): class-variance-authority@^0.7.1, class-variance-authority, BackupsPage(), dynamic, formatBytes(), formatDuration(), hoursSince(), tierLabel() (+63 more)
+Nodes (72): class-variance-authority@^0.7.1, class-variance-authority, BackupsPage(), dynamic, formatBytes(), formatDuration(), hoursSince(), tierLabel() (+64 more)
 
 ### Community 1 - "types.ts"
 Cohesion: 0.07
-Nodes (58): DashboardPage(), dynamic, addToPeriod(), computeDashboardMetrics(), DashboardMetrics, EMPTY_METHOD_TOTALS, emptyPeriod(), getPeriodBoundaries() (+50 more)
+Nodes (55): DashboardPage(), dynamic, addToPeriod(), computeDashboardMetrics(), DashboardMetrics, EMPTY_METHOD_TOTALS, emptyPeriod(), getPeriodBoundaries() (+47 more)
 
 ### Community 2 - "providers.ts"
-Cohesion: 0.06
-Nodes (59): markReminderOpened(), sendTestMessage(), InstallmentRow(), handleSendReminder(), InstallmentsGrid(), ReminderClient, ReminderContract, handleTestSend() (+51 more)
+Cohesion: 0.05
+Nodes (61): markReminderOpened(), sendTestMessage(), InstallmentRow(), handleSendReminder(), InstallmentsGrid(), ReminderClient, ReminderContract, handleTestSend() (+53 more)
 
 ### Community 3 - "new-transaction-dialog.tsx"
 Cohesion: 0.12
@@ -222,13 +222,13 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `next` connect `next` to `cn`, `types.ts`, `providers.ts`, `new-transaction-dialog.tsx`, `actions.ts`, `dependencies`, `package.json`, `app/layout.tsx`?**
   _High betweenness centrality (0.071) - this node is a cross-community bridge._
 - **Should `cn` be split into smaller, more focused modules?**
-  _Cohesion score 0.0630673674151935 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06404862085086489 - nodes in this community are weakly interconnected._
 - **Why does `cn()` connect `cn` to `providers.ts`, `new-transaction-dialog.tsx`, `next`?**
   _High betweenness centrality (0.027) - this node is a cross-community bridge._
 - **Should `types.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06853146853146853 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07117255504352278 - nodes in this community are weakly interconnected._
 - **Should `providers.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.055246913580246915 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0531883632089333 - nodes in this community are weakly interconnected._
 - **Should `new-transaction-dialog.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.12309612983770288 - nodes in this community are weakly interconnected._
 - **Should `actions.ts` be split into smaller, more focused modules?**

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createWhatsAppProvider } from "@/lib/whatsapp/providers";
+import { pickGreeting } from "@/lib/whatsapp/spintax";
 import { buildReminderTemplateParams, renderReminderMessage } from "@/lib/whatsapp/template";
 
 export interface SendReminderResult {
@@ -29,6 +30,8 @@ export async function sendCollectionReminder(
 
   const contract = installment.contract as {
     owner_id: string;
+    type: "emprestimo" | "venda_iphone";
+    principal_amount: number;
     installments_count: number;
     client: { id: string; name: string; phone: string };
   };
@@ -50,12 +53,17 @@ export async function sendCollectionReminder(
     return { ok: false, error: "Nenhuma configuração de WhatsApp ativa. Configure em Ajustes." };
   }
 
-  const message = renderReminderMessage(
+  // Saudação por horário sempre na frente (mesma função usada no lembrete
+  // manual e no disparo semanal, mesmo separador "! " do disparo semanal
+  // via varyMessage) — padrão pedido pelo usuário para toda mensagem de
+  // cobrança, automática ou manual.
+  const message = `${pickGreeting()}! ${renderReminderMessage(
     settings.message_template,
     client,
+    contract,
     installment,
     contract.installments_count,
-  );
+  )}`;
   const templateParams = buildReminderTemplateParams(client, installment, contract.installments_count);
 
   try {

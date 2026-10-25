@@ -17,6 +17,8 @@ interface WeeklyChargeWithRelations {
   proximo_disparo: string;
   dispatch_count: number;
   contract: {
+    type: "emprestimo" | "venda_iphone";
+    principal_amount: number;
     installments_count: number;
     client: Client;
     installments: Installment[];
@@ -46,7 +48,9 @@ export async function dispatchWeeklyCharge(
 
   const { data, error } = await supabase
     .from("weekly_charges")
-    .select("id, proximo_disparo, dispatch_count, contract:contracts(installments_count, client:clients(*), installments(*))")
+    .select(
+      "id, proximo_disparo, dispatch_count, contract:contracts(type, principal_amount, installments_count, client:clients(*), installments(*))",
+    )
     .eq("id", weeklyChargeId)
     .single();
 
@@ -69,6 +73,7 @@ export async function dispatchWeeklyCharge(
   const baseMessage = renderReminderMessage(
     settings.message_template,
     client,
+    charge.contract,
     pendingInstallment,
     charge.contract.installments_count,
   );
