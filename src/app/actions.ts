@@ -309,6 +309,16 @@ async function syncWeeklyChargeStatus(
 }
 
 async function recalculateContractStatus(supabase: Awaited<ReturnType<typeof createClient>>, contractId: string) {
+  // "Cancelado" é um estado terminal e manual (deleteContract) — nunca
+  // recalculado a partir das parcelas. Sem esta checagem, um pagamento
+  // registrado por engano num contrato já cancelado (a página do
+  // contrato continua acessível e os botões continuam ativos) fazia o
+  // contrato "reaparecer" como ativo/inadimplente/quitado, voltando a
+  // contar em qualquer lista/indicador de onde tinha sido
+  // intencionalmente removido.
+  const { data: currentContract } = await supabase.from("contracts").select("status").eq("id", contractId).single();
+  if (currentContract?.status === "cancelado") return;
+
   const { data: installments } = await supabase
     .from("installments")
     .select("status")
@@ -480,7 +490,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     paid_interest_amount: number;
     due_date: string;
     status: InstallmentStatus;
-    contract: { client_id: string; type: ContractType; principal_amount: number } | null;
+    contract: { client_id: string; type: ContractType; principal_amount: number; status: ContractStatus } | null;
   };
 
   const [{ data: existingPayment }, { data: installmentData, error: installmentError }] = await Promise.all([
@@ -490,7 +500,7 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
     supabase
       .from("installments")
       .select(
-        "id, contract_id, amount, paid_principal_amount, paid_interest_amount, due_date, status, contract:contracts(client_id, type, principal_amount)",
+        "id, contract_id, amount, paid_principal_amount, paid_interest_amount, due_date, status, contract:contracts(client_id, type, principal_amount, status)",
       )
       .eq("id", data.installmentId)
       .single(),
@@ -512,6 +522,9 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   const contract = installment.contract;
   if (!contract) {
     return { ok: false, error: "Contrato não encontrado." };
+  }
+  if (contract.status === "cancelado") {
+    return { ok: false, error: "Este empréstimo/venda foi cancelado. Não é possível registrar pagamento nele." };
   }
 
   // Juros de atraso e saldo em aberto SEMPRE recalculados agora, no servidor
