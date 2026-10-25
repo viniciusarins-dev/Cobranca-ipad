@@ -28,10 +28,11 @@ type ReminderInstallment = Pick<
  *
  * Todos os valores vêm das mesmas funções usadas no resto do app
  * (`calculateFinancedAmount`, `calculateLateInterest`) — nunca uma fórmula
- * nova — e nunca cobra de novo o que já foi pago: o "valor desta parcela"
- * de referência vem de `installment.amount` (valor contratado), mas o
- * "valor total a pagar" final é sempre o saldo realmente em aberto agora
- * (principal pendente + juros de atraso pendente, se houver).
+ * nova — e nunca cobra de novo o que já foi pago: o "valor atualizado a
+ * pagar" final é sempre o saldo realmente em aberto agora (principal
+ * pendente + juros de atraso pendente, se houver). Mensagem deliberadamente
+ * enxuta (sem "valor emprestado" nem "valor desta parcela") a pedido de um
+ * devedor real que achou a versão anterior confusa com informação demais.
  */
 export function buildWhatsAppReminderLink(
   client: Pick<Client, "name" | "phone">,
@@ -81,17 +82,15 @@ export function buildWhatsAppReminderLink(
   );
   lines.push("");
 
-  lines.push(`Valor emprestado: ${formatCurrency(contract.principal_amount)}`);
+  // Mensagem enxuta por pedido direto de um devedor real (muita informação
+  // confundia) — "Valor emprestado" e "Valor desta parcela" saíram por não
+  // terem sido pedidos e serem redundantes com o que ficou abaixo; o
+  // fechamento virou pedido de comprovante em vez de "entre em contato".
   // Venda de iPhone nunca tem juros automático (financial-rules.ts) — mostrar
   // "sem juros"/"juros" separados só faz sentido quando há juros de fato.
   if (installmentInterest > 0) {
     lines.push(`Valor de referência sem juros: ${formatCurrency(installmentBase)}`);
     lines.push(`Juros aplicáveis: ${formatCurrency(installmentInterest)}`);
-  }
-  lines.push(`Valor desta parcela: ${formatCurrency(installment.amount)}`);
-
-  if (outstandingPrincipal < installment.amount) {
-    lines.push(`Já pago desta parcela: ${formatCurrency(roundCents(installment.amount - outstandingPrincipal))}`);
   }
 
   if (isOverdue) {
@@ -100,8 +99,8 @@ export function buildWhatsAppReminderLink(
   }
 
   lines.push(`Data de vencimento: ${formatDate(installment.due_date)}`);
-  lines.push(`Valor total a pagar: ${formatCurrency(totalDueNow)}`);
-  lines.push("", "Por favor, entre em contato para confirmar o pagamento.", "Obrigado!");
+  lines.push(`Valor atualizado a pagar: ${formatCurrency(totalDueNow)}`);
+  lines.push("", "Por favor, envie o comprovante de pagamento.", "Obrigado!");
 
   const url = `https://wa.me/${waDigits}?text=${encodeURIComponent(lines.join("\n"))}`;
   return { ok: true, url };
