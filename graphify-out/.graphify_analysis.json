@@ -1,6 +1,7 @@
 {
   "communities": {
     "0": [
+      "src_app_actions_markreminderopened",
       "src_app_app_backups_page",
       "src_app_app_backups_page_backupspage",
       "src_app_app_backups_page_dynamic",
@@ -8,52 +9,43 @@
       "src_app_app_backups_page_formatduration",
       "src_app_app_backups_page_hourssince",
       "src_app_app_backups_page_tierlabel",
-      "src_app_app_clientes_page",
-      "src_app_app_clientes_page_clientespage",
-      "src_app_app_clientes_page_dynamic",
       "src_app_app_contracts_id_page",
       "src_app_app_contracts_id_page_contractdetailpage",
       "src_app_app_contracts_id_page_dynamic",
-      "src_app_app_debtors_page",
-      "src_app_app_debtors_page_debtorspage",
-      "src_app_app_debtors_page_dynamic",
-      "src_app_app_phones_page",
-      "src_app_app_phones_page_dynamic",
-      "src_app_app_phones_page_phonespage",
-      "src_app_app_settings_page",
-      "src_app_app_settings_page_dynamic",
-      "src_app_app_settings_page_settingspage",
       "src_components_clients_table",
       "src_components_clients_table_clientstable",
       "src_components_clients_table_filtertab",
       "src_components_clients_table_tabs",
-      "src_components_debtors_view",
       "src_components_debtors_view_debtorbadge",
       "src_components_debtors_view_debtorsview",
-      "src_components_debtors_view_filtertab",
-      "src_components_debtors_view_sort_options",
-      "src_components_debtors_view_sortkey",
-      "src_components_debtors_view_tabs",
+      "src_components_installments_grid",
+      "src_components_installments_grid_installmentrow",
+      "src_components_installments_grid_installmentrow_handlesendreminder",
+      "src_components_installments_grid_installmentsgrid",
+      "src_components_installments_grid_reminderclient",
+      "src_components_installments_grid_remindercontract",
       "src_components_iphone_sales_table",
       "src_components_iphone_sales_table_iphonesalestable",
       "src_components_payment_history",
       "src_components_payment_history_methodfilter",
       "src_components_payment_history_paymenthistory",
       "src_components_payment_history_paymenthistoryprops",
+      "src_components_status_badge",
+      "src_components_status_badge_backup_run_labels",
+      "src_components_status_badge_backup_run_variant",
       "src_components_status_badge_backuprunstatusbadge",
+      "src_components_status_badge_contract_type_variant",
+      "src_components_status_badge_contract_variant",
       "src_components_status_badge_contractstatusbadge",
       "src_components_status_badge_contracttypebadge",
+      "src_components_status_badge_installment_variant",
+      "src_components_status_badge_installmentstatusbadge",
       "src_components_status_badge_pulsedot",
       "src_components_ui_badge",
       "src_components_ui_badge_badge",
       "src_components_ui_badge_badgevariants",
       "src_components_ui_checkbox",
       "src_components_ui_checkbox_checkbox",
-      "src_components_ui_count_up",
-      "src_components_ui_count_up_countup",
-      "src_components_ui_count_up_countup_tick",
-      "src_components_ui_count_up_subscribereducedmotion",
-      "src_components_ui_count_up_usereducedmotion",
       "src_components_ui_dropdown_menu",
       "src_components_ui_dropdown_menu_dropdownmenu",
       "src_components_ui_dropdown_menu_dropdownmenucheckboxitem",
@@ -62,17 +54,12 @@
       "src_components_ui_dropdown_menu_dropdownmenulabel",
       "src_components_ui_dropdown_menu_dropdownmenuseparator",
       "src_components_ui_dropdown_menu_dropdownmenutrigger",
-      "src_components_ui_gradient_heading",
-      "src_components_ui_gradient_heading_gradientheading",
-      "src_components_ui_shiny_text",
-      "src_components_ui_shiny_text_shinytext",
       "src_components_ui_spotlight_card",
       "src_components_ui_spotlight_card_spotlightcard",
       "src_components_ui_spotlight_card_spotlightcard_handlemousemove",
       "src_components_ui_stat_tile",
       "src_components_ui_stat_tile_accent_text",
       "src_components_ui_stat_tile_stataccent",
-      "src_components_ui_stat_tile_stattile",
       "src_components_ui_table",
       "src_components_ui_table_table",
       "src_components_ui_table_tablebody",
@@ -89,37 +76,44 @@
       "src_components_ui_tabs_tabstrigger",
       "src_lib_client_documents",
       "src_lib_client_documents_getclientdocumentsignedurl",
-      "src_lib_debtors_paidtodayrow",
-      "src_lib_iphone_sales_getiphonesales",
-      "src_lib_supabase_server",
-      "src_lib_supabase_server_session_cookie_options",
+      "src_lib_types_backuprunstatus",
+      "src_lib_types_contract_status_labels",
+      "src_lib_types_contract_type_labels",
+      "src_lib_types_contractstatus",
+      "src_lib_types_installment_status_labels",
       "src_lib_types_payment",
+      "src_lib_types_periodicity_labels",
       "src_lib_utils",
       "src_lib_utils_cn",
       "src_lib_utils_formatcurrency",
+      "src_lib_utils_formatdate",
       "src_lib_utils_formatdatetime",
       "src_lib_utils_formatphone",
       "src_lib_utils_initials",
-      "src_lib_utils_towhatsappdigits"
+      "src_lib_utils_towhatsappdigits",
+      "src_lib_whatsapp_reminder_link_buildwhatsappreminderlink"
     ],
     "1": [
-      "src_app_actions_markreminderopened",
+      "src_app_app_clientes_page",
+      "src_app_app_clientes_page_clientespage",
+      "src_app_app_clientes_page_dynamic",
+      "src_app_app_debtors_page",
+      "src_app_app_debtors_page_debtorspage",
+      "src_app_app_debtors_page_dynamic",
       "src_app_app_page",
       "src_app_app_page_dashboardpage",
       "src_app_app_page_dynamic",
-      "src_components_installments_grid",
-      "src_components_installments_grid_installmentrow",
-      "src_components_installments_grid_installmentrow_handlesendreminder",
-      "src_components_installments_grid_installmentsgrid",
-      "src_components_installments_grid_reminderclient",
-      "src_components_installments_grid_remindercontract",
-      "src_components_status_badge",
-      "src_components_status_badge_backup_run_labels",
-      "src_components_status_badge_backup_run_variant",
-      "src_components_status_badge_contract_type_variant",
-      "src_components_status_badge_contract_variant",
-      "src_components_status_badge_installment_variant",
-      "src_components_status_badge_installmentstatusbadge",
+      "src_app_app_phones_page",
+      "src_app_app_phones_page_dynamic",
+      "src_app_app_phones_page_phonespage",
+      "src_app_app_settings_page",
+      "src_app_app_settings_page_dynamic",
+      "src_app_app_settings_page_settingspage",
+      "src_components_ui_gradient_heading",
+      "src_components_ui_gradient_heading_gradientheading",
+      "src_components_ui_shiny_text",
+      "src_components_ui_shiny_text_shinytext",
+      "src_components_ui_stat_tile_stattile",
       "src_lib_dashboard_metrics",
       "src_lib_dashboard_metrics_addtoperiod",
       "src_lib_dashboard_metrics_computedashboardmetrics",
@@ -137,66 +131,45 @@
       "src_lib_date_utils_datestringtoutctimestamp",
       "src_lib_date_utils_daysbetweendatestrings",
       "src_lib_date_utils_getbusinesstoday",
+      "src_lib_date_utils_tobusinessdatestring",
       "src_lib_debtors",
       "src_lib_debtors_debtor",
       "src_lib_debtors_debtorinstallmentrow",
       "src_lib_debtors_gettodaydebtors",
       "src_lib_debtors_lateinterestdetailrow",
-      "src_lib_financial_rules",
-      "src_lib_financial_rules_calculatefinancedamount",
-      "src_lib_financial_rules_calculatelateinterest",
-      "src_lib_financial_rules_dayslate",
-      "src_lib_financial_rules_default_loan_interest_rate_percent",
-      "src_lib_financial_rules_financedamountinput",
-      "src_lib_financial_rules_financedamountresult",
-      "src_lib_financial_rules_late_interest_rate_per_day",
-      "src_lib_financial_rules_lateinterestinstallmentinput",
-      "src_lib_financial_rules_roundcents",
-      "src_lib_financial_rules_splitpaymentresult",
+      "src_lib_debtors_paidtodayrow",
       "src_lib_installments",
+      "src_lib_installments_addperiod",
       "src_lib_installments_generatedinstallment",
       "src_lib_installments_isoverdue",
       "src_lib_iphone_sales",
+      "src_lib_iphone_sales_getiphonesales",
       "src_lib_iphone_sales_iphonesale",
       "src_lib_iphone_sales_iphonesalessummary",
       "src_lib_scheduling_dispatch_weekly_charge_weeklychargewithrelations",
+      "src_lib_supabase_server",
+      "src_lib_supabase_server_session_cookie_options",
       "src_lib_types",
       "src_lib_types_backuprun",
-      "src_lib_types_backuprunstatus",
       "src_lib_types_client",
       "src_lib_types_clientwithcontracts",
       "src_lib_types_contract",
-      "src_lib_types_contract_status_labels",
-      "src_lib_types_contract_type_labels",
-      "src_lib_types_contracttype",
       "src_lib_types_contractwithclient",
       "src_lib_types_contractwithinstallments",
       "src_lib_types_expense",
       "src_lib_types_installment",
-      "src_lib_types_installment_status_labels",
-      "src_lib_types_installmentstatus",
       "src_lib_types_messagelog",
       "src_lib_types_paymentmethod",
       "src_lib_types_periodicity",
-      "src_lib_types_periodicity_labels",
       "src_lib_types_phone",
       "src_lib_types_phone_status_labels",
       "src_lib_types_phonestatus",
       "src_lib_types_weeklycharge",
       "src_lib_types_weeklychargestatus",
-      "src_lib_types_whatsapp_provider_labels",
-      "src_lib_types_whatsappprovidername",
-      "src_lib_whatsapp_reminder_link",
-      "src_lib_whatsapp_reminder_link_buildwhatsappreminderlink",
-      "src_lib_whatsapp_reminder_link_remindercontract",
-      "src_lib_whatsapp_reminder_link_reminderinstallment",
-      "src_lib_whatsapp_reminder_link_reminderlinkresult"
+      "src_lib_types_whatsapp_provider_labels"
     ],
     "2": [
       "ref_supabase_supabase_js",
-      "src_app_actions_sendtestmessage",
-      "src_components_settings_form_settingsform_handletestsend",
-      "src_lib_date_utils_tobusinessdatestring",
       "src_lib_scheduling_dispatch_weekly_charge",
       "src_lib_scheduling_dispatch_weekly_charge_dispatchresult",
       "src_lib_scheduling_dispatch_weekly_charge_dispatchweeklycharge",
@@ -213,7 +186,7 @@
       "src_lib_scheduling_weekly_dispatch_queue_sleep",
       "src_lib_scheduling_weekly_dispatch_queue_weeklydispatchsummary",
       "src_lib_types_messagesettings",
-      "src_lib_utils_formatdate",
+      "src_lib_types_whatsappprovidername",
       "src_lib_utils_onlydigits",
       "src_lib_whatsapp_evolution_health",
       "src_lib_whatsapp_evolution_health_checkevolutionconnection",
@@ -266,9 +239,15 @@
       "ref_react",
       "ref_react_hook_form",
       "ref_sonner",
+      "src_app_actions_sendtestmessage",
       "src_components_client_details_card",
       "src_components_client_details_card_editaddressdialog",
+      "src_components_debtors_view",
       "src_components_debtors_view_filterbar",
+      "src_components_debtors_view_filtertab",
+      "src_components_debtors_view_sort_options",
+      "src_components_debtors_view_sortkey",
+      "src_components_debtors_view_tabs",
       "src_components_delete_contract_dialog",
       "src_components_delete_contract_dialog_contractsummary",
       "src_components_delete_contract_dialog_deletecontractdialog",
@@ -296,6 +275,7 @@
       "src_components_settings_form",
       "src_components_settings_form_provider_fields",
       "src_components_settings_form_settingsform",
+      "src_components_settings_form_settingsform_handletestsend",
       "src_components_ui_button",
       "src_components_ui_button_button",
       "src_components_ui_button_buttonvariants",
@@ -364,8 +344,18 @@
       "src_lib_file_validation_bytesstartwith",
       "src_lib_file_validation_detectedfiletype",
       "src_lib_file_validation_detectsafedocumenttype",
+      "src_lib_financial_rules",
+      "src_lib_financial_rules_calculatefinancedamount",
+      "src_lib_financial_rules_calculatelateinterest",
+      "src_lib_financial_rules_dayslate",
+      "src_lib_financial_rules_default_loan_interest_rate_percent",
+      "src_lib_financial_rules_financedamountinput",
+      "src_lib_financial_rules_financedamountresult",
+      "src_lib_financial_rules_late_interest_rate_per_day",
+      "src_lib_financial_rules_lateinterestinstallmentinput",
+      "src_lib_financial_rules_roundcents",
       "src_lib_financial_rules_splitpayment",
-      "src_lib_installments_addperiod",
+      "src_lib_financial_rules_splitpaymentresult",
       "src_lib_installments_generateinstallments",
       "src_lib_rate_limit",
       "src_lib_rate_limit_bucket",
@@ -373,6 +363,8 @@
       "src_lib_rate_limit_checkratelimit",
       "src_lib_rate_limit_resetratelimit",
       "src_lib_supabase_server_createclient",
+      "src_lib_types_contracttype",
+      "src_lib_types_installmentstatus",
       "src_lib_validations",
       "src_lib_validations_clientaddressinput",
       "src_lib_validations_clientaddressschema",
@@ -391,11 +383,13 @@
       "src_lib_validations_paymentinput",
       "src_lib_validations_paymentschema",
       "src_lib_validations_transactioninput",
-      "src_lib_validations_transactionschema"
+      "src_lib_validations_transactionschema",
+      "src_lib_whatsapp_reminder_link",
+      "src_lib_whatsapp_reminder_link_remindercontract",
+      "src_lib_whatsapp_reminder_link_reminderinstallment",
+      "src_lib_whatsapp_reminder_link_reminderlinkresult"
     ],
     "5": [
-      "package_dependencies_supabase_supabase_js",
-      "package_json_ref_supabase_supabase_js",
       "ref_aws_sdk_client_s3",
       "ref_node_child_process",
       "ref_node_crypto",
@@ -437,6 +431,7 @@
       "scripts_backup_package_dependencies_aws_sdk_client_s3",
       "scripts_backup_package_dependencies_supabase_supabase_js",
       "scripts_backup_package_description",
+      "scripts_backup_package_json_ref_supabase_supabase_js",
       "scripts_backup_package_name",
       "scripts_backup_package_private",
       "scripts_backup_package_scripts",
@@ -500,6 +495,18 @@
       "src_app_api_cron_weekly_dispatch_route_dynamic",
       "src_app_api_cron_weekly_dispatch_route_get",
       "src_app_api_cron_weekly_dispatch_route_maxduration",
+      "src_app_globals",
+      "src_app_layout",
+      "src_app_layout_cinzel",
+      "src_app_layout_geistmono",
+      "src_app_layout_inter",
+      "src_app_layout_metadata",
+      "src_app_layout_rootlayout",
+      "src_app_layout_viewport",
+      "src_components_ui_aurora_background",
+      "src_components_ui_aurora_background_aurorabackground",
+      "src_components_ui_sonner",
+      "src_components_ui_sonner_toaster",
       "src_lib_backup_alert",
       "src_lib_backup_alert_sendbackupfailurealert",
       "src_lib_cron_auth",
@@ -507,7 +514,6 @@
       "src_lib_supabase_proxy",
       "src_lib_supabase_proxy_updatesession",
       "src_lib_supabase_server_createserviceroleclient",
-      "src_lib_types_contractstatus",
       "src_proxy",
       "src_proxy_config",
       "src_proxy_proxy"
@@ -535,22 +541,22 @@
     ],
     "9": [
       "package_dependencies",
-      "package_dependencies_date_fns",
+      "package_dependencies_clsx",
       "package_dependencies_hookform_resolvers",
       "package_dependencies_lucide_react",
       "package_dependencies_next",
-      "package_dependencies_radix_ui_react_select",
+      "package_dependencies_radix_ui_react_slot",
+      "package_dependencies_radix_ui_react_tabs",
       "package_dependencies_react",
-      "package_dependencies_react_dom",
       "package_dependencies_react_hook_form",
-      "package_dependencies_recharts",
       "package_dependencies_sonner",
-      "package_dependencies_zod",
-      "ref_date_fns",
-      "ref_radix_ui_react_select",
-      "ref_react_dom",
-      "ref_recharts",
-      "ref_zod"
+      "package_dependencies_tailwind_merge",
+      "package_dependencies_tw_animate_css",
+      "ref_clsx",
+      "ref_radix_ui_react_slot",
+      "ref_radix_ui_react_tabs",
+      "ref_tailwind_merge",
+      "ref_tw_animate_css"
     ],
     "10": [
       "src_app_login_page",
@@ -588,31 +594,46 @@
     ],
     "12": [
       "package",
-      "package_dependencies_clsx",
-      "package_dependencies_radix_ui_react_dropdown_menu",
+      "package_dependencies_class_variance_authority",
+      "package_dependencies_radix_ui_react_label",
+      "package_dependencies_radix_ui_react_select",
       "package_dependencies_radix_ui_react_switch",
-      "package_dependencies_tailwind_merge",
       "package_name",
       "package_private",
       "package_version",
-      "ref_clsx",
-      "ref_radix_ui_react_dropdown_menu",
-      "ref_radix_ui_react_switch",
-      "ref_tailwind_merge"
+      "ref_class_variance_authority",
+      "ref_radix_ui_react_label",
+      "ref_radix_ui_react_select",
+      "ref_radix_ui_react_switch"
     ],
     "13": [
-      "src_app_globals",
-      "src_app_layout",
-      "src_app_layout_cinzel",
-      "src_app_layout_geistmono",
-      "src_app_layout_inter",
-      "src_app_layout_metadata",
-      "src_app_layout_rootlayout",
-      "src_app_layout_viewport",
-      "src_components_ui_aurora_background",
-      "src_components_ui_aurora_background_aurorabackground",
-      "src_components_ui_sonner",
-      "src_components_ui_sonner_toaster"
+      "backup",
+      "backup_1_rodar_a_migration",
+      "backup_2_criar_a_conta_e_o_bucket_no_cloudflare_r2",
+      "backup_3_pegar_a_connection_string_direta_do_postgres",
+      "backup_4_gerar_a_chave_de_criptografia",
+      "backup_5_configurar_os_github_secrets",
+      "backup_6_testar_manualmente_antes_de_confiar_no_agendamento",
+      "backup_7_retenção",
+      "backup_8_alertas_de_falha",
+      "backup_9_restauração",
+      "backup_arquitetura",
+      "backup_backup_automático_configuração_e_restauração",
+      "backup_limitações_conhecidas",
+      "readme",
+      "readme_1_supabase",
+      "readme_2_variáveis_de_ambiente",
+      "readme_3_instalar_e_rodar",
+      "readme_4_configurar_a_cobrança_via_whatsapp",
+      "readme_5_cron_de_verificação_diária",
+      "readme_6_cobrança_semanal_automática_meta_cloud_api_ou_evolution_api",
+      "readme_7_backup_automático_a_cada_6h",
+      "readme_cobrança_ipad_mvp",
+      "readme_configuração",
+      "readme_estrutura_do_projeto",
+      "readme_meta_cloud_api_recomendado",
+      "readme_próximos_passos_sugeridos",
+      "readme_stack"
     ],
     "14": [
       "src_app_app_layout",
@@ -661,8 +682,9 @@
       "src_lib_supabase_client_createclient"
     ],
     "19": [
-      "package_dependencies_class_variance_authority",
-      "ref_class_variance_authority"
+      "src_app_app_loading",
+      "src_app_app_loading_apploading",
+      "src_app_app_loading_block"
     ],
     "20": [
       "package_dependencies_radix_ui_react_checkbox",
@@ -673,20 +695,20 @@
       "ref_radix_ui_react_dialog"
     ],
     "22": [
-      "package_dependencies_radix_ui_react_label",
-      "ref_radix_ui_react_label"
+      "agents",
+      "agents_this_is_not_the_next_js_you_know"
     ],
     "23": [
-      "package_dependencies_radix_ui_react_slot",
-      "ref_radix_ui_react_slot"
+      "claude",
+      "claude_graphify"
     ],
     "24": [
-      "package_dependencies_radix_ui_react_tabs",
-      "ref_radix_ui_react_tabs"
+      "package_dependencies_date_fns",
+      "ref_date_fns"
     ],
     "25": [
-      "package_dependencies_tw_animate_css",
-      "ref_tw_animate_css"
+      "package_dependencies_radix_ui_react_dropdown_menu",
+      "ref_radix_ui_react_dropdown_menu"
     ],
     "26": [
       "postcss_config",
@@ -694,24 +716,41 @@
     ],
     "27": [
       "vercel",
-      "vercel_crons"
+      "vercel_crons",
+      "vercel_regions"
+    ],
+    "28": [
+      "package_dependencies_react_dom",
+      "ref_react_dom"
+    ],
+    "29": [
+      "package_dependencies_recharts",
+      "ref_recharts"
+    ],
+    "30": [
+      "package_dependencies_supabase_supabase_js",
+      "package_json_ref_supabase_supabase_js"
+    ],
+    "31": [
+      "package_dependencies_zod",
+      "ref_zod"
     ]
   },
   "cohesion": {
-    "0": 0.06444444444444444,
-    "1": 0.05381400208986416,
-    "2": 0.0648018648018648,
-    "3": 0.1860576923076923,
-    "4": 0.07787698412698413,
-    "5": 0.07609427609427609,
+    "0": 0.06666666666666667,
+    "1": 0.06621004566210045,
+    "2": 0.06758832565284179,
+    "3": 0.16001564945226918,
+    "4": 0.0629746835443038,
+    "5": 0.07826694619147449,
     "6": 0.06451612903225806,
-    "7": 0.1282051282051282,
+    "7": 0.08534850640113797,
     "8": 0.10526315789473684,
     "9": 0.11764705882352941,
     "10": 0.2647058823529412,
     "11": 0.15384615384615385,
     "12": 0.16666666666666666,
-    "13": 0.22727272727272727,
+    "13": 0.07407407407407407,
     "14": 0.2909090909090909,
     "15": 0.2,
     "16": 0.3333333333333333,
@@ -725,7 +764,11 @@
     "24": 1.0,
     "25": 1.0,
     "26": 1.0,
-    "27": 1.0
+    "27": 0.6666666666666666,
+    "28": 1.0,
+    "29": 1.0,
+    "30": 1.0,
+    "31": 1.0
   },
   "gods": [
     {
@@ -741,7 +784,7 @@
     {
       "id": "ref_react",
       "label": "react",
-      "degree": 36
+      "degree": 35
     },
     {
       "id": "src_lib_utils_formatcurrency",
@@ -769,13 +812,13 @@
       "degree": 27
     },
     {
-      "id": "src_lib_financial_rules_roundcents",
-      "label": "roundCents()",
+      "id": "src_components_register_payment_dialog_registerpaymentdialog",
+      "label": "RegisterPaymentDialog()",
       "degree": 26
     },
     {
-      "id": "src_components_register_payment_dialog_registerpaymentdialog",
-      "label": "RegisterPaymentDialog()",
+      "id": "src_lib_financial_rules_roundcents",
+      "label": "roundCents()",
       "degree": 26
     }
   ],
@@ -790,17 +833,6 @@
       "confidence": "EXTRACTED",
       "relation": "calls",
       "why": "bridges separate communities; peripheral node `CardFooter()` unexpectedly reaches hub `cn()`"
-    },
-    {
-      "source": "@supabase/supabase-js@^2.112.3",
-      "target": "@supabase/supabase-js",
-      "source_files": [
-        "scripts/backup/package.json",
-        "package.json"
-      ],
-      "confidence": "EXTRACTED",
-      "relation": "declares",
-      "why": "connects across different repos/directories"
     },
     {
       "source": "PaymentHistoryProps",
@@ -825,11 +857,22 @@
       "why": "peripheral node `FinancedAmountInput` unexpectedly reaches hub `ContractType`"
     },
     {
-      "source": "BackupsPage()",
+      "source": "markReminderOpened()",
       "target": "createClient()",
       "source_files": [
-        "src/app/(app)/backups/page.tsx",
+        "src/app/actions.ts",
         "src/lib/supabase/server.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "BackupsPage()",
+      "target": "GradientHeading()",
+      "source_files": [
+        "src/app/(app)/backups/page.tsx",
+        "src/components/ui/gradient-heading.tsx"
       ],
       "confidence": "EXTRACTED",
       "relation": "calls",
@@ -839,38 +882,38 @@
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `next` connect `Community 7` to `Community 0`, `Community 1`, `Community 3`, `Community 4`, `Community 9`, `Community 10`, `Community 12`, `Community 13`, `Community 14`?",
-      "why": "High betweenness centrality (0.108) - this node is a cross-community bridge."
+      "question": "Why does `next` connect `next` to `cn`, `types.ts`, `new-transaction-dialog.tsx`, `actions.ts`, `dependencies`, `dashboard-overview.tsx`, `package.json`, `app-nav.tsx`?",
+      "why": "High betweenness centrality (0.097) - this node is a cross-community bridge."
     },
     {
       "type": "low_cohesion",
-      "question": "Should `Community 0` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.06444444444444444 - nodes in this community are weakly interconnected."
+      "question": "Should `cn` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.06666666666666667 - nodes in this community are weakly interconnected."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `@supabase/supabase-js` connect `Community 5` to `Community 12`?",
-      "why": "High betweenness centrality (0.045) - this node is a cross-community bridge."
+      "question": "Why does `cn()` connect `cn` to `types.ts`, `dashboard-overview.tsx`, `new-transaction-dialog.tsx`, `app-nav.tsx`?",
+      "why": "High betweenness centrality (0.038) - this node is a cross-community bridge."
     },
     {
       "type": "low_cohesion",
-      "question": "Should `Community 1` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.05381400208986416 - nodes in this community are weakly interconnected."
-    },
-    {
-      "type": "bridge_node",
-      "question": "Why does `cn()` connect `Community 0` to `Community 1`, `Community 10`, `Community 3`, `Community 14`?",
-      "why": "High betweenness centrality (0.041) - this node is a cross-community bridge."
+      "question": "Should `types.ts` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.06621004566210045 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",
-      "question": "Should `Community 2` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.0648018648018648 - nodes in this community are weakly interconnected."
+      "question": "Should `providers.ts` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.06758832565284179 - nodes in this community are weakly interconnected."
     },
     {
       "type": "low_cohesion",
-      "question": "Should `Community 4` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.07787698412698413 - nodes in this community are weakly interconnected."
+      "question": "Should `actions.ts` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.0629746835443038 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `backup.mjs` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.07826694619147449 - nodes in this community are weakly interconnected."
     }
   ]
 }
