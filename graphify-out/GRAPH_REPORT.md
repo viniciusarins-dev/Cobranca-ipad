@@ -1,17 +1,17 @@
 # Graph Report - Cobranca-ipad  (2026-10-25)
 
 ## Corpus Check
-- 128 files · ~55,565 words
+- 128 files · ~55,460 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 3 file(s) not represented in the graph (top: (none) 1, .ico 1, .css 1)
 
 ## Summary
-- 790 nodes · 2300 edges · 43 communities (31 shown, 12 thin omitted)
+- 790 nodes · 2298 edges · 43 communities (31 shown, 12 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e5f798be`
+- Built from commit: `70a05ba4`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
