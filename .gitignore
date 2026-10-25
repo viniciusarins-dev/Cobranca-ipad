@@ -39,6 +39,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# graphify — grafo de conhecimento do código (graph.json/graph.html/
+# GRAPH_REPORT.md ficam versionados de propósito, conforme a própria
+# ferramenta recomenda em CLAUDE.md; só o cache local de AST é ignorado,
+# por ser regenerável e específico da versão instalada da CLI.
+graphify-out/cache/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
