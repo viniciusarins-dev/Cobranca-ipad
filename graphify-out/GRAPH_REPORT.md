@@ -1,17 +1,17 @@
 # Graph Report - Cobranca-ipad  (2026-10-25)
 
 ## Corpus Check
-- 128 files · ~55,460 words
+- 128 files · ~55,480 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 3 file(s) not represented in the graph (top: (none) 1, .ico 1, .css 1)
 
 ## Summary
-- 790 nodes · 2298 edges · 43 communities (31 shown, 12 thin omitted)
+- 790 nodes · 2301 edges · 43 communities (31 shown, 12 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 1 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `70a05ba4`
+- Built from commit: `ba8086d2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -98,7 +98,7 @@ Cohesion: 0.07
 Nodes (58): DashboardPage(), dynamic, addToPeriod(), computeDashboardMetrics(), DashboardMetrics, EMPTY_METHOD_TOTALS, emptyPeriod(), getPeriodBoundaries() (+50 more)
 
 ### Community 2 - "providers.ts"
-Cohesion: 0.05
+Cohesion: 0.06
 Nodes (59): markReminderOpened(), sendTestMessage(), InstallmentRow(), handleSendReminder(), InstallmentsGrid(), ReminderClient, ReminderContract, handleTestSend() (+51 more)
 
 ### Community 3 - "new-transaction-dialog.tsx"
@@ -228,7 +228,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `types.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.06853146853146853 - nodes in this community are weakly interconnected._
 - **Should `providers.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.05432098765432099 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.055246913580246915 - nodes in this community are weakly interconnected._
 - **Should `new-transaction-dialog.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.12309612983770288 - nodes in this community are weakly interconnected._
 - **Should `actions.ts` be split into smaller, more focused modules?**
