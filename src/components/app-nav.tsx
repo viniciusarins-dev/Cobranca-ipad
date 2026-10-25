@@ -142,7 +142,7 @@ export function AppNav({ userEmail }: { userEmail: string | null }) {
       </aside>
 
       {/* Celular: topo compacto + gaveta deslizante */}
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-white/10 bg-background/80 px-4 py-3 backdrop-blur-xl md:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-white/10 bg-background px-4 py-3 md:hidden">
         <Link href="/" className="flex items-center gap-2">
           <BrandMark size={28} />
           <span className="font-display text-sm font-bold tracking-[0.2em]">RECEBE</span>

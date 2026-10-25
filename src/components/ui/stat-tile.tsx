@@ -1,8 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 
-import { CountUp } from "@/components/ui/count-up";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 type StatAccent = "primary" | "cyan" | "success" | "destructive" | "warning";
 
@@ -14,7 +13,7 @@ const ACCENT_TEXT: Record<StatAccent, string> = {
   warning: "text-warning",
 };
 
-/** Card de estatística (bento) com número animado — reactbits CountUp + SpotlightCard. */
+/** Card de estatística (bento) — o valor aparece direto, sem animação de contagem. */
 export function StatTile({
   label,
   value,
@@ -36,11 +35,9 @@ export function StatTile({
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
         <Icon className={cn("size-4", ACCENT_TEXT[accent])} />
       </div>
-      <CountUp
-        value={value}
-        format={format}
-        className={cn("text-2xl font-bold tracking-tight sm:text-3xl", ACCENT_TEXT[accent])}
-      />
+      <span className={cn("text-2xl font-bold tracking-tight tabular-nums sm:text-3xl", ACCENT_TEXT[accent])}>
+        {format === "currency" ? formatCurrency(value) : value.toLocaleString("pt-BR")}
+      </span>
     </SpotlightCard>
   );
 }

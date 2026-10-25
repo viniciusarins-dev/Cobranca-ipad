@@ -35,9 +35,15 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // `getClaims()` em vez de `getUser()`: continua renovando a sessão
+  // expirada (via getSession, que grava os cookies pelo setAll acima), mas
+  // valida o JWT localmente com a chave pública do projeto quando ele usa
+  // chaves assimétricas — sem uma ida ao servidor de Auth do Supabase a
+  // cada navegação. Com chave simétrica (legada), cai sozinho para
+  // `getUser()`, ou seja, nunca fica menos seguro que antes. O RLS do
+  // Postgres revalida o JWT em toda consulta de qualquer forma.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const user = claimsData?.claims ?? null;
 
   const isLoginRoute = request.nextUrl.pathname.startsWith("/login");
 

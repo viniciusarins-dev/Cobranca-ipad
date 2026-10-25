@@ -107,45 +107,6 @@
   color: transparent;
 }
 
-/* Aurora background: blobs de gradiente com deriva lenta, atrás do app */
-@keyframes aurora-drift-1 {
-  0%,
-  100% {
-    transform: translate(-10%, -10%) scale(1);
-  }
-  50% {
-    transform: translate(10%, 5%) scale(1.2);
-  }
-}
-@keyframes aurora-drift-2 {
-  0%,
-  100% {
-    transform: translate(5%, 10%) scale(1.1);
-  }
-  50% {
-    transform: translate(-15%, -5%) scale(0.9);
-  }
-}
-@keyframes aurora-drift-3 {
-  0%,
-  100% {
-    transform: translate(-5%, 8%) scale(0.95);
-  }
-  50% {
-    transform: translate(12%, -10%) scale(1.15);
-  }
-}
-
-.aurora-blob-1 {
-  animation: aurora-drift-1 20s ease-in-out infinite;
-}
-.aurora-blob-2 {
-  animation: aurora-drift-2 25s ease-in-out infinite;
-}
-.aurora-blob-3 {
-  animation: aurora-drift-3 30s ease-in-out infinite;
-}
-
 /* Textura de grid sutil, esmaecendo nas bordas — profundidade extra atrás do conteúdo */
 .bg-grid-fade {
   background-image:
@@ -280,9 +241,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora-blob-1,
-  .aurora-blob-2,
-  .aurora-blob-3,
   .shiny-text,
   .btn-glow,
   .pulse-glow {
