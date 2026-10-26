@@ -1,7 +1,6 @@
 import { calculateLateInterest, daysLate, roundCents } from "@/lib/financial-rules";
 import { getBusinessToday } from "@/lib/date-utils";
 import { formatCurrency, formatDate, toWhatsAppDigits } from "@/lib/utils";
-import { pickGreeting } from "@/lib/whatsapp/spintax";
 import type { Client, Contract, Installment } from "@/lib/types";
 
 export type ReminderLinkResult = { ok: true; url: string } | { ok: false; error: string };
@@ -24,12 +23,11 @@ type ReminderInstallment = Pick<
  * (`calculateLateInterest`) — nunca uma fórmula nova — e nunca cobra de
  * novo o que já foi pago: o "valor atualizado da parcela" final é sempre
  * o saldo realmente em aberto agora (principal pendente + juros de
- * atraso pendente, se houver). Mensagem enxuta e direta a pedido de um
- * devedor real: saudação por horário sim (pickGreeting, mesma função do
- * disparo automático), mas sem "tudo bem?"/"obrigado", e "favor" em vez
- * de "por favor" — só mostra valor da parcela, dias de atraso, juros do
- * dia e valor atualizado (sem detalhar juros do contrato embutidos na
- * parcela).
+ * atraso pendente, se houver). Tom firme e direto a pedido do usuário:
+ * sem saudação ("bom dia" etc.), sem "tudo bem?"/"obrigado", direto na
+ * situação da parcela — e "favor" em vez de "por favor" — só mostra
+ * valor da parcela, dias de atraso, juros do dia e valor atualizado
+ * (sem detalhar juros do contrato embutidos na parcela).
  */
 export function buildWhatsAppReminderLink(
   client: Pick<Client, "phone">,
@@ -55,11 +53,11 @@ export function buildWhatsAppReminderLink(
   const isOverdue = lateInterestOwed > 0;
   const totalDueNow = roundCents(outstandingPrincipal + lateInterestOwed);
 
-  const greeting = pickGreeting();
+  const situacao = isOverdue ? "em atraso" : "em aberto";
   const lines: string[] = [
     contract.installments_count > 1
-      ? `${greeting}, passando pra lembrar da parcela ${installment.number}/${contract.installments_count}.`
-      : `${greeting}, passando pra lembrar do vencimento do seu pagamento.`,
+      ? `Parcela ${installment.number}/${contract.installments_count} ${situacao}.`
+      : `Pagamento ${situacao}.`,
     "",
   ];
 
@@ -127,7 +125,7 @@ export function buildConsolidatedWhatsAppReminderLink(debtor: {
     return { ok: false, error: "Nenhuma parcela pendente para cobrar deste cliente." };
   }
 
-  const lines: string[] = [`${pickGreeting()}! Segue o resumo da sua situação:`, ""];
+  const lines: string[] = ["Situação de pagamento:", ""];
 
   for (const row of debtor.rows) {
     const parcela = `Parcela ${row.installment.number}/${row.contract.installments_count}`;

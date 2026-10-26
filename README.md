@@ -107,7 +107,7 @@ escolhido:
 O template padrão da mensagem (usado como texto livre pelos provedores não-oficiais, ou como
 referência do conteúdo do template aprovado no caso da Meta) é:
 
-> Passando pra lembrar da parcela {numero_parcela}.
+> Parcela {numero_parcela} pendente de pagamento.
 >
 > Valor da parcela: R$ {valor}
 > Dias de atraso: {dias_atraso}
@@ -117,12 +117,12 @@ referência do conteúdo do template aprovado no caso da Meta) é:
 >
 > Favor enviar o comprovante de pagamento.
 
-A saudação ("Bom dia"/"Boa tarde"/"Boa noite", conforme o horário em Brasília) é adicionada
-automaticamente no envio — não faz parte do texto configurável. `{dias_atraso}` e `{juros_dia}`
-vêm da mesma fórmula de juros de atraso usada no resto do app; como esta substituição é só texto
-(sem condicional), eles aparecem mesmo quando a parcela ainda não está atrasada (como "0"/"R$
-0,00") — na prática isso só é visível se um disparo automático ocorrer no próprio dia do
-vencimento, já que o cron diário só dispara para parcela já marcada "Atrasada".
+Tom firme e direto, sem saudação — nenhuma saudação é adicionada automaticamente no envio.
+`{dias_atraso}` e `{juros_dia}` vêm da mesma fórmula de juros de atraso usada no resto do app;
+como esta substituição é só texto (sem condicional), eles aparecem mesmo quando a parcela ainda
+não está atrasada (como "0"/"R$ 0,00") — na prática isso só é visível se um disparo automático
+ocorrer no próprio dia do vencimento, já que o cron diário só dispara para parcela já marcada
+"Atrasada".
 
 #### Meta Cloud API (recomendado)
 
@@ -199,8 +199,8 @@ semanal automatizado. A cada execução:
      marcou a parcela como paga ou o contrato como cancelado enquanto a fila rodava, o disparo
      é abortado para aquele cliente.
    - **Evolution API**: monta a mensagem a partir do template configurado em Ajustes e varia o
-     texto (saudação por horário + frase de encerramento aleatória, além de spintax
-     `{opção 1|opção 2}` no próprio template) para reduzir repetição — depois aguarda um
+     texto (frase de encerramento aleatória, além de spintax `{opção 1|opção 2}` no próprio
+     template) para reduzir repetição, sem saudação — depois aguarda um
      **delay aleatório de 60 a 120 segundos** antes do próximo cliente.
    - **Meta Cloud API**: envia o template aprovado preenchendo as 4 variáveis (nome, parcela,
      valor, vencimento) — sem variação de texto (não é permitido alterar um template aprovado) e

@@ -296,9 +296,9 @@
     "semantic_hash": "093100fad51605d5324b6ffde4cfc7b6"
   },
   "src/components/settings-form.tsx": {
-    "mtime": 1792956293.422795,
-    "seen": 1792956340.2459912,
-    "ast_hash": "930bd7dc171922678e42fe113c26d075",
+    "mtime": 1792978980.239377,
+    "seen": 1792979037.1445394,
+    "ast_hash": "8e4b5128e44a2a86d56b7baf08ead908",
     "semantic_hash": ""
   },
   "src/components/status-badge.tsx": {
@@ -548,9 +548,9 @@
     "semantic_hash": "de9fc8471e27adf19e6dd0d1944fee22"
   },
   "src/lib/whatsapp-reminder-link.ts": {
-    "mtime": 1792977360.4192808,
-    "seen": 1792977782.5416656,
-    "ast_hash": "2e0917d4f9fcf64755398987df835832",
+    "mtime": 1792978920.4913735,
+    "seen": 1792979037.14574,
+    "ast_hash": "9d50b691c6990cbef6dc3d72c9f80c2b",
     "semantic_hash": ""
   },
   "src/lib/whatsapp/evolution-health.ts": {
@@ -560,9 +560,9 @@
     "semantic_hash": "0e22c9025546264a01b42cebdc3c962f"
   },
   "src/lib/whatsapp/index.ts": {
-    "mtime": 1792956235.8907917,
-    "seen": 1792956340.2471566,
-    "ast_hash": "4b1860f0a5ef04c1875551f9d472bad6",
+    "mtime": 1792978931.267374,
+    "seen": 1792979037.1457863,
+    "ast_hash": "058fdabdfdacd7aec6ce6622853a04ba",
     "semantic_hash": ""
   },
   "src/lib/whatsapp/meta-health.ts": {
@@ -578,10 +578,10 @@
     "semantic_hash": "12e9c6ef48cde00f7f23fb784061a01d"
   },
   "src/lib/whatsapp/spintax.ts": {
-    "mtime": 1792898385.668272,
-    "seen": 1792939028.8834777,
-    "ast_hash": "7fe42192ae7106a742add5f972722e83",
-    "semantic_hash": "7fe42192ae7106a742add5f972722e83"
+    "mtime": 1792978955.7153754,
+    "seen": 1792979037.1458552,
+    "ast_hash": "36ab3cb524122e8f6ee49dbce4594306",
+    "semantic_hash": ""
   },
   "src/lib/whatsapp/template.ts": {
     "mtime": 1792956184.1427886,
@@ -632,9 +632,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792956333.2507975,
-    "seen": 1792956340.2474468,
-    "ast_hash": "29b396a0c7e38c777db43b0e35187658",
+    "mtime": 1792978996.3793778,
+    "seen": 1792979037.146119,
+    "ast_hash": "163f41126795be2493bfe2c8c58b7212",
     "semantic_hash": ""
   },
   "public/apple-touch-icon.png": {

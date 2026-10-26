@@ -1,17 +1,17 @@
 # Graph Report - Cobranca-ipad  (2026-10-26)
 
 ## Corpus Check
-- 132 files · ~58,726 words
+- 132 files · ~58,589 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 3 file(s) not represented in the graph (top: (none) 1, .ico 1, .css 1)
 
 ## Summary
-- 812 nodes · 2378 edges · 48 communities (39 shown, 9 thin omitted)
+- 808 nodes · 2362 edges · 54 communities (44 shown, 10 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `104904a8`
+- Built from commit: `589caa5d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -44,7 +44,7 @@
 - getBusinessToday
 - postcss.config.mjs
 - vercel.json
-- react-dom@19.2.8
+- status-badge.tsx
 - CodeGraph MCP Server Integration
 - debtors.test.ts
 - 🇬🇧 English Welcome Message
@@ -58,12 +58,18 @@
 - 標準ワークフロー
 - spintax.ts
 - installments.ts
-- tw-animate-css@^1.4.0
+- server.ts
 - financial-rules.ts
 - next.config.ts
-- vitest
+- weekly-dispatch-queue.ts
 - @radix-ui/react-label
-- @radix-ui/react-slot
+- dispatch-weekly-charge.ts
+- types.ts
+- clsx
+- @radix-ui/react-checkbox
+- @radix-ui/react-select
+- tailwind-merge
+- zod
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 65 edges
@@ -80,39 +86,39 @@
 ## Surprising Connections (you probably didn't know these)
 - `handleSendReminder()` --indirect_call--> `installment()`  [INFERRED]
   src/components/installments-grid.tsx → src/lib/debtors.test.ts
+- `BackupsPage()` --calls--> `BackupRunStatusBadge()`  [EXTRACTED]
+  src/app/(app)/backups/page.tsx → src/components/status-badge.tsx
 - `BackupsPage()` --calls--> `createClient()`  [EXTRACTED]
   src/app/(app)/backups/page.tsx → src/lib/supabase/server.ts
 - `ClientesPage()` --calls--> `ExpenseDialog()`  [EXTRACTED]
   src/app/(app)/clientes/page.tsx → src/components/expense-dialog.tsx
 - `ClientesPage()` --calls--> `NewTransactionDialog()`  [EXTRACTED]
   src/app/(app)/clientes/page.tsx → src/components/new-transaction-dialog.tsx
-- `ClientesPage()` --calls--> `createClient()`  [EXTRACTED]
-  src/app/(app)/clientes/page.tsx → src/lib/supabase/server.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (48 total, 9 thin omitted)
+## Communities (54 total, 10 thin omitted)
 
 ### Community 0 - "cn"
-Cohesion: 0.06
-Nodes (72): BackupsPage(), dynamic, formatBytes(), formatDuration(), hoursSince(), tierLabel(), ClientesPage(), dynamic (+64 more)
+Cohesion: 0.07
+Nodes (75): BackupsPage(), dynamic, formatBytes(), formatDuration(), hoursSince(), tierLabel(), ClientesPage(), dynamic (+67 more)
 
 ### Community 1 - "types.ts"
-Cohesion: 0.11
-Nodes (26): Debtor, DebtorInstallmentRow, LateInterestDetailRow, PaidTodayRow, TodayDebtorsSummary, IphoneSale, IphoneSalesSummary, DispatchResult (+18 more)
+Cohesion: 0.18
+Nodes (15): Debtor, DebtorInstallmentRow, LateInterestDetailRow, PaidTodayRow, TodayDebtorsSummary, IphoneSale, IphoneSalesSummary, WeeklyChargeWithRelations (+7 more)
 
 ### Community 2 - "providers.ts"
-Cohesion: 0.07
-Nodes (40): dynamic, POST(), reportSchema, dynamic, GET(), dynamic, GET(), maxDuration (+32 more)
+Cohesion: 0.15
+Nodes (12): MessageSettings, onlyDigits(), EvolutionHealthResult, EvolutionApiProvider, MetaCloudApiProvider, parseResponse(), TwilioProvider, WhatsAppMessagePayload (+4 more)
 
 ### Community 3 - "new-transaction-dialog.tsx"
-Cohesion: 0.12
-Nodes (71): @hookform/resolvers, lucide-react, next, react, react-hook-form, sonner, sendTestMessage(), ContractDetailPage() (+63 more)
+Cohesion: 0.17
+Nodes (48): @hookform/resolvers, lucide-react, next, react, react-hook-form, sonner, EditAddressDialog(), FilterBar() (+40 more)
 
 ### Community 4 - "actions.ts"
 Cohesion: 0.08
-Nodes (56): ActionResult, createTransaction(), deleteClientDocument(), deleteContract(), getCurrentUserEmail(), getCurrentUserId(), markReminderOpened(), recalculateContractStatus() (+48 more)
+Nodes (59): ActionResult, createTransaction(), deleteClientDocument(), deleteContract(), getCurrentUserEmail(), getCurrentUserId(), markReminderOpened(), recalculateContractStatus() (+51 more)
 
 ### Community 5 - "backup.mjs"
 Cohesion: 0.08
@@ -131,8 +137,8 @@ Cohesion: 0.11
 Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+10 more)
 
 ### Community 9 - "dependencies"
-Cohesion: 0.10
-Nodes (21): dependencies, clsx@^2.1.1, @hookform/resolvers@^5.7.1, lucide-react@^1.31.0, next@16.3.5, @radix-ui/react-checkbox@^1.3.11, @radix-ui/react-dialog@^1.1.23, @radix-ui/react-switch@^1.3.7 (+13 more)
+Cohesion: 0.11
+Nodes (19): dependencies, date-fns@^4.4.0, @hookform/resolvers@^5.7.1, lucide-react@^1.31.0, next@16.3.5, @radix-ui/react-dialog@^1.1.23, @radix-ui/react-slot@^1.3.3, @radix-ui/react-tabs@^1.1.21 (+11 more)
 
 ### Community 10 - "Agent Selection Matrix (25 Skills)"
 Cohesion: 0.09
@@ -144,7 +150,7 @@ Nodes (13): devDependencies, tailwindcss@^4, @tailwindcss/postcss@^4, @types/nod
 
 ### Community 12 - "package.json"
 Cohesion: 0.14
-Nodes (13): class-variance-authority@^0.7.1, @radix-ui/react-dropdown-menu@^2.1.24, @radix-ui/react-select@^2.3.7, recharts@^3.10.1, tailwind-merge@^3.6.0, name, private, version (+5 more)
+Nodes (13): class-variance-authority@^0.7.1, @radix-ui/react-dropdown-menu@^2.1.24, @radix-ui/react-switch@^1.3.7, recharts@^3.10.1, @supabase/supabase-js@^2.112.3, @supabase/supabase-js, name, private (+5 more)
 
 ### Community 13 - "Backup automático — configuração e restauração"
 Cohesion: 0.07
@@ -175,8 +181,8 @@ Cohesion: 0.23
 Nodes (8): cinzel, geistMono, inter, metadata, RootLayout(), viewport, AuroraBackground(), Toaster()
 
 ### Community 21 - "roundCents"
-Cohesion: 0.25
-Nodes (15): DebtorsView(), handleCollectWhatsApp(), calculateLateInterest(), daysLate(), roundCents(), splitPayment(), REF, formatDate() (+7 more)
+Cohesion: 0.22
+Nodes (15): DebtorsView(), handleCollectWhatsApp(), InstallmentRow(), InstallmentsGrid(), ReminderClient, ReminderContract, calculateLateInterest(), daysLate() (+7 more)
 
 ### Community 23 - "CLAUDE.md"
 Cohesion: 0.40
@@ -187,16 +193,20 @@ Cohesion: 0.20
 Nodes (9): Before Starting Orchestration, Benefits, Guardrails Commands (v3.9.0 NEW), Language Preference Policy, Orchestrator AI - Specification Driven Development, Project Memory (Steering System), Role Definition, Your Responsibilities (+1 more)
 
 ### Community 25 - "getBusinessToday"
-Cohesion: 0.24
-Nodes (15): addToPeriod(), computeDashboardMetrics(), DashboardMetrics, EMPTY_METHOD_TOTALS, emptyPeriod(), getPeriodBoundaries(), PeriodAmounts, PeriodBoundaries (+7 more)
+Cohesion: 0.23
+Nodes (12): addToPeriod(), computeDashboardMetrics(), DashboardMetrics, EMPTY_METHOD_TOTALS, emptyPeriod(), PeriodAmounts, PeriodBoundaries, calculateFinancedAmount() (+4 more)
+
+### Community 28 - "status-badge.tsx"
+Cohesion: 0.15
+Nodes (16): DebtorBadge(), BACKUP_RUN_LABELS, BACKUP_RUN_VARIANT, BackupRunStatusBadge(), CONTRACT_TYPE_VARIANT, CONTRACT_VARIANT, INSTALLMENT_VARIANT, InstallmentStatusBadge() (+8 more)
 
 ### Community 29 - "CodeGraph MCP Server Integration"
 Cohesion: 0.20
 Nodes (10): CodeGraph MCP Server Integration, CodeGraph MCP インストール・設定, CodeGraph活用ワークフロー, Step 1: 環境確認, Step 2: インストール実行, Step 3: プロジェクトインデックス作成, Step 4: 設定ファイル作成（オプション選択）, プロジェクトのインデックス作成 (+2 more)
 
 ### Community 30 - "debtors.test.ts"
-Cohesion: 0.18
-Nodes (8): handleSendReminder(), client(), contract(), installment(), mockSupabase(), overdueDateStr, todayStr, ConsolidatedReminderRow
+Cohesion: 0.15
+Nodes (9): vitest@^5.0.5, vitest, handleSendReminder(), client(), contract(), installment(), mockSupabase(), overdueDateStr (+1 more)
 
 ### Community 31 - "🇬🇧 English Welcome Message"
 Cohesion: 0.20
@@ -235,12 +245,16 @@ Cohesion: 0.40
 Nodes (5): ワークフロー1: 新機能開発（フルサイクル）, ワークフロー2: バグ修正（迅速対応）, ワークフロー3: セキュリティ強化, ワークフロー4: パフォーマンスチューニング, 標準ワークフロー
 
 ### Community 40 - "spintax.ts"
-Cohesion: 0.23
-Nodes (12): sendCollectionReminder(), SendReminderResult, AFTERNOON_GREETINGS, CLOSINGS, EVENING_GREETINGS, MORNING_GREETINGS, pickClosing(), pickGreeting() (+4 more)
+Cohesion: 0.53
+Nodes (5): CLOSINGS, pickClosing(), pickRandom(), resolveSpintax(), varyMessage()
 
 ### Community 41 - "installments.ts"
-Cohesion: 0.24
-Nodes (10): date-fns@^4.4.0, date-fns, dateStringToUTCTimestamp(), daysBetweenDateStrings(), addPeriod(), GeneratedInstallment, generateInstallments(), isOverdue() (+2 more)
+Cohesion: 0.22
+Nodes (15): getPeriodBoundaries(), businessDateFormatter, businessDayRangeUTC(), businessMonthStartUTC(), businessWeekStartUTC(), dateStringToUTCTimestamp(), daysBetweenDateStrings(), getBusinessToday() (+7 more)
+
+### Community 42 - "server.ts"
+Cohesion: 0.23
+Nodes (10): dynamic, POST(), reportSchema, dynamic, GET(), maxDuration, sendBackupFailureAlert(), isAuthorizedBySecret() (+2 more)
 
 ### Community 43 - "financial-rules.ts"
 Cohesion: 0.31
@@ -250,23 +264,35 @@ Nodes (8): DEFAULT_LOAN_INTEREST_RATE_PERCENT, FinancedAmountInput, FinancedAmou
 Cohesion: 0.50
 Nodes (3): CONTENT_SECURITY_POLICY, nextConfig, SECURITY_HEADERS
 
+### Community 45 - "weekly-dispatch-queue.ts"
+Cohesion: 0.24
+Nodes (13): getBrazilDateInfo(), getBrazilDateString(), getBrazilIsoWeekday(), isWithinDispatchWindow(), WEEKDAY_TO_ISO, delayForProvider(), emptySummary(), runWeeklyDispatchQueue() (+5 more)
+
+### Community 47 - "dispatch-weekly-charge.ts"
+Cohesion: 0.31
+Nodes (8): dynamic, GET(), DispatchResult, dispatchWeeklyCharge(), sendCollectionReminder(), SendReminderResult, createWhatsAppProvider(), buildReminderTemplateParams()
+
+### Community 48 - "types.ts"
+Cohesion: 0.18
+Nodes (9): dynamic, SettingsPage(), MessageLog, PHONE_STATUS_LABELS, PhoneStatus, WeeklyCharge, WeeklyChargeStatus, WHATSAPP_PROVIDER_LABELS (+1 more)
+
 ## Knowledge Gaps
-- **9 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **10 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `next` connect `new-transaction-dialog.tsx` to `cn`, `providers.ts`, `actions.ts`, `app-nav.tsx`, `dependencies`, `next.config.ts`, `package.json`, `@supabase/ssr`, `app/layout.tsx`?**
-  _High betweenness centrality (0.069) - this node is a cross-community bridge._
+- **Why does `next` connect `new-transaction-dialog.tsx` to `cn`, `actions.ts`, `app-nav.tsx`, `dependencies`, `server.ts`, `next.config.ts`, `package.json`, `dispatch-weekly-charge.ts`, `types.ts`, `@supabase/ssr`, `app/layout.tsx`, `roundCents`?**
+  _High betweenness centrality (0.070) - this node is a cross-community bridge._
 - **Should `cn` be split into smaller, more focused modules?**
-  _Cohesion score 0.05890257558790594 - nodes in this community are weakly interconnected._
-- **Why does `cn()` connect `cn` to `new-transaction-dialog.tsx`, `app-nav.tsx`?**
+  _Cohesion score 0.06888888888888889 - nodes in this community are weakly interconnected._
+- **Why does `cn()` connect `cn` to `new-transaction-dialog.tsx`, `status-badge.tsx`, `roundCents`, `app-nav.tsx`?**
   _High betweenness centrality (0.026) - this node is a cross-community bridge._
-- **Should `types.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.1103448275862069 - nodes in this community are weakly interconnected._
 - **Should `providers.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.06504494976203067 - nodes in this community are weakly interconnected._
-- **Should `new-transaction-dialog.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.11585240156668727 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.14666666666666667 - nodes in this community are weakly interconnected._
 - **Should `actions.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.08141321044546851 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07836538461538461 - nodes in this community are weakly interconnected._
+- **Should `backup.mjs` be split into smaller, more focused modules?**
+  _Cohesion score 0.07826694619147449 - nodes in this community are weakly interconnected._
+- **Should `env` be split into smaller, more focused modules?**
+  _Cohesion score 0.06451612903225806 - nodes in this community are weakly interconnected._

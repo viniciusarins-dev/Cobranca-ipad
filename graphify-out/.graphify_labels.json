@@ -1,6 +1,5 @@
 {
   "0": "cn",
-  "2": "providers.ts",
   "3": "new-transaction-dialog.tsx",
   "4": "actions.ts",
   "5": "backup.mjs",
@@ -15,6 +14,5 @@
   "19": "loading.tsx",
   "22": "AGENTS.md",
   "26": "postcss.config.mjs",
-  "27": "vercel.json",
-  "28": "react-dom@19.2.8"
+  "27": "vercel.json"
 }
