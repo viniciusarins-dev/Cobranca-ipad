@@ -142,7 +142,7 @@ export function buildConsolidatedWhatsAppReminderLink(debtor: {
 
   lines.push("", `Total atualizado para pagamento: ${formatCurrency(debtor.totalDue)}`);
   lines.push(`Cálculo em ${formatDate(getBusinessToday())}.`);
-  lines.push("", "Se já pagou, desconsidere este lembrete.", "Favor enviar o comprovante de pagamento.");
+  lines.push("", "Favor enviar o comprovante de pagamento.");
 
   const url = `https://wa.me/${waDigits}?text=${encodeURIComponent(lines.join("\n"))}`;
   return { ok: true, url };

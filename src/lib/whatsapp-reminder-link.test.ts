@@ -161,7 +161,6 @@ describe("buildConsolidatedWhatsAppReminderLink", () => {
 
     const text = extractText(result.url);
     expect(text).toContain("Favor enviar o comprovante de pagamento.");
-    expect(text).toContain("Se já pagou, desconsidere este lembrete.");
     expect(text.includes("\n")).toBe(true);
     // Ida e volta: recodificar o texto decodificado tem que bater com a
     // query string original, sem nenhum caractere corrompido/perdido.

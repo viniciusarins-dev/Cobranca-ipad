@@ -28,7 +28,6 @@ const CLOSINGS = [
   "Favor regularizar o pagamento.",
   "Regularize o quanto antes para evitar mais encargos.",
   "Envie o comprovante após o pagamento.",
-  "Se já pagou, desconsidere esta mensagem.",
 ];
 
 export function pickClosing(): string {

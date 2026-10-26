@@ -548,9 +548,9 @@
     "semantic_hash": "de9fc8471e27adf19e6dd0d1944fee22"
   },
   "src/lib/whatsapp-reminder-link.ts": {
-    "mtime": 1792978920.4913735,
-    "seen": 1792979037.14574,
-    "ast_hash": "9d50b691c6990cbef6dc3d72c9f80c2b",
+    "mtime": 1792979277.8873947,
+    "seen": 1792979322.9339619,
+    "ast_hash": "b8b9c0797a90287b3c04a01c80c7c950",
     "semantic_hash": ""
   },
   "src/lib/whatsapp/evolution-health.ts": {
@@ -578,9 +578,9 @@
     "semantic_hash": "12e9c6ef48cde00f7f23fb784061a01d"
   },
   "src/lib/whatsapp/spintax.ts": {
-    "mtime": 1792978955.7153754,
-    "seen": 1792979037.1458552,
-    "ast_hash": "36ab3cb524122e8f6ee49dbce4594306",
+    "mtime": 1792979281.1913948,
+    "seen": 1792979322.934128,
+    "ast_hash": "34449b9c5bdc4fa588ef91916c660e4c",
     "semantic_hash": ""
   },
   "src/lib/whatsapp/template.ts": {
@@ -692,9 +692,9 @@
     "semantic_hash": ""
   },
   "src/lib/whatsapp-reminder-link.test.ts": {
-    "mtime": 1792977666.4832988,
-    "seen": 1792977782.5416625,
-    "ast_hash": "182c8cff1fb603a68504e0862af0769a",
+    "mtime": 1792979287.0513952,
+    "seen": 1792979322.9339564,
+    "ast_hash": "c1228238c1ff8f860315814480cdf83e",
     "semantic_hash": ""
   },
   "vitest.config.mts": {
