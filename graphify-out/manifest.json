@@ -32,10 +32,10 @@
     "semantic_hash": "639e0f9b7fae48f9488745d848fe3f0d"
   },
   "package.json": {
-    "mtime": 1792898385.6463585,
-    "seen": 1792939028.8752813,
-    "ast_hash": "7478c81b289672ef3766387846832adb",
-    "semantic_hash": "7478c81b289672ef3766387846832adb"
+    "mtime": 1792977499.951289,
+    "seen": 1792977782.538724,
+    "ast_hash": "c88910ef85f241447bbeba918def832d",
+    "semantic_hash": ""
   },
   "postcss.config.mjs": {
     "mtime": 1792898385.6463585,
@@ -206,9 +206,9 @@
     "semantic_hash": "ec99ba68b940366a2f90fc1d66efa879"
   },
   "src/components/clients-table.tsx": {
-    "mtime": 1792974038.8952277,
-    "seen": 1792974135.0289426,
-    "ast_hash": "5d78ec752c3ccc841e88a82cd4533254",
+    "mtime": 1792977284.1272762,
+    "seen": 1792977782.5396392,
+    "ast_hash": "784e1635e9b311347363c197ba572b74",
     "semantic_hash": ""
   },
   "src/components/dashboard-overview.tsx": {
@@ -218,10 +218,10 @@
     "semantic_hash": "5e32eeec5aefe8e64e01e5b8d5289afd"
   },
   "src/components/debtors-view.tsx": {
-    "mtime": 1792898385.6574984,
-    "seen": 1792939028.8815036,
-    "ast_hash": "165efa239349158811cdaae444904cd3",
-    "semantic_hash": "165efa239349158811cdaae444904cd3"
+    "mtime": 1792977394.2512827,
+    "seen": 1792977782.5396676,
+    "ast_hash": "7ff42924575f8c5d4efd7ca3d8154878",
+    "semantic_hash": ""
   },
   "src/components/delete-contract-dialog.tsx": {
     "mtime": 1792898385.6574984,
@@ -548,9 +548,9 @@
     "semantic_hash": "de9fc8471e27adf19e6dd0d1944fee22"
   },
   "src/lib/whatsapp-reminder-link.ts": {
-    "mtime": 1792950712.270005,
-    "seen": 1792950745.5506063,
-    "ast_hash": "7d9729d67035568b9290c03fc6c853dc",
+    "mtime": 1792977360.4192808,
+    "seen": 1792977782.5416656,
+    "ast_hash": "2e0917d4f9fcf64755398987df835832",
     "semantic_hash": ""
   },
   "src/lib/whatsapp/evolution-health.ts": {
@@ -677,6 +677,30 @@
     "mtime": 1792939514.1801038,
     "seen": 1792940056.512315,
     "ast_hash": "4a0c2bcecfe52503b2ea60e46a23412d",
+    "semantic_hash": ""
+  },
+  "src/lib/debtors.test.ts": {
+    "mtime": 1792977706.9313014,
+    "seen": 1792977782.541272,
+    "ast_hash": "ca18eac1b695840e785274a69493a54e",
+    "semantic_hash": ""
+  },
+  "src/lib/financial-rules.test.ts": {
+    "mtime": 1792977636.951297,
+    "seen": 1792977782.5413277,
+    "ast_hash": "13b4e312918373435d4a943f2a1bc173",
+    "semantic_hash": ""
+  },
+  "src/lib/whatsapp-reminder-link.test.ts": {
+    "mtime": 1792977666.4832988,
+    "seen": 1792977782.5416625,
+    "ast_hash": "182c8cff1fb603a68504e0862af0769a",
+    "semantic_hash": ""
+  },
+  "vitest.config.mts": {
+    "mtime": 1792977567.587293,
+    "seen": 1792977782.541946,
+    "ast_hash": "a8281e38b94aa4e37fe8e9984e86e524",
     "semantic_hash": ""
   }
 }

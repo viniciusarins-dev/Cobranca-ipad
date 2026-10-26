@@ -28,12 +28,18 @@ export function ClientsTable({ contracts }: { contracts: ContractWithClient[] })
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    // `q.replace(/\D/g, "")` fica vazio pra uma busca por nome (sem
+    // dígitos) — sem este guard, `phone.includes("")` é sempre `true`
+    // (string vazia é substring de qualquer coisa), e o `||` fazia a busca
+    // "achar" todo mundo, não só quem batia com o nome digitado. Era
+    // exatamente isso que fazia a pesquisa parecer quebrada.
+    const qDigits = q.replace(/\D/g, "");
     return contracts.filter((contract) => {
       if (tab !== "todos" && contract.status !== tab) return false;
       if (!q) return true;
       return (
         contract.client.name.toLowerCase().includes(q) ||
-        contract.client.phone.includes(q.replace(/\D/g, "")) ||
+        (qDigits.length > 0 && contract.client.phone.includes(qDigits)) ||
         (contract.description ?? "").toLowerCase().includes(q)
       );
     });

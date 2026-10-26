@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MessageCircleIcon, SearchIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
@@ -15,6 +17,8 @@ import type { Debtor, PaidTodayRow } from "@/lib/debtors";
 import { roundCents } from "@/lib/financial-rules";
 import { PAYMENT_METHOD_LABELS } from "@/lib/types";
 import { formatCurrency, formatDate, formatDateTime, formatPhone, onlyDigits } from "@/lib/utils";
+import { buildConsolidatedWhatsAppReminderLink } from "@/lib/whatsapp-reminder-link";
+import { markReminderOpened } from "@/app/actions";
 
 type FilterTab = "todos" | "hoje" | "atrasados" | "pagos";
 type SortKey = "prioridade" | "nome" | "valor" | "vencimento" | "atraso";
@@ -73,6 +77,29 @@ export function DebtorsView({ debtors, paidToday }: { debtors: Debtor[]; paidTod
 
     return list;
   }, [debtors, tab, query, sort]);
+
+  // Monta e abre o link consolidado (todas as parcelas em aberto deste
+  // devedor numa única mensagem) de forma síncrona, na mesma interação de
+  // clique — qualquer `await` antes do `window.open` faz o navegador
+  // tratar a nova aba como pop-up e bloqueá-la (mesmo padrão já usado no
+  // lembrete de parcela única em installments-grid.tsx).
+  function handleCollectWhatsApp(debtor: Debtor) {
+    const result = buildConsolidatedWhatsAppReminderLink(debtor);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+
+    window.open(result.url, "_blank", "noopener,noreferrer");
+    toast.success("WhatsApp aberto com a cobrança consolidada. Confira e envie por lá.");
+
+    // Best-effort: só registra que o lembrete foi iniciado para cada
+    // parcela incluída (não comprova envio nem entrega) — nunca bloqueia
+    // nem desfaz a abertura do WhatsApp já feita acima.
+    for (const row of debtor.rows) {
+      void markReminderOpened(row.installment.id);
+    }
+  }
 
   if (tab === "pagos") {
     return (
@@ -143,11 +170,22 @@ export function DebtorsView({ debtors, paidToday }: { debtors: Debtor[]; paidTod
                       {formatPhone(debtor.client.phone)}
                     </a>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {debtor.rows.length > 1 ? "Total para regularizar" : "Total a pagar hoje"}
-                    </p>
-                    <p className="text-lg font-bold text-foreground">{formatCurrency(debtor.totalDue)}</p>
+                  <div className="flex flex-col items-start gap-2 sm:items-end">
+                    <div className="text-right">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {debtor.rows.length > 1 ? "Total para regularizar" : "Total a pagar hoje"}
+                      </p>
+                      <p className="text-lg font-bold text-foreground">{formatCurrency(debtor.totalDue)}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="glow"
+                      size="sm"
+                      onClick={() => handleCollectWhatsApp(debtor)}
+                    >
+                      <MessageCircleIcon />
+                      Cobrar pelo WhatsApp
+                    </Button>
                   </div>
                 </div>
 

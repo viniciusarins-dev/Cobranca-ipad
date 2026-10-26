@@ -1,4 +1,5 @@
 import { calculateLateInterest, daysLate, roundCents } from "@/lib/financial-rules";
+import { getBusinessToday } from "@/lib/date-utils";
 import { formatCurrency, formatDate, toWhatsAppDigits } from "@/lib/utils";
 import { pickGreeting } from "@/lib/whatsapp/spintax";
 import type { Client, Contract, Installment } from "@/lib/types";
@@ -75,6 +76,75 @@ export function buildWhatsAppReminderLink(
   lines.push(`Data de vencimento: ${formatDate(installment.due_date)}`);
   lines.push(`Valor atualizado da parcela: ${formatCurrency(totalDueNow)}`);
   lines.push("", "Favor enviar o comprovante de pagamento.");
+
+  const url = `https://wa.me/${waDigits}?text=${encodeURIComponent(lines.join("\n"))}`;
+  return { ok: true, url };
+}
+
+/**
+ * Uma linha já apurada de `getTodayDebtors` (src/lib/debtors.ts) — nunca
+ * recalculada aqui. `outstandingPrincipal`/`interestOwed`/`totalDue` já
+ * vêm prontos de `calculateLateInterest`/`roundCents`, a mesma apuração
+ * usada em toda a tela "Devedores do Dia"; esta função só formata texto.
+ */
+export interface ConsolidatedReminderRow {
+  contract: Pick<Contract, "installments_count">;
+  installment: Pick<Installment, "number" | "due_date">;
+  outstandingPrincipal: number;
+  interestOwed: number;
+  totalDue: number;
+  daysLate: number;
+  isOverdue: boolean;
+}
+
+/**
+ * Monta o link `wa.me` com a cobrança CONSOLIDADA de um devedor — todas as
+ * parcelas vencidas ainda não quitadas mais a parcela do dia, se houver —
+ * para o botão "Cobrar pelo WhatsApp" de Devedores do Dia. Mesma regra do
+ * lembrete de uma única parcela: nunca envia nada sozinho, nunca
+ * recalcula juros (usa exatamente os valores já apurados pelo chamador),
+ * e nunca grava nada no banco — quem abre e confirma o envio é sempre o
+ * usuário. `rows` já vem filtrado e sem duplicidade por `getTodayDebtors`
+ * (nunca uma parcela futura, paga, ou contada duas vezes), então o total
+ * aqui é sempre a soma direta de `row.totalDue`, igual ao `Debtor.totalDue`
+ * mostrado na tela — nunca um valor calculado em separado que possa
+ * divergir do que o usuário já viu antes de clicar.
+ */
+export function buildConsolidatedWhatsAppReminderLink(debtor: {
+  client: Pick<Client, "phone">;
+  rows: ConsolidatedReminderRow[];
+  totalDue: number;
+}): ReminderLinkResult {
+  const waDigits = toWhatsAppDigits(debtor.client.phone);
+  if (!waDigits) {
+    return {
+      ok: false,
+      error: "Telefone do cliente inválido ou incompleto. Corrija o cadastro antes de enviar o lembrete.",
+    };
+  }
+
+  if (debtor.rows.length === 0) {
+    return { ok: false, error: "Nenhuma parcela pendente para cobrar deste cliente." };
+  }
+
+  const lines: string[] = [`${pickGreeting()}! Segue o resumo da sua situação:`, ""];
+
+  for (const row of debtor.rows) {
+    const parcela = `Parcela ${row.installment.number}/${row.contract.installments_count}`;
+    if (row.isOverdue) {
+      lines.push(
+        `${parcela} vencida em ${formatDate(row.installment.due_date)} (${row.daysLate} dia${row.daysLate > 1 ? "s" : ""} de atraso): saldo ${formatCurrency(row.outstandingPrincipal)} + juros ${formatCurrency(row.interestOwed)} = ${formatCurrency(row.totalDue)}`,
+      );
+    } else {
+      // Vence hoje, ainda não atrasada — nunca inclui juros aqui (regra:
+      // juros de atraso só existe a partir do dia seguinte ao vencimento).
+      lines.push(`${parcela} com vencimento hoje (${formatDate(row.installment.due_date)}): ${formatCurrency(row.totalDue)}`);
+    }
+  }
+
+  lines.push("", `Total atualizado para pagamento: ${formatCurrency(debtor.totalDue)}`);
+  lines.push(`Cálculo em ${formatDate(getBusinessToday())}.`);
+  lines.push("", "Se já pagou, desconsidere este lembrete.", "Favor enviar o comprovante de pagamento.");
 
   const url = `https://wa.me/${waDigits}?text=${encodeURIComponent(lines.join("\n"))}`;
   return { ok: true, url };
