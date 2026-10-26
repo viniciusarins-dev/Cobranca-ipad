@@ -248,9 +248,9 @@
     "semantic_hash": "780eeba8e58be0e4de0e30e0690adfcc"
   },
   "src/components/installments-grid.tsx": {
-    "mtime": 1792940582.2992997,
-    "seen": 1792941052.9562643,
-    "ast_hash": "4a9e0a91b287a290093133bbcc909ba6",
+    "mtime": 1793025221.9310188,
+    "seen": 1793025342.421368,
+    "ast_hash": "26666c8f39ceb1e63e810ee123e04ce8",
     "semantic_hash": ""
   },
   "src/components/iphone-sale-edit-dialog.tsx": {

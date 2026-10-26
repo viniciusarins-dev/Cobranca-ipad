@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { InstallmentStatusBadge } from "@/components/status-badge";
 import { RegisterPaymentDialog } from "@/components/register-payment-dialog";
 import { type Client, type Contract, type Installment } from "@/lib/types";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { buildWhatsAppReminderLink } from "@/lib/whatsapp-reminder-link";
 import { markReminderOpened } from "@/app/actions";
 
@@ -76,8 +76,8 @@ function InstallmentRow({
         )}
         {installment.reminder_sent_at && (
           <span className="text-xs text-muted-foreground">
-            Último lembrete iniciado em {formatDate(installment.reminder_sent_at)} ({installment.reminder_count}x) —
-            isso só confirma que o WhatsApp foi aberto, não que a mensagem foi enviada.
+            Último lembrete iniciado em {formatDateTime(installment.reminder_sent_at)} ({installment.reminder_count}x)
+            — isso só confirma que o WhatsApp foi aberto, não que a mensagem foi enviada.
           </span>
         )}
       </div>

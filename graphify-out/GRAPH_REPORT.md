@@ -1,17 +1,17 @@
 # Graph Report - Cobranca-ipad  (2026-10-26)
 
 ## Corpus Check
-- 132 files · ~58,571 words
+- 132 files · ~58,572 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 3 file(s) not represented in the graph (top: (none) 1, .ico 1, .css 1)
 
 ## Summary
-- 808 nodes · 2362 edges · 54 communities (44 shown, 10 thin omitted)
+- 808 nodes · 2364 edges · 54 communities (44 shown, 10 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a8fe9e17`
+- Built from commit: `44397758`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -102,7 +102,7 @@
 
 ### Community 0 - "cn"
 Cohesion: 0.07
-Nodes (75): BackupsPage(), dynamic, formatBytes(), formatDuration(), hoursSince(), tierLabel(), ClientesPage(), dynamic (+67 more)
+Nodes (78): BackupsPage(), dynamic, formatBytes(), formatDuration(), hoursSince(), tierLabel(), ClientesPage(), dynamic (+70 more)
 
 ### Community 1 - "types.ts"
 Cohesion: 0.18
@@ -181,8 +181,8 @@ Cohesion: 0.23
 Nodes (8): cinzel, geistMono, inter, metadata, RootLayout(), viewport, AuroraBackground(), Toaster()
 
 ### Community 21 - "roundCents"
-Cohesion: 0.22
-Nodes (15): DebtorsView(), handleCollectWhatsApp(), InstallmentRow(), InstallmentsGrid(), ReminderClient, ReminderContract, calculateLateInterest(), daysLate() (+7 more)
+Cohesion: 0.29
+Nodes (9): InstallmentRow(), InstallmentsGrid(), ReminderClient, ReminderContract, formatDate(), buildWhatsAppReminderLink(), ReminderContract, ReminderInstallment (+1 more)
 
 ### Community 23 - "CLAUDE.md"
 Cohesion: 0.40
@@ -193,8 +193,8 @@ Cohesion: 0.20
 Nodes (9): Before Starting Orchestration, Benefits, Guardrails Commands (v3.9.0 NEW), Language Preference Policy, Orchestrator AI - Specification Driven Development, Project Memory (Steering System), Role Definition, Your Responsibilities (+1 more)
 
 ### Community 25 - "getBusinessToday"
-Cohesion: 0.23
-Nodes (12): addToPeriod(), computeDashboardMetrics(), DashboardMetrics, EMPTY_METHOD_TOTALS, emptyPeriod(), PeriodAmounts, PeriodBoundaries, calculateFinancedAmount() (+4 more)
+Cohesion: 0.25
+Nodes (14): addToPeriod(), computeDashboardMetrics(), DashboardMetrics, EMPTY_METHOD_TOTALS, emptyPeriod(), getPeriodBoundaries(), PeriodAmounts, PeriodBoundaries (+6 more)
 
 ### Community 28 - "status-badge.tsx"
 Cohesion: 0.15
@@ -249,16 +249,16 @@ Cohesion: 0.53
 Nodes (5): CLOSINGS, pickClosing(), pickRandom(), resolveSpintax(), varyMessage()
 
 ### Community 41 - "installments.ts"
-Cohesion: 0.22
-Nodes (15): getPeriodBoundaries(), businessDateFormatter, businessDayRangeUTC(), businessMonthStartUTC(), businessWeekStartUTC(), dateStringToUTCTimestamp(), daysBetweenDateStrings(), getBusinessToday() (+7 more)
+Cohesion: 0.24
+Nodes (10): businessDateFormatter, dateStringToUTCTimestamp(), daysBetweenDateStrings(), toBusinessDateString(), addPeriod(), GeneratedInstallment, generateInstallments(), isOverdue() (+2 more)
 
 ### Community 42 - "server.ts"
 Cohesion: 0.23
 Nodes (10): dynamic, POST(), reportSchema, dynamic, GET(), maxDuration, sendBackupFailureAlert(), isAuthorizedBySecret() (+2 more)
 
 ### Community 43 - "financial-rules.ts"
-Cohesion: 0.31
-Nodes (8): DEFAULT_LOAN_INTEREST_RATE_PERCENT, FinancedAmountInput, FinancedAmountResult, LATE_INTEREST_RATE_PER_DAY, LateInterestInstallmentInput, SplitPaymentResult, ContractType, InstallmentStatus
+Cohesion: 0.24
+Nodes (14): calculateFinancedAmount(), calculateLateInterest(), daysLate(), DEFAULT_LOAN_INTEREST_RATE_PERCENT, FinancedAmountInput, FinancedAmountResult, LATE_INTEREST_RATE_PER_DAY, LateInterestInstallmentInput (+6 more)
 
 ### Community 44 - "next.config.ts"
 Cohesion: 0.50
@@ -285,7 +285,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `next` connect `new-transaction-dialog.tsx` to `cn`, `actions.ts`, `app-nav.tsx`, `dependencies`, `server.ts`, `next.config.ts`, `package.json`, `dispatch-weekly-charge.ts`, `types.ts`, `@supabase/ssr`, `app/layout.tsx`, `roundCents`?**
   _High betweenness centrality (0.070) - this node is a cross-community bridge._
 - **Should `cn` be split into smaller, more focused modules?**
-  _Cohesion score 0.06888888888888889 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06700932800304588 - nodes in this community are weakly interconnected._
 - **Why does `cn()` connect `cn` to `new-transaction-dialog.tsx`, `status-badge.tsx`, `roundCents`, `app-nav.tsx`?**
   _High betweenness centrality (0.026) - this node is a cross-community bridge._
 - **Should `providers.ts` be split into smaller, more focused modules?**
