@@ -11,9 +11,15 @@ export const dynamic = "force-dynamic";
 export default async function ClientesPage() {
   const supabase = await createClient();
 
+  // Cancelado e quitado saem da visão geral de propósito — poluíam a
+  // listagem e dificultavam ver o que realmente precisa de atenção. Os
+  // dados continuam intactos no banco (histórico, pagamentos, dashboard),
+  // só não entram mais nesta tela.
   const { data, error } = await supabase
     .from("contracts")
     .select("*, client:clients(*), installments(*)")
+    .neq("status", "cancelado")
+    .neq("status", "quitado")
     .order("created_at", { ascending: false });
 
   const contracts = (data ?? []) as ContractWithInstallments[];

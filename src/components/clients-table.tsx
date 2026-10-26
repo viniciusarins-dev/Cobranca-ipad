@@ -12,13 +12,14 @@ import { ContractStatusBadge, ContractTypeBadge } from "@/components/status-badg
 import { PERIODICITY_LABELS, type ContractWithClient } from "@/lib/types";
 import { formatCurrency, formatPhone, initials } from "@/lib/utils";
 
-type FilterTab = "todos" | "ativo" | "inadimplente" | "quitado";
+// "quitado" e "cancelado" não chegam mais aqui (filtrados já na query de
+// clientes/page.tsx) — sem aba pra eles, ficaria sempre vazia.
+type FilterTab = "todos" | "ativo" | "inadimplente";
 
 const TABS: { value: FilterTab; label: string }[] = [
   { value: "todos", label: "Todos" },
   { value: "ativo", label: "Ativos" },
   { value: "inadimplente", label: "Inadimplentes" },
-  { value: "quitado", label: "Quitados" },
 ];
 
 export function ClientsTable({ contracts }: { contracts: ContractWithClient[] }) {

@@ -110,10 +110,10 @@
     "semantic_hash": "d3fbb38b0c546bb826514adb65d91a0f"
   },
   "src/app/(app)/clientes/page.tsx": {
-    "mtime": 1792898385.6526875,
-    "seen": 1792939028.875807,
-    "ast_hash": "35308b0d23e176167b9bc919cc4d9324",
-    "semantic_hash": "35308b0d23e176167b9bc919cc4d9324"
+    "mtime": 1792974083.3472304,
+    "seen": 1792974135.0284348,
+    "ast_hash": "d6a700e10474609962cbbe84037a10af",
+    "semantic_hash": ""
   },
   "src/app/(app)/contracts/[id]/page.tsx": {
     "mtime": 1792939165.8872154,
@@ -206,10 +206,10 @@
     "semantic_hash": "ec99ba68b940366a2f90fc1d66efa879"
   },
   "src/components/clients-table.tsx": {
-    "mtime": 1792898385.6574984,
-    "seen": 1792939028.8764954,
-    "ast_hash": "eb9beb38803d90643a7f6356522518c7",
-    "semantic_hash": "eb9beb38803d90643a7f6356522518c7"
+    "mtime": 1792974038.8952277,
+    "seen": 1792974135.0289426,
+    "ast_hash": "5d78ec752c3ccc841e88a82cd4533254",
+    "semantic_hash": ""
   },
   "src/components/dashboard-overview.tsx": {
     "mtime": 1792900387.738567,
