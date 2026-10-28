@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import { ArrowLeftIcon, MessageCircleIcon } from "lucide-react";
 
 import { ClientDetailsCard } from "@/components/client-details-card";
+import { CopyButton } from "@/components/copy-button";
 import { DeleteContractDialog } from "@/components/delete-contract-dialog";
 import { DisbursementDialog } from "@/components/disbursement-dialog";
 import { EditClientInfoDialog } from "@/components/edit-client-info-dialog";
 import { InstallmentsGrid } from "@/components/installments-grid";
 import { PaymentHistory } from "@/components/payment-history";
+import { SettleContractDialog } from "@/components/settle-contract-dialog";
 import { ContractStatusBadge, ContractTypeBadge } from "@/components/status-badge";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
@@ -104,6 +106,9 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           <div className="flex items-center gap-2">
             <ContractStatusBadge status={contract.status} />
             <EditClientInfoDialog client={contract.client} />
+            {contract.status !== "quitado" && contract.status !== "cancelado" && (
+              <SettleContractDialog contractId={contract.id} />
+            )}
             <DeleteContractDialog contract={contract} clientName={contract.client.name} />
           </div>
         </CardHeader>
@@ -212,6 +217,19 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               <div>
                 <dt className="text-muted-foreground">Custo do produto</dt>
                 <dd className="font-medium">{formatCurrency(linkedPhone.cost_amount)}</dd>
+              </div>
+              <div className="col-span-2 sm:col-span-3">
+                <dt className="text-muted-foreground">IMEI</dt>
+                <dd className="mt-1 flex flex-wrap items-center gap-2">
+                  {linkedPhone.imei ? (
+                    <>
+                      <span className="font-mono font-medium">{linkedPhone.imei}</span>
+                      <CopyButton value={linkedPhone.imei} label="Copiar IMEI" />
+                    </>
+                  ) : (
+                    <span className="font-medium text-muted-foreground">Não informado</span>
+                  )}
+                </dd>
               </div>
               {phoneProfit !== null && (
                 <div>

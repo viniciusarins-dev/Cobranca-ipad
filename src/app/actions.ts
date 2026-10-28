@@ -8,13 +8,16 @@ import { logAudit } from "@/lib/audit-log";
 import { getBusinessToday } from "@/lib/date-utils";
 import { detectSafeDocumentType } from "@/lib/file-validation";
 import { generateInstallments } from "@/lib/installments";
+import { normalizeImei } from "@/lib/imei";
 import { sendCollectionReminder } from "@/lib/whatsapp";
 import {
+  allocateSettlement,
   calculateFinancedAmount,
   calculateLateInterest,
   daysLate,
   roundCents,
   splitPayment,
+  type SettlementInstallmentInput,
 } from "@/lib/financial-rules";
 import {
   messageSettingsSchema,
@@ -25,6 +28,7 @@ import {
   clientAddressSchema,
   clientInfoSchema,
   contractDisbursementSchema,
+  settleContractSchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
@@ -33,9 +37,10 @@ import {
   type ClientAddressInput,
   type ClientInfoInput,
   type ContractDisbursementInput,
+  type SettleContractInput,
 } from "@/lib/validations";
 import type { ContractStatus, ContractType, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
-import { onlyDigits } from "@/lib/utils";
+import { formatCurrency, onlyDigits } from "@/lib/utils";
 
 /**
  * E-mail do usuário autenticado, só para preencher `created_by_email`
@@ -247,6 +252,7 @@ export async function createTransaction(input: TransactionInput): Promise<Action
           sold_at: new Date().toISOString(),
           acquired_at: getBusinessToday(),
           contract_id: contract.id,
+          imei: data.phoneImei ? normalizeImei(data.phoneImei) : null,
         })
       : Promise.resolve({ error: null }),
     data.periodicity === "semanal"
@@ -268,6 +274,9 @@ export async function createTransaction(input: TransactionInput): Promise<Action
     return { ok: false, error: safeError(downPaymentResult.error, "Erro ao registrar a entrada.") };
   }
   if (phoneResult.error) {
+    if (phoneResult.error.code === "23505" && phoneResult.error.message?.includes("imei")) {
+      return { ok: false, error: "Este IMEI já está cadastrado em outro aparelho." };
+    }
     return { ok: false, error: safeError(phoneResult.error, "Erro ao cadastrar o produto.") };
   }
   if (weeklyChargeResult.error) {
@@ -656,6 +665,263 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
   return { ok: true, contractId: installment.contract_id };
 }
 
+export interface ContractSettlementSummary {
+  clientName: string;
+  contractLabel: string;
+  /** contract.total_amount — valor original total do contrato, já com juros do empréstimo se houver. */
+  originalAmount: number;
+  /** Soma de tudo já pago neste contrato (entrada + parcelas), via `payments`. */
+  totalPaid: number;
+  /** Saldo devedor atual — soma do principal + juros de atraso pendente de TODAS as parcelas ainda não pagas. */
+  outstandingBalance: number;
+  canSettle: boolean;
+  reasonCannotSettle?: string;
+}
+
+type SettlementContractRow = {
+  id: string;
+  owner_id: string;
+  client_id: string;
+  type: ContractType;
+  status: ContractStatus;
+  principal_amount: number;
+  client: { name: string } | null;
+  installments: {
+    id: string;
+    number: number;
+    amount: number;
+    due_date: string;
+    status: InstallmentStatus;
+    paid_principal_amount: number;
+    paid_interest_amount: number;
+  }[];
+};
+
+function buildSettlementInstallmentInputs(
+  contract: Pick<SettlementContractRow, "type" | "principal_amount" | "installments">,
+): { remaining: SettlementContractRow["installments"]; settlementInput: SettlementInstallmentInput[] } {
+  const remaining = contract.installments.filter((installment) => installment.status !== "pago");
+  const settlementInput: SettlementInstallmentInput[] = remaining.map((installment) => ({
+    id: installment.id,
+    number: installment.number,
+    outstandingPrincipal: roundCents(Math.max(installment.amount - installment.paid_principal_amount, 0)),
+    interestOwed: calculateLateInterest({
+      contractType: contract.type,
+      originalPrincipalAmount: contract.principal_amount,
+      dueDate: installment.due_date,
+      status: installment.status,
+      paidInterestAmount: installment.paid_interest_amount,
+    }),
+  }));
+  return { remaining, settlementInput };
+}
+
+/**
+ * Prévia (somente leitura) da quitação total de um contrato — chamada
+ * sempre que o diálogo "Quitar dívida" abre, para nunca mostrar um saldo
+ * desatualizado (mesmo princípio de `registerPayment`: o número exato é
+ * sempre recalculado agora, nunca um valor guardado há algum tempo na tela).
+ */
+export async function getContractSettlementSummary(
+  contractId: string,
+): Promise<{ ok: true; summary: ContractSettlementSummary } | { ok: false; error: string }> {
+  const supabase = await createClient();
+
+  const [{ data: contractData, error: contractError }, { data: paymentsData }] = await Promise.all([
+    supabase
+      .from("contracts")
+      .select(
+        "id, owner_id, client_id, type, status, principal_amount, client:clients(name), installments(id, number, amount, due_date, status, paid_principal_amount, paid_interest_amount)",
+      )
+      .eq("id", contractId)
+      .single(),
+    supabase.from("payments").select("principal_amount, interest_amount").eq("contract_id", contractId),
+  ]);
+
+  if (contractError || !contractData) {
+    return { ok: false, error: safeError(contractError, "Empréstimo/venda não encontrado.") };
+  }
+  const contract = contractData as unknown as SettlementContractRow;
+
+  const { settlementInput } = buildSettlementInstallmentInputs(contract);
+  const { previousBalance } = allocateSettlement(settlementInput, 0);
+
+  const payments = (paymentsData ?? []) as { principal_amount: number; interest_amount: number }[];
+  const totalPaid = roundCents(payments.reduce((sum, p) => sum + p.principal_amount + p.interest_amount, 0));
+
+  let reasonCannotSettle: string | undefined;
+  if (contract.status === "cancelado") reasonCannotSettle = "Este empréstimo/venda foi cancelado.";
+  else if (contract.status === "quitado") reasonCannotSettle = "Esta dívida já está quitada.";
+  else if (settlementInput.length === 0) reasonCannotSettle = "Esta dívida não possui parcelas em aberto.";
+
+  return {
+    ok: true,
+    summary: {
+      clientName: contract.client?.name ?? "—",
+      contractLabel: contract.type === "emprestimo" ? "Empréstimo" : "Venda de Produto",
+      originalAmount: contract.principal_amount,
+      totalPaid,
+      outstandingBalance: previousBalance,
+      canSettle: !reasonCannotSettle,
+      reasonCannotSettle,
+    },
+  };
+}
+
+/**
+ * Quitação total de uma dívida: fecha TODAS as parcelas ainda em aberto do
+ * contrato de uma vez, registrando como pagamento real exatamente o valor
+ * que o usuário informa ter recebido — nunca inventa que o saldo cheio foi
+ * recebido quando o valor informado for menor (acordo). A distribuição
+ * entre parcelas é sempre feita por `allocateSettlement`
+ * (financial-rules.ts, função pura, mesma regra de `splitPayment` já usada
+ * em pagamentos normais) — esta função só valida, lê o estado atual e grava
+ * atomicamente (`settle_contract_atomic`, migration 0019).
+ *
+ * Valor recebido maior que o saldo devedor é sempre recusado: o sistema não
+ * tem nenhuma noção de crédito/sobra entre dívidas, e inventar uma aqui
+ * poderia mascarar dinheiro de OUTRA dívida do mesmo cliente sendo
+ * silenciosamente absorvido nesta.
+ */
+export async function settleContract(contractId: string, input: SettleContractInput): Promise<ActionResult> {
+  const parsed = settleContractSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  const [{ data: existingPayment }, { data: contractData, error: contractError }] = await Promise.all([
+    data.idempotencyKey
+      ? supabase.from("payments").select("contract_id").eq("idempotency_key", data.idempotencyKey).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("contracts")
+      .select(
+        "id, owner_id, client_id, type, status, principal_amount, client:clients(name), installments(id, number, amount, due_date, status, paid_principal_amount, paid_interest_amount)",
+      )
+      .eq("id", contractId)
+      .single(),
+  ]);
+
+  if (existingPayment) {
+    return { ok: true, contractId: existingPayment.contract_id };
+  }
+
+  if (contractError || !contractData) {
+    return { ok: false, error: safeError(contractError, "Empréstimo/venda não encontrado.") };
+  }
+  const contract = contractData as unknown as SettlementContractRow;
+
+  if (contract.status === "cancelado") {
+    return { ok: false, error: "Este empréstimo/venda foi cancelado. Não é possível quitar." };
+  }
+  if (contract.status === "quitado") {
+    return { ok: false, error: "Esta dívida já está quitada." };
+  }
+
+  const { remaining, settlementInput } = buildSettlementInstallmentInputs(contract);
+  if (remaining.length === 0) {
+    return { ok: false, error: "Esta dívida não possui parcelas em aberto." };
+  }
+
+  const amountReceived = roundCents(data.amountReceived);
+  const allocation = allocateSettlement(settlementInput, amountReceived);
+
+  if (amountReceived > allocation.previousBalance) {
+    return {
+      ok: false,
+      error: `O valor recebido não pode ser maior que o saldo devedor atual (${formatCurrency(allocation.previousBalance)}).`,
+    };
+  }
+  if (allocation.totalApplied <= 0) {
+    return { ok: false, error: "Informe um valor recebido maior que zero." };
+  }
+
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
+  const createdByEmail = await getCurrentUserEmail(supabase);
+
+  const installmentsPayload = remaining.map((installment) => {
+    const applied = allocation.allocations.find((a) => a.id === installment.id)!;
+    return {
+      id: installment.id,
+      expected_paid_principal: installment.paid_principal_amount,
+      expected_paid_interest: installment.paid_interest_amount,
+      expected_status: installment.status,
+      new_paid_principal: roundCents(installment.paid_principal_amount + applied.principalApplied),
+      new_paid_interest: roundCents(installment.paid_interest_amount + applied.interestApplied),
+    };
+  });
+
+  type SettleRpcResult = { payment_id: string; already_existed: boolean };
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc("settle_contract_atomic", {
+      p_contract_id: contract.id,
+      p_owner_id: ownerId,
+      p_client_id: contract.client_id,
+      p_installments: installmentsPayload,
+      p_principal_amount: allocation.totalPrincipalApplied,
+      p_interest_amount: allocation.totalInterestApplied,
+      p_settlement_previous_balance: allocation.previousBalance,
+      // Forma de pagamento não faz parte deste fluxo (acordo de quitação,
+      // não uma parcela/método específico) — "outro" é o valor neutro já
+      // existente no enum para este caso, nunca afirma algo que não se sabe.
+      p_method: "outro",
+      p_notes: data.notes || null,
+      p_created_by_email: createdByEmail,
+      p_idempotency_key: data.idempotencyKey ?? null,
+    })
+    .single();
+
+  if (rpcError) {
+    if (rpcError.message?.includes("installment_changed_concurrently")) {
+      return {
+        ok: false,
+        error: "Os dados desta dívida mudaram enquanto a tela estava aberta. Atualize e tente de novo.",
+      };
+    }
+    if (rpcError.code === "23505" && data.idempotencyKey) {
+      return { ok: true, contractId: contract.id };
+    }
+    return { ok: false, error: safeError(rpcError, "Erro ao quitar a dívida.") };
+  }
+
+  const rpcResult = rpcData as unknown as SettleRpcResult | null;
+  if (rpcResult?.already_existed) {
+    return { ok: true, contractId: contract.id };
+  }
+
+  await recalculateContractStatus(supabase, contract.id);
+
+  revalidatePath(`/contracts/${contract.id}`);
+  revalidatePath("/");
+  revalidatePath("/clientes");
+  revalidatePath("/debtors");
+  if (contract.type === "venda_iphone") {
+    revalidatePath("/phones");
+  }
+
+  await logAudit(supabase, {
+    actorEmail: createdByEmail,
+    ownerId,
+    action: "contract_settled",
+    resourceType: "contract",
+    resourceId: contract.id,
+    metadata: {
+      amountReceived,
+      previousBalance: allocation.previousBalance,
+      waivedAmount: allocation.waivedAmount,
+      principalAmount: allocation.totalPrincipalApplied,
+      interestAmount: allocation.totalInterestApplied,
+    },
+  });
+
+  return { ok: true, contractId: contract.id };
+}
+
 export async function registerExpense(input: ExpenseInput): Promise<ActionResult> {
   const parsed = expenseSchema.safeParse(input);
   if (!parsed.success) {
@@ -762,10 +1028,14 @@ export async function updateIphoneSale(contractId: string, input: IphoneSaleUpda
       battery_percent: data.batteryPercent ?? null,
       cost_amount: roundCents(data.costAmount),
       sale_amount: newSaleAmount,
+      imei: data.imei ? normalizeImei(data.imei) : null,
     })
     .eq("id", phone.id);
 
   if (phoneUpdateError) {
+    if (phoneUpdateError.code === "23505" && phoneUpdateError.message?.includes("imei")) {
+      return { ok: false, error: "Este IMEI já está cadastrado em outro aparelho." };
+    }
     return { ok: false, error: safeError(phoneUpdateError, "Erro ao atualizar dados do produto.") };
   }
 

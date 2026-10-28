@@ -203,3 +203,75 @@ export function splitPayment(
 
   return { interestPortion, principalPortion };
 }
+
+export interface SettlementInstallmentInput {
+  id: string;
+  number: number;
+  /** Saldo de principal ainda em aberto desta parcela (amount − paid_principal_amount, nunca negativo). */
+  outstandingPrincipal: number;
+  /** Juros de atraso pendente desta parcela, já calculado via `calculateLateInterest` (0 para venda de produto). */
+  interestOwed: number;
+}
+
+export interface SettlementAllocation {
+  id: string;
+  principalApplied: number;
+  interestApplied: number;
+}
+
+export interface SettlementAllocationResult {
+  allocations: SettlementAllocation[];
+  totalPrincipalApplied: number;
+  totalInterestApplied: number;
+  totalApplied: number;
+  /** Soma do saldo (principal + juros) de TODAS as parcelas em aberto, antes da quitação. */
+  previousBalance: number;
+  /** previousBalance − totalApplied, nunca negativo — a parte do saldo perdoada no acordo (nunca lançada como dinheiro recebido). */
+  waivedAmount: number;
+}
+
+/**
+ * Quitação total: distribui o valor recebido entre as parcelas ainda em
+ * aberto do contrato, da mais antiga para a mais nova, usando a MESMA regra
+ * já usada em cada parcela individualmente (`splitPayment`: primeiro cobre
+ * o principal, só depois o juros) — generalizada aqui para várias parcelas
+ * em sequência em vez de uma só. Nunca aplica mais do que o saldo de cada
+ * parcela; o que sobrar sem cobertura (quando o valor recebido é menor que
+ * o saldo total) é `waivedAmount` — a diferença do acordo, que esta função
+ * nunca inventa como dinheiro recebido, só calcula para exibição/auditoria.
+ *
+ * Função PURA — nunca escreve no banco. Quem decide se pode gravar (ex.:
+ * rejeitar valor recebido maior que `previousBalance`) é sempre o chamador
+ * (`settleContract`, em actions.ts).
+ */
+export function allocateSettlement(
+  installments: SettlementInstallmentInput[],
+  amountReceived: number,
+): SettlementAllocationResult {
+  const sorted = [...installments].sort((a, b) => a.number - b.number);
+  const previousBalance = roundCents(
+    sorted.reduce((sum, installment) => sum + installment.outstandingPrincipal + installment.interestOwed, 0),
+  );
+
+  let remaining = roundCents(Math.max(amountReceived, 0));
+  const allocations: SettlementAllocation[] = [];
+  let totalPrincipalApplied = 0;
+  let totalInterestApplied = 0;
+
+  for (const installment of sorted) {
+    const { principalPortion, interestPortion } = splitPayment(
+      remaining,
+      installment.interestOwed,
+      installment.outstandingPrincipal,
+    );
+    allocations.push({ id: installment.id, principalApplied: principalPortion, interestApplied: interestPortion });
+    totalPrincipalApplied = roundCents(totalPrincipalApplied + principalPortion);
+    totalInterestApplied = roundCents(totalInterestApplied + interestPortion);
+    remaining = roundCents(Math.max(remaining - principalPortion - interestPortion, 0));
+  }
+
+  const totalApplied = roundCents(totalPrincipalApplied + totalInterestApplied);
+  const waivedAmount = roundCents(Math.max(previousBalance - totalApplied, 0));
+
+  return { allocations, totalPrincipalApplied, totalInterestApplied, totalApplied, previousBalance, waivedAmount };
+}

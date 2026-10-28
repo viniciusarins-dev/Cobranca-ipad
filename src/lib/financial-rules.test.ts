@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  allocateSettlement,
   calculateFinancedAmount,
   calculateLateInterest,
   daysLate,
   roundCents,
   splitPayment,
+  type SettlementInstallmentInput,
 } from "@/lib/financial-rules";
 
 // Horário fixo em meio-dia UTC-3 (Brasília) pra nunca cair numa borda de
@@ -127,5 +129,97 @@ describe("calculateFinancedAmount", () => {
     expect(result.ratePercent).toBe(0);
     expect(result.markupAmount).toBe(0);
     expect(result.totalFinanced).toBe(1000);
+  });
+});
+
+describe("allocateSettlement (quitação total)", () => {
+  function installment(overrides: Partial<SettlementInstallmentInput> = {}): SettlementInstallmentInput {
+    return { id: "i1", number: 1, outstandingPrincipal: 300, interestOwed: 0, ...overrides };
+  }
+
+  it("quitação pelo valor integral do saldo devedor: nada é perdoado", () => {
+    const installments = [
+      installment({ id: "i1", number: 1, outstandingPrincipal: 300, interestOwed: 18 }),
+      installment({ id: "i2", number: 2, outstandingPrincipal: 375, interestOwed: 0 }),
+    ];
+    const result = allocateSettlement(installments, 693);
+
+    expect(result.previousBalance).toBe(693);
+    expect(result.totalApplied).toBe(693);
+    expect(result.waivedAmount).toBe(0);
+  });
+
+  it("quitação por valor inferior ao saldo (acordo): a diferença some como waivedAmount, nunca como recebido", () => {
+    const installments = [
+      installment({ id: "i1", number: 1, outstandingPrincipal: 300, interestOwed: 18 }),
+      installment({ id: "i2", number: 2, outstandingPrincipal: 375, interestOwed: 0 }),
+    ];
+    const result = allocateSettlement(installments, 500);
+
+    expect(result.previousBalance).toBe(693);
+    expect(result.totalApplied).toBe(500);
+    expect(result.waivedAmount).toBe(193);
+    // Nunca conta o mesmo dinheiro duas vezes: a soma do que foi aplicado a
+    // cada parcela bate exatamente com o total aplicado.
+    const sumApplied = roundCents(
+      result.allocations.reduce((sum, a) => sum + a.principalApplied + a.interestApplied, 0),
+    );
+    expect(sumApplied).toBe(result.totalApplied);
+  });
+
+  it("distribui da parcela mais antiga (menor número) para a mais nova, nunca na ordem inversa", () => {
+    const installments = [
+      installment({ id: "i2", number: 2, outstandingPrincipal: 300, interestOwed: 0 }),
+      installment({ id: "i1", number: 1, outstandingPrincipal: 300, interestOwed: 0 }),
+    ];
+    // Só dá pra cobrir a primeira parcela (por número) inteira.
+    const result = allocateSettlement(installments, 300);
+
+    const first = result.allocations.find((a) => a.id === "i1")!;
+    const second = result.allocations.find((a) => a.id === "i2")!;
+    expect(first.principalApplied).toBe(300);
+    expect(second.principalApplied).toBe(0);
+  });
+
+  it("dentro de cada parcela, cobre primeiro o principal e só depois o juros (mesma regra de splitPayment)", () => {
+    const installments = [installment({ outstandingPrincipal: 300, interestOwed: 90 })];
+    const result = allocateSettlement(installments, 350);
+
+    expect(result.allocations[0].principalApplied).toBe(300);
+    expect(result.allocations[0].interestApplied).toBe(50);
+  });
+
+  it("nunca aplica mais do que o saldo de uma parcela, mesmo com valor recebido muito maior", () => {
+    const installments = [installment({ outstandingPrincipal: 300, interestOwed: 0 })];
+    const result = allocateSettlement(installments, 999999);
+
+    expect(result.allocations[0].principalApplied).toBe(300);
+    expect(result.totalApplied).toBe(300);
+    // O excedente além do saldo devedor NUNCA é aplicado nem contado como
+    // recebido — quem decide recusar esse caso é sempre o chamador
+    // (settleContract em actions.ts), comparando amountReceived com
+    // previousBalance antes de chamar esta função.
+    expect(result.previousBalance).toBe(300);
+  });
+
+  it("venda de produto (sem juros de atraso) distribui só o principal", () => {
+    const installments = [
+      installment({ id: "i1", number: 1, outstandingPrincipal: 200, interestOwed: 0 }),
+      installment({ id: "i2", number: 2, outstandingPrincipal: 200, interestOwed: 0 }),
+    ];
+    const result = allocateSettlement(installments, 250);
+
+    expect(result.totalInterestApplied).toBe(0);
+    expect(result.totalPrincipalApplied).toBe(250);
+  });
+
+  it("valor recebido zero não aplica nada e perdoa o saldo inteiro, sem lançar exceção", () => {
+    const installments = [installment({ outstandingPrincipal: 300, interestOwed: 18 })];
+    const result = allocateSettlement(installments, 0);
+
+    expect(result.totalApplied).toBe(0);
+    expect(result.waivedAmount).toBe(318);
+    expect(result.allocations[0].principalApplied).toBe(0);
+    expect(result.allocations[0].interestApplied).toBe(0);
   });
 });

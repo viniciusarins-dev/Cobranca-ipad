@@ -7,6 +7,7 @@ import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContractStatusBadge } from "@/components/status-badge";
+import { CopyButton } from "@/components/copy-button";
 import { DeleteContractDialog } from "@/components/delete-contract-dialog";
 import { IphoneSaleEditDialog } from "@/components/iphone-sale-edit-dialog";
 import type { IphoneSale } from "@/lib/iphone-sales";
@@ -18,18 +19,24 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return sales;
+    // Guarda contra string vazia: `q.replace(/\D/g, "")` fica vazio pra uma
+    // busca sem dígitos (nome/modelo/cor), e "".includes("") é sempre true —
+    // sem este guard, qualquer busca por nome "encontraria" todo mundo
+    // também pelo IMEI (mesmo bug já corrigido em clients-table.tsx).
+    const qDigits = q.replace(/\D/g, "");
     return sales.filter(
       (sale) =>
         sale.client.name.toLowerCase().includes(q) ||
         sale.phone.model.toLowerCase().includes(q) ||
-        (sale.phone.color ?? "").toLowerCase().includes(q),
+        (sale.phone.color ?? "").toLowerCase().includes(q) ||
+        (qDigits.length > 0 && (sale.phone.imei ?? "").includes(qDigits)),
     );
   }, [sales, query]);
 
   return (
     <div className="flex flex-col gap-4">
       <Input
-        placeholder="Buscar por cliente, produto ou cor..."
+        placeholder="Buscar por cliente, produto, cor ou IMEI..."
         className="sm:w-72"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -41,6 +48,7 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
             <TableRow>
               <TableHead>Cliente</TableHead>
               <TableHead>Produto</TableHead>
+              <TableHead>IMEI</TableHead>
               <TableHead>Custo</TableHead>
               <TableHead>Venda</TableHead>
               <TableHead>Lucro</TableHead>
@@ -53,7 +61,7 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
                   Nenhuma venda de produto encontrada.
                 </TableCell>
               </TableRow>
@@ -74,6 +82,16 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
                         .join(" · ") || "—"}
                     </span>
                   </div>
+                </TableCell>
+                <TableCell>
+                  {sale.phone.imei ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-xs">{sale.phone.imei}</span>
+                      <CopyButton value={sale.phone.imei} label="Copiar" />
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell>{formatCurrency(sale.phone.cost_amount)}</TableCell>
                 <TableCell>{formatCurrency(sale.contract.principal_amount)}</TableCell>

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { IMEI_PATTERN } from "@/lib/imei";
+
 export const transactionSchema = z
   .object({
     clientId: z.string().uuid().optional(),
@@ -42,6 +44,12 @@ export const transactionSchema = z
     phoneBatteryPercent: z.number().min(0, "Mínimo 0%.").max(100, "Máximo 100%.").optional(),
     /** Custo de aquisição do iPhone (o que foi pago para adquiri-lo) — nunca confundir com o valor da venda. */
     phoneCostAmount: z.number().min(0, "O custo não pode ser negativo.").optional(),
+    /**
+     * IMEI do aparelho — sempre opcional (o sistema não distingue "celular"
+     * de outro tipo de produto além do texto livre de `phoneModel`, então
+     * nunca é exigido) e pode ser preenchido depois, na edição da venda.
+     */
+    phoneImei: z.string().trim().optional().or(z.literal("")),
   })
   .refine((data) => data.type === "venda_iphone" || !data.hasDownPayment, {
     message: "Entrada só se aplica a venda de produto.",
@@ -66,6 +74,10 @@ export const transactionSchema = z
   .refine((data) => data.type !== "venda_iphone" || data.phoneCostAmount !== undefined, {
     message: "Informe o custo do produto.",
     path: ["phoneCostAmount"],
+  })
+  .refine((data) => !data.phoneImei || IMEI_PATTERN.test(data.phoneImei), {
+    message: "IMEI deve conter exatamente 15 dígitos numéricos.",
+    path: ["phoneImei"],
   });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
@@ -111,13 +123,20 @@ export type ExpenseInput = z.infer<typeof expenseSchema>;
  * `saleAmount` só é aceito pelo backend quando o contrato ainda não tem
  * nenhum pagamento registrado — ver `updateIphoneSale`.
  */
-export const iphoneSaleUpdateSchema = z.object({
-  model: z.string().trim().min(1, "Informe o nome do produto."),
-  color: z.string().trim().optional().or(z.literal("")),
-  batteryPercent: z.number().min(0, "Mínimo 0%.").max(100, "Máximo 100%.").optional(),
-  costAmount: z.number({ error: "Informe o custo do produto." }).min(0, "O custo não pode ser negativo."),
-  saleAmount: z.number({ error: "Informe o valor da venda." }).positive("O valor da venda deve ser maior que zero."),
-});
+export const iphoneSaleUpdateSchema = z
+  .object({
+    model: z.string().trim().min(1, "Informe o nome do produto."),
+    color: z.string().trim().optional().or(z.literal("")),
+    batteryPercent: z.number().min(0, "Mínimo 0%.").max(100, "Máximo 100%.").optional(),
+    costAmount: z.number({ error: "Informe o custo do produto." }).min(0, "O custo não pode ser negativo."),
+    saleAmount: z.number({ error: "Informe o valor da venda." }).positive("O valor da venda deve ser maior que zero."),
+    /** Sempre opcional — pode ser cadastrado só depois da venda, se necessário. */
+    imei: z.string().trim().optional().or(z.literal("")),
+  })
+  .refine((data) => !data.imei || IMEI_PATTERN.test(data.imei), {
+    message: "IMEI deve conter exatamente 15 dígitos numéricos.",
+    path: ["imei"],
+  });
 
 export type IphoneSaleUpdateInput = z.infer<typeof iphoneSaleUpdateSchema>;
 
@@ -174,3 +193,20 @@ export const clientAddressSchema = z.object({
 });
 
 export type ClientAddressInput = z.infer<typeof clientAddressSchema>;
+
+/**
+ * Quitação total de uma dívida (contrato) por um valor possivelmente
+ * diferente do saldo devedor atual (acordo) — ver `settleContract` em
+ * actions.ts para a regra completa. O saldo devedor em si nunca vem do
+ * cliente: é sempre recalculado no servidor no momento da confirmação.
+ */
+export const settleContractSchema = z.object({
+  amountReceived: z
+    .number({ error: "Informe o valor recebido." })
+    .positive("O valor recebido deve ser maior que zero."),
+  notes: z.string().trim().max(500, "Observação muito longa.").optional().or(z.literal("")),
+  /** Gerado uma vez por tentativa no cliente — protege contra clique duplo/reenvio. */
+  idempotencyKey: z.string().uuid().optional(),
+});
+
+export type SettleContractInput = z.infer<typeof settleContractSchema>;

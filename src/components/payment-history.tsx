@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { roundCents } from "@/lib/financial-rules";
 import { PAYMENT_METHOD_LABELS, type Payment, type PaymentMethod } from "@/lib/types";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
@@ -45,10 +46,19 @@ export function PaymentHistory({ payments, installmentNumberById, totalInstallme
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map((payment) => {
-            const total = payment.principal_amount + payment.interest_amount;
-            const label = payment.installment_id
-              ? `Parcela ${installmentNumberById[payment.installment_id] ?? "?"}/${totalInstallments}`
-              : "Entrada";
+            const total = roundCents(payment.principal_amount + payment.interest_amount);
+            const label = payment.is_settlement
+              ? "Quitação total"
+              : payment.installment_id
+                ? `Parcela ${installmentNumberById[payment.installment_id] ?? "?"}/${totalInstallments}`
+                : "Entrada";
+            // Nunca inventado: a diferença entre o saldo que existia antes da
+            // quitação e o que foi realmente aplicado (principal + juros desta
+            // mesma linha) — é exatamente o que ficou perdoado no acordo.
+            const waivedAmount =
+              payment.is_settlement && payment.settlement_previous_balance !== null
+                ? roundCents(Math.max(payment.settlement_previous_balance - total, 0))
+                : 0;
 
             return (
               <div
@@ -64,6 +74,12 @@ export function PaymentHistory({ payments, installmentNumberById, totalInstallme
                       · principal {formatCurrency(payment.principal_amount)} + juros{" "}
                       {formatCurrency(payment.interest_amount)}
                     </span>
+                  )}
+                  {payment.is_settlement && payment.settlement_previous_balance !== null && (
+                    <p className="text-xs text-muted-foreground">
+                      Saldo anterior: {formatCurrency(payment.settlement_previous_balance)}
+                      {waivedAmount > 0 && ` · Diferença do acordo (não recebida): ${formatCurrency(waivedAmount)}`}
+                    </p>
                   )}
                   {payment.notes && <p className="text-xs text-muted-foreground">{payment.notes}</p>}
                   {payment.created_by_email && (

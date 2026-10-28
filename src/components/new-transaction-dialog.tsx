@@ -59,6 +59,7 @@ export function NewTransactionDialog() {
       phoneModel: "",
       phoneColor: "",
       phoneCostAmount: 0,
+      phoneImei: "",
     },
   });
 
@@ -100,6 +101,7 @@ export function NewTransactionDialog() {
       setValue("phoneColor", "");
       setValue("phoneBatteryPercent", undefined);
       setValue("phoneCostAmount", 0);
+      setValue("phoneImei", "");
     }
   }, [isIphoneSale, setValue]);
 
@@ -291,10 +293,15 @@ export function NewTransactionDialog() {
                     <p className="text-xs text-destructive">{errors.phoneCostAmount.message}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Usado para calcular o lucro real da venda (valor da venda − custo). O IMEI pode ser adicionado
-                    depois, se necessário.
+                    Usado para calcular o lucro real da venda (valor da venda − custo).
                   </p>
                 </div>
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="phoneImei">IMEI do aparelho (opcional, só para celulares)</Label>
+                <Input id="phoneImei" placeholder="15 dígitos — pode ser adicionado depois" {...register("phoneImei")} />
+                {errors.phoneImei && <p className="text-xs text-destructive">{errors.phoneImei.message}</p>}
               </div>
             </div>
           )}

@@ -34,6 +34,7 @@ export function IphoneSaleEditDialog({ sale }: { sale: IphoneSale }) {
     batteryPercent: sale.phone.battery_percent ?? undefined,
     costAmount: sale.phone.cost_amount,
     saleAmount: sale.contract.principal_amount,
+    imei: sale.phone.imei ?? "",
   };
 
   const {
@@ -131,6 +132,12 @@ export function IphoneSaleEditDialog({ sale }: { sale: IphoneSale }) {
               />
               {errors.saleAmount && <p className="text-xs text-destructive">{errors.saleAmount.message}</p>}
             </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="imei">IMEI do aparelho (opcional, só para celulares)</Label>
+            <Input id="imei" placeholder="15 dígitos" {...register("imei")} />
+            {errors.imei && <p className="text-xs text-destructive">{errors.imei.message}</p>}
           </div>
 
           <DialogFooter>

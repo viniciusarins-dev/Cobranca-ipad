@@ -114,6 +114,20 @@ export interface Payment {
   /** E-mail do usuário autenticado que registrou o pagamento, se houver. */
   created_by_email: string | null;
   created_at: string;
+  /**
+   * true quando este registro representa uma quitação total (acordo),
+   * nunca uma parcela normal nem uma entrada. `installment_id` é sempre
+   * null nesse caso — o valor fecha o saldo de VÁRIAS parcelas de uma vez,
+   * não uma específica.
+   */
+  is_settlement: boolean;
+  /**
+   * Saldo devedor do contrato (principal + juros de atraso) no instante da
+   * quitação, só preenchido quando `is_settlement` — permite calcular a
+   * diferença do acordo (saldo anterior − valor recebido) na exibição, sem
+   * precisar de mais uma coluna para isso.
+   */
+  settlement_previous_balance: number | null;
 }
 
 /**
@@ -129,6 +143,13 @@ export interface Phone {
   owner_id: string;
   model: string;
   color: string | null;
+  /**
+   * IMEI do aparelho (exatamente 15 dígitos, sempre texto — nunca número,
+   * pra nunca perder zero à esquerda). Opcional: nunca exigido para
+   * produtos que não sejam celulares, e pode ser preenchido depois da
+   * venda. Nunca apagado por nenhuma atualização de estoque/venda.
+   */
+  imei: string | null;
   /** Saúde da bateria em %, de 0 a 100. */
   battery_percent: number | null;
   description: string | null;

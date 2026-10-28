@@ -116,9 +116,9 @@
     "semantic_hash": ""
   },
   "src/app/(app)/contracts/[id]/page.tsx": {
-    "mtime": 1792939165.8872154,
-    "seen": 1792939233.5874808,
-    "ast_hash": "3c7d9ee392bcf5ac1aab87fa7fafc704",
+    "mtime": 1793189405.848507,
+    "seen": 1793189723.2031002,
+    "ast_hash": "0f8e75604d5adcc5b4719be254bdf05e",
     "semantic_hash": ""
   },
   "src/app/(app)/debtors/page.tsx": {
@@ -152,9 +152,9 @@
     "semantic_hash": "280fa206da5113a6c39dc3f4ed3d3564"
   },
   "src/app/actions.ts": {
-    "mtime": 1792945927.1840057,
-    "seen": 1792945991.0906975,
-    "ast_hash": "d7da32a935e50cd42def93584d4597c9",
+    "mtime": 1793114108.389255,
+    "seen": 1793189723.203246,
+    "ast_hash": "161ec3837db780a3cd8b689abd0db1e0",
     "semantic_hash": ""
   },
   "src/app/api/backup/report/route.ts": {
@@ -218,9 +218,9 @@
     "semantic_hash": "5e32eeec5aefe8e64e01e5b8d5289afd"
   },
   "src/components/debtors-view.tsx": {
-    "mtime": 1792977394.2512827,
-    "seen": 1792977782.5396676,
-    "ast_hash": "7ff42924575f8c5d4efd7ca3d8154878",
+    "mtime": 1793189438.6805089,
+    "seen": 1793189723.2034974,
+    "ast_hash": "f639d3e3c920d9c578eb4355c0027961",
     "semantic_hash": ""
   },
   "src/components/delete-contract-dialog.tsx": {
@@ -254,16 +254,16 @@
     "semantic_hash": ""
   },
   "src/components/iphone-sale-edit-dialog.tsx": {
-    "mtime": 1792898385.6583583,
-    "seen": 1792939028.8817465,
-    "ast_hash": "30bea5d90701f119ac53d875b0ee86ca",
-    "semantic_hash": "30bea5d90701f119ac53d875b0ee86ca"
+    "mtime": 1793189479.4765112,
+    "seen": 1793189723.2036498,
+    "ast_hash": "c9437daade6fe0e2cd417b7acb3d3a27",
+    "semantic_hash": ""
   },
   "src/components/iphone-sales-table.tsx": {
-    "mtime": 1792898385.6583583,
-    "seen": 1792939028.8817916,
-    "ast_hash": "bc7752c0e49e3d077ddedccb7af3ddf8",
-    "semantic_hash": "bc7752c0e49e3d077ddedccb7af3ddf8"
+    "mtime": 1793189513.3365133,
+    "seen": 1793189723.203652,
+    "ast_hash": "1e6a1e41ca0982ef7dbb0eaa8e0942e1",
+    "semantic_hash": ""
   },
   "src/components/late-interest-detail-dialog.tsx": {
     "mtime": 1792898385.6583583,
@@ -278,16 +278,16 @@
     "semantic_hash": "2ff4d32cf58c9029c1e6e0f99aa84a18"
   },
   "src/components/new-transaction-dialog.tsx": {
-    "mtime": 1792900584.7265716,
-    "seen": 1792939028.8819022,
-    "ast_hash": "4c555283f927983d14859715de773f30",
-    "semantic_hash": "4c555283f927983d14859715de773f30"
+    "mtime": 1793189471.756511,
+    "seen": 1793189723.2036986,
+    "ast_hash": "7aee3eedcc2af019887e38657c0ca3e9",
+    "semantic_hash": ""
   },
   "src/components/payment-history.tsx": {
-    "mtime": 1792898385.6583583,
-    "seen": 1792939028.8819413,
-    "ast_hash": "e6b12e561994f81798c664074226759a",
-    "semantic_hash": "e6b12e561994f81798c664074226759a"
+    "mtime": 1793189454.5165098,
+    "seen": 1793189723.2037008,
+    "ast_hash": "7db2dec9472d1807342924b516ea9eb0",
+    "semantic_hash": ""
   },
   "src/components/register-payment-dialog.tsx": {
     "mtime": 1792898385.6583583,
@@ -470,10 +470,10 @@
     "semantic_hash": "a00da819d6fecc40c41b0f89392e1a7b"
   },
   "src/lib/financial-rules.ts": {
-    "mtime": 1792900491.4025695,
-    "seen": 1792939028.88294,
-    "ast_hash": "34eb3c4bd266c982c2121d70c6dcdf8c",
-    "semantic_hash": "34eb3c4bd266c982c2121d70c6dcdf8c"
+    "mtime": 1793113962.333261,
+    "seen": 1793189723.2044055,
+    "ast_hash": "6d5dd8ceba599a42e9d97a122c43ffb4",
+    "semantic_hash": ""
   },
   "src/lib/installments.ts": {
     "mtime": 1792898385.6623585,
@@ -530,10 +530,10 @@
     "semantic_hash": "ce0c8b38b074ae22425355f1091d63ff"
   },
   "src/lib/types.ts": {
-    "mtime": 1792900300.4745653,
-    "seen": 1792939028.8832707,
-    "ast_hash": "e7ff4b32e368434f9df2ab5946dbe27c",
-    "semantic_hash": "e7ff4b32e368434f9df2ab5946dbe27c"
+    "mtime": 1793113974.2972605,
+    "seen": 1793189723.204647,
+    "ast_hash": "fe2975c9aa3d1acf88bffcfa402a3c58",
+    "semantic_hash": ""
   },
   "src/lib/utils.ts": {
     "mtime": 1792898385.6671271,
@@ -542,10 +542,10 @@
     "semantic_hash": "bfd3a49a8a020c21d5336293d3426191"
   },
   "src/lib/validations.ts": {
-    "mtime": 1792900313.8145657,
-    "seen": 1792939028.8833196,
-    "ast_hash": "de9fc8471e27adf19e6dd0d1944fee22",
-    "semantic_hash": "de9fc8471e27adf19e6dd0d1944fee22"
+    "mtime": 1793113999.3692594,
+    "seen": 1793189723.2046723,
+    "ast_hash": "7136c7de6f175781a7cb1b67f7367077",
+    "semantic_hash": ""
   },
   "src/lib/whatsapp-reminder-link.ts": {
     "mtime": 1792979277.8873947,
@@ -686,9 +686,9 @@
     "semantic_hash": ""
   },
   "src/lib/financial-rules.test.ts": {
-    "mtime": 1792977636.951297,
-    "seen": 1792977782.5413277,
-    "ast_hash": "13b4e312918373435d4a943f2a1bc173",
+    "mtime": 1793189548.6765156,
+    "seen": 1793189723.2044034,
+    "ast_hash": "a78e4d241667439d0ccaab8aafd34c1c",
     "semantic_hash": ""
   },
   "src/lib/whatsapp-reminder-link.test.ts": {
@@ -701,6 +701,30 @@
     "mtime": 1792977567.587293,
     "seen": 1792977782.541946,
     "ast_hash": "a8281e38b94aa4e37fe8e9984e86e524",
+    "semantic_hash": ""
+  },
+  "src/components/copy-button.tsx": {
+    "mtime": 1793114113.5492547,
+    "seen": 1793189723.2034726,
+    "ast_hash": "723cbbfc25fa230ced0ae1c7c5038500",
+    "semantic_hash": ""
+  },
+  "src/components/settle-contract-dialog.tsx": {
+    "mtime": 1793189612.8285193,
+    "seen": 1793189723.203747,
+    "ast_hash": "bbd95bef77807abceac20e08a8632025",
+    "semantic_hash": ""
+  },
+  "src/lib/imei.test.ts": {
+    "mtime": 1793189555.500516,
+    "seen": 1793189723.204407,
+    "ast_hash": "df06c844195e6f30656759408b2ae59b",
+    "semantic_hash": ""
+  },
+  "src/lib/imei.ts": {
+    "mtime": 1793113947.4172616,
+    "seen": 1793189723.2044086,
+    "ast_hash": "4cc0c634525f18c1bec20a4e0977e3d5",
     "semantic_hash": ""
   }
 }
