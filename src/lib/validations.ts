@@ -210,3 +210,15 @@ export const settleContractSchema = z.object({
 });
 
 export type SettleContractInput = z.infer<typeof settleContractSchema>;
+
+/**
+ * Corrige a periodicidade de um contrato já cadastrado (ex.: cliente disse
+ * mensal, combinado era semanal) — ver `updateContractPeriodicity` em
+ * actions.ts. Só permitido enquanto nenhum pagamento foi registrado (mudar
+ * depois moveria o vencimento de parcelas já pagas).
+ */
+export const contractPeriodicitySchema = z.object({
+  periodicity: z.enum(["semanal", "quinzenal", "mensal"]),
+});
+
+export type ContractPeriodicityInput = z.infer<typeof contractPeriodicitySchema>;

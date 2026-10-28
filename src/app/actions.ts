@@ -29,6 +29,7 @@ import {
   clientInfoSchema,
   contractDisbursementSchema,
   settleContractSchema,
+  contractPeriodicitySchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
@@ -38,6 +39,7 @@ import {
   type ClientInfoInput,
   type ContractDisbursementInput,
   type SettleContractInput,
+  type ContractPeriodicityInput,
 } from "@/lib/validations";
 import type { ContractStatus, ContractType, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
 import { formatCurrency, onlyDigits } from "@/lib/utils";
@@ -922,6 +924,167 @@ export async function settleContract(contractId: string, input: SettleContractIn
   return { ok: true, contractId: contract.id };
 }
 
+/**
+ * Abatimento parcial: aplica o valor recebido sobre as parcelas ainda em
+ * aberto do contrato (mesma distribuição de `allocateSettlement` — mais
+ * antiga primeiro, principal antes do juros), SEM perdoar nada. O que não
+ * for coberto continua em aberto normalmente (mesmo status que teria se
+ * cada parcela tivesse recebido um pagamento parcial individual via
+ * `registerPayment` — a dívida só fecha sozinha se o valor cobrir tudo,
+ * nunca é forçada a fechar aqui).
+ *
+ * Diferente de `settleContract`: cada parcela tocada gera o seu PRÓPRIO
+ * registro em `payments` (não um único pagamento consolidado) — do jeito
+ * que qualquer pagamento de parcela já aparece no histórico, só que várias
+ * de uma vez, numa única transação atômica (`apply_contract_abatement_atomic`,
+ * migration 0021).
+ */
+export async function payDownContractBalance(contractId: string, input: SettleContractInput): Promise<ActionResult> {
+  const parsed = settleContractSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  const [{ data: existingPayment }, { data: contractData, error: contractError }] = await Promise.all([
+    data.idempotencyKey
+      ? supabase.from("payments").select("contract_id").eq("idempotency_key", data.idempotencyKey).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("contracts")
+      .select(
+        "id, owner_id, client_id, type, status, principal_amount, client:clients(name), installments(id, number, amount, due_date, status, paid_principal_amount, paid_interest_amount)",
+      )
+      .eq("id", contractId)
+      .single(),
+  ]);
+
+  if (existingPayment) {
+    return { ok: true, contractId: existingPayment.contract_id };
+  }
+
+  if (contractError || !contractData) {
+    return { ok: false, error: safeError(contractError, "Empréstimo/venda não encontrado.") };
+  }
+  const contract = contractData as unknown as SettlementContractRow;
+
+  if (contract.status === "cancelado") {
+    return { ok: false, error: "Este empréstimo/venda foi cancelado. Não é possível registrar pagamento nele." };
+  }
+  if (contract.status === "quitado") {
+    return { ok: false, error: "Esta dívida já está quitada." };
+  }
+
+  const { remaining, settlementInput } = buildSettlementInstallmentInputs(contract);
+  if (remaining.length === 0) {
+    return { ok: false, error: "Esta dívida não possui parcelas em aberto." };
+  }
+
+  const amountReceived = roundCents(data.amountReceived);
+  const allocation = allocateSettlement(settlementInput, amountReceived);
+
+  if (amountReceived > allocation.previousBalance) {
+    return {
+      ok: false,
+      error: `O valor recebido não pode ser maior que o saldo devedor atual (${formatCurrency(allocation.previousBalance)}).`,
+    };
+  }
+  if (allocation.totalApplied <= 0) {
+    return { ok: false, error: "Informe um valor recebido maior que zero." };
+  }
+
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
+  const createdByEmail = await getCurrentUserEmail(supabase);
+
+  // Mesma fórmula de status usada em `registerPayment` pra uma parcela só —
+  // aqui aplicada a cada parcela tocada pelo abatimento: totalmente coberta
+  // vira "pago"; senão, "atrasado" se já venceu, "parcial" caso contrário.
+  // Nunca força "pago" numa parcela que não foi totalmente coberta (essa é
+  // exatamente a diferença para a quitação total).
+  const installmentsPayload = remaining.map((installment) => {
+    const applied = allocation.allocations.find((a) => a.id === installment.id)!;
+    const newPaidPrincipal = roundCents(installment.paid_principal_amount + applied.principalApplied);
+    const newPaidInterest = roundCents(installment.paid_interest_amount + applied.interestApplied);
+    const isFullyPaid = newPaidPrincipal >= roundCents(installment.amount);
+    const isStillLate = daysLate(installment.due_date) > 0;
+    const newStatus: InstallmentStatus = isFullyPaid ? "pago" : isStillLate ? "atrasado" : "parcial";
+
+    return {
+      id: installment.id,
+      expected_paid_principal: installment.paid_principal_amount,
+      expected_paid_interest: installment.paid_interest_amount,
+      expected_status: installment.status,
+      principal_applied: applied.principalApplied,
+      interest_applied: applied.interestApplied,
+      new_paid_principal: newPaidPrincipal,
+      new_paid_interest: newPaidInterest,
+      new_status: newStatus,
+    };
+  });
+
+  type AbatementRpcResult = { already_existed: boolean };
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc("apply_contract_abatement_atomic", {
+      p_contract_id: contract.id,
+      p_owner_id: ownerId,
+      p_client_id: contract.client_id,
+      p_installments: installmentsPayload,
+      p_method: "outro",
+      p_notes: data.notes || null,
+      p_created_by_email: createdByEmail,
+      p_idempotency_key: data.idempotencyKey ?? null,
+    })
+    .single();
+
+  if (rpcError) {
+    if (rpcError.message?.includes("installment_changed_concurrently")) {
+      return {
+        ok: false,
+        error: "Os dados desta dívida mudaram enquanto a tela estava aberta. Atualize e tente de novo.",
+      };
+    }
+    if (rpcError.code === "23505" && data.idempotencyKey) {
+      return { ok: true, contractId: contract.id };
+    }
+    return { ok: false, error: safeError(rpcError, "Erro ao registrar o abatimento.") };
+  }
+
+  const rpcResult = rpcData as unknown as AbatementRpcResult | null;
+  if (rpcResult?.already_existed) {
+    return { ok: true, contractId: contract.id };
+  }
+
+  await recalculateContractStatus(supabase, contract.id);
+
+  revalidatePath(`/contracts/${contract.id}`);
+  revalidatePath("/");
+  revalidatePath("/clientes");
+  revalidatePath("/debtors");
+  if (contract.type === "venda_iphone") {
+    revalidatePath("/phones");
+  }
+
+  await logAudit(supabase, {
+    actorEmail: createdByEmail,
+    ownerId,
+    action: "contract_balance_reduced",
+    resourceType: "contract",
+    resourceId: contract.id,
+    metadata: {
+      amountReceived,
+      previousBalance: allocation.previousBalance,
+      principalAmount: allocation.totalPrincipalApplied,
+      interestAmount: allocation.totalInterestApplied,
+    },
+  });
+
+  return { ok: true, contractId: contract.id };
+}
+
 export async function registerExpense(input: ExpenseInput): Promise<ActionResult> {
   const parsed = expenseSchema.safeParse(input);
   if (!parsed.success) {
@@ -1152,6 +1315,128 @@ export async function updateContractDisbursement(
     resourceType: "contract",
     resourceId: contractId,
     metadata: { disbursedAt },
+  });
+  return { ok: true, contractId };
+}
+
+/**
+ * Corrige a periodicidade de um contrato (empréstimo OU venda) cadastrada
+ * errada — ex.: o cliente combinou semanal, mas foi cadastrado como mensal.
+ * Só permitido enquanto NENHUM pagamento foi registrado: mudar depois
+ * moveria o vencimento de parcelas que já têm pagamento vinculado, o que
+ * corrompe o histórico — mesma trava já usada em `updateIphoneSale` para
+ * impedir alterar o valor da venda depois do primeiro pagamento.
+ *
+ * Como não há pagamento algum (garantido acima), é seguro apagar e
+ * regenerar todas as parcelas a partir do mesmo valor total, quantidade de
+ * parcelas e 1º vencimento já cadastrados — só a periodicidade muda.
+ * `weekly_charges` é sincronizado: sai da fila semanal se deixou de ser
+ * "semanal", entra se passou a ser (mesma regra usada na criação do
+ * contrato, em `createTransaction`).
+ */
+export async function updateContractPeriodicity(
+  contractId: string,
+  input: ContractPeriodicityInput,
+): Promise<ActionResult> {
+  const parsed = contractPeriodicitySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  const { data: contract, error: contractError } = await supabase
+    .from("contracts")
+    .select("id, owner_id, client_id, status, periodicity, total_amount, installments_count, first_due_date")
+    .eq("id", contractId)
+    .single();
+
+  if (contractError || !contract) {
+    return { ok: false, error: safeError(contractError, "Empréstimo/venda não encontrado.") };
+  }
+  if (contract.status === "cancelado") {
+    return { ok: false, error: "Este empréstimo/venda foi cancelado. Não é possível alterar." };
+  }
+  if (contract.periodicity === data.periodicity) {
+    return { ok: true, contractId };
+  }
+
+  const { count: paymentsCount, error: countError } = await supabase
+    .from("payments")
+    .select("id", { count: "exact", head: true })
+    .eq("contract_id", contractId);
+
+  if (countError) {
+    return { ok: false, error: safeError(countError, "Erro ao verificar pagamentos.") };
+  }
+  if ((paymentsCount ?? 0) > 0) {
+    return {
+      ok: false,
+      error: "Não é possível alterar a periodicidade depois que algum pagamento foi registrado.",
+    };
+  }
+
+  // Sem pagamentos ainda (garantido acima): seguro apagar e regenerar todas
+  // as parcelas a partir da nova periodicidade.
+  const { error: deleteInstallmentsError } = await supabase
+    .from("installments")
+    .delete()
+    .eq("contract_id", contractId);
+  if (deleteInstallmentsError) {
+    return { ok: false, error: safeError(deleteInstallmentsError, "Erro ao recalcular parcelas.") };
+  }
+
+  const newInstallments = generateInstallments({
+    totalAmount: contract.total_amount,
+    installmentsCount: contract.installments_count,
+    periodicity: data.periodicity,
+    firstDueDate: contract.first_due_date,
+  }).map((installment) => ({
+    owner_id: contract.owner_id,
+    contract_id: contractId,
+    number: installment.number,
+    amount: installment.amount,
+    due_date: installment.due_date,
+  }));
+
+  const { error: installmentsError } = await supabase.from("installments").insert(newInstallments);
+  if (installmentsError) {
+    return { ok: false, error: safeError(installmentsError, "Erro ao gerar novas parcelas.") };
+  }
+
+  const { error: contractUpdateError } = await supabase
+    .from("contracts")
+    .update({ periodicity: data.periodicity })
+    .eq("id", contractId);
+  if (contractUpdateError) {
+    return { ok: false, error: safeError(contractUpdateError, "Erro ao atualizar periodicidade.") };
+  }
+
+  const wasWeekly = contract.periodicity === "semanal";
+  const isWeekly = data.periodicity === "semanal";
+  if (wasWeekly && !isWeekly) {
+    await supabase.from("weekly_charges").delete().eq("contract_id", contractId);
+  } else if (!wasWeekly && isWeekly) {
+    await supabase.from("weekly_charges").insert({
+      owner_id: contract.owner_id,
+      contract_id: contractId,
+      client_id: contract.client_id,
+      dia_semana_disparo: toBusinessWeekday(contract.first_due_date),
+      proximo_disparo: contract.first_due_date,
+      status: "PENDENTE",
+    });
+  }
+
+  revalidatePath(`/contracts/${contractId}`);
+  revalidatePath("/");
+  revalidatePath("/clientes");
+  await logAudit(supabase, {
+    actorEmail: await getCurrentUserEmail(supabase),
+    ownerId: contract.owner_id,
+    action: "contract_periodicity_updated",
+    resourceType: "contract",
+    resourceId: contractId,
+    metadata: { before: contract.periodicity, after: data.periodicity },
   });
   return { ok: true, contractId };
 }

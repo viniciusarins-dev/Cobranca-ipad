@@ -7,6 +7,7 @@ import { CopyButton } from "@/components/copy-button";
 import { DeleteContractDialog } from "@/components/delete-contract-dialog";
 import { DisbursementDialog } from "@/components/disbursement-dialog";
 import { EditClientInfoDialog } from "@/components/edit-client-info-dialog";
+import { EditPeriodicityDialog } from "@/components/edit-periodicity-dialog";
 import { InstallmentsGrid } from "@/components/installments-grid";
 import { PaymentHistory } from "@/components/payment-history";
 import { SettleContractDialog } from "@/components/settle-contract-dialog";
@@ -106,6 +107,13 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           <div className="flex items-center gap-2">
             <ContractStatusBadge status={contract.status} />
             <EditClientInfoDialog client={contract.client} />
+            {contract.status !== "cancelado" && (
+              <EditPeriodicityDialog
+                contractId={contract.id}
+                currentPeriodicity={contract.periodicity}
+                hasPayments={payments.length > 0}
+              />
+            )}
             {contract.status !== "quitado" && contract.status !== "cancelado" && (
               <SettleContractDialog contractId={contract.id} />
             )}
