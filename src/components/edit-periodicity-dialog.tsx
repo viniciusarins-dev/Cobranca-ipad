@@ -26,17 +26,19 @@ import { updateContractPeriodicity } from "@/app/actions";
 
 /**
  * Corrige a periodicidade cadastrada errada (ex.: marcado mensal, combinado
- * era semanal) — só liberado enquanto nenhum pagamento foi registrado
- * (mudar depois moveria o vencimento de parcelas já pagas).
+ * era semanal) — funciona mesmo com parcela já paga: o servidor nunca
+ * altera a data de uma parcela que já tem pagamento aplicado, só reencaixa
+ * as que ainda estão em aberto a partir da nova periodicidade.
  */
 export function EditPeriodicityDialog({
   contractId,
   currentPeriodicity,
-  hasPayments,
+  hasLockedInstallments,
 }: {
   contractId: string;
   currentPeriodicity: Periodicity;
-  hasPayments: boolean;
+  /** Se há pelo menos uma parcela com algum pagamento aplicado — só para o aviso abaixo, nunca bloqueia o formulário. */
+  hasLockedInstallments: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -82,44 +84,44 @@ export function EditPeriodicityDialog({
         <DialogHeader>
           <DialogTitle>Periodicidade das parcelas</DialogTitle>
           <DialogDescription>
-            {hasPayments
-              ? "Esta operação já tem pagamento registrado — a periodicidade não pode mais ser alterada (mudaria o vencimento de parcelas já pagas)."
-              : "Corrige a periodicidade cadastrada por engano. As datas de vencimento das parcelas são recalculadas a partir do 1º vencimento já definido; o valor total e a quantidade de parcelas não mudam."}
+            Corrige a periodicidade cadastrada por engano.
+            {hasLockedInstallments
+              ? " Parcelas que já têm pagamento (total ou parcial) não mudam de data — só as ainda em aberto são reorganizadas a partir delas, na nova periodicidade."
+              : " As datas de vencimento são recalculadas a partir do 1º vencimento já definido."}{" "}
+            O valor total e a quantidade de parcelas não mudam.
           </DialogDescription>
         </DialogHeader>
 
-        {!hasPayments && (
-          <form onSubmit={onSubmit} className="grid gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="periodicity">Periodicidade</Label>
-              <Controller
-                control={control}
-                name="periodicity"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="periodicity">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="semanal">{PERIODICITY_LABELS.semanal}</SelectItem>
-                      <SelectItem value="quinzenal">{PERIODICITY_LABELS.quinzenal}</SelectItem>
-                      <SelectItem value="mensal">{PERIODICITY_LABELS.mensal}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
+        <form onSubmit={onSubmit} className="grid gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="periodicity">Periodicidade</Label>
+            <Controller
+              control={control}
+              name="periodicity"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="periodicity">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="semanal">{PERIODICITY_LABELS.semanal}</SelectItem>
+                    <SelectItem value="quinzenal">{PERIODICITY_LABELS.quinzenal}</SelectItem>
+                    <SelectItem value="mensal">{PERIODICITY_LABELS.mensal}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Salvando..." : "Salvar"}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

@@ -107,11 +107,11 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           <div className="flex items-center gap-2">
             <ContractStatusBadge status={contract.status} />
             <EditClientInfoDialog client={contract.client} />
-            {contract.status !== "cancelado" && (
+            {contract.status !== "cancelado" && contract.status !== "quitado" && (
               <EditPeriodicityDialog
                 contractId={contract.id}
                 currentPeriodicity={contract.periodicity}
-                hasPayments={payments.length > 0}
+                hasLockedInstallments={payments.length > 0}
               />
             )}
             {contract.status !== "quitado" && contract.status !== "cancelado" && (

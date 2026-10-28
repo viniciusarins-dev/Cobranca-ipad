@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit-log";
 import { getBusinessToday } from "@/lib/date-utils";
 import { detectSafeDocumentType } from "@/lib/file-validation";
-import { generateInstallments } from "@/lib/installments";
+import { generateInstallments, reflowSchedule } from "@/lib/installments";
 import { normalizeImei } from "@/lib/imei";
 import { sendCollectionReminder } from "@/lib/whatsapp";
 import {
@@ -41,7 +41,7 @@ import {
   type SettleContractInput,
   type ContractPeriodicityInput,
 } from "@/lib/validations";
-import type { ContractStatus, ContractType, InstallmentStatus, WeeklyChargeStatus } from "@/lib/types";
+import type { ContractStatus, ContractType, InstallmentStatus, Periodicity, WeeklyChargeStatus } from "@/lib/types";
 import { formatCurrency, onlyDigits } from "@/lib/utils";
 
 /**
@@ -1322,14 +1322,14 @@ export async function updateContractDisbursement(
 /**
  * Corrige a periodicidade de um contrato (empréstimo OU venda) cadastrada
  * errada — ex.: o cliente combinou semanal, mas foi cadastrado como mensal.
- * Só permitido enquanto NENHUM pagamento foi registrado: mudar depois
- * moveria o vencimento de parcelas que já têm pagamento vinculado, o que
- * corrompe o histórico — mesma trava já usada em `updateIphoneSale` para
- * impedir alterar o valor da venda depois do primeiro pagamento.
+ * Permitido mesmo com parcela já paga: NUNCA mexe na data (nem em nenhum
+ * outro campo) de uma parcela que já tem algum pagamento aplicado, total ou
+ * parcial — só reencaixa as parcelas ainda em aberto a partir da nova
+ * periodicidade, continuando de onde a última parcela travada realmente
+ * está (`reflowSchedule`, installments.ts). O valor de cada parcela nunca
+ * muda (não depende de periodicidade); só a data de vencimento das
+ * parcelas em aberto é ajustada.
  *
- * Como não há pagamento algum (garantido acima), é seguro apagar e
- * regenerar todas as parcelas a partir do mesmo valor total, quantidade de
- * parcelas e 1º vencimento já cadastrados — só a periodicidade muda.
  * `weekly_charges` é sincronizado: sai da fila semanal se deixou de ser
  * "semanal", entra se passou a ser (mesma regra usada na criação do
  * contrato, em `createTransaction`).
@@ -1345,63 +1345,60 @@ export async function updateContractPeriodicity(
   const data = parsed.data;
   const supabase = await createClient();
 
-  const { data: contract, error: contractError } = await supabase
+  const { data: contractData, error: contractError } = await supabase
     .from("contracts")
-    .select("id, owner_id, client_id, status, periodicity, total_amount, installments_count, first_due_date")
+    .select(
+      "id, owner_id, client_id, status, periodicity, first_due_date, installments(id, number, due_date, paid_principal_amount, paid_interest_amount)",
+    )
     .eq("id", contractId)
     .single();
 
-  if (contractError || !contract) {
+  if (contractError || !contractData) {
     return { ok: false, error: safeError(contractError, "Empréstimo/venda não encontrado.") };
   }
+  type PeriodicityContractRow = {
+    id: string;
+    owner_id: string;
+    client_id: string;
+    status: ContractStatus;
+    periodicity: Periodicity;
+    first_due_date: string;
+    installments: { id: string; number: number; due_date: string; paid_principal_amount: number; paid_interest_amount: number }[];
+  };
+  const contract = contractData as unknown as PeriodicityContractRow;
+
   if (contract.status === "cancelado") {
     return { ok: false, error: "Este empréstimo/venda foi cancelado. Não é possível alterar." };
+  }
+  if (contract.status === "quitado") {
+    return { ok: false, error: "Esta dívida já está quitada — não há parcela em aberto para reorganizar." };
   }
   if (contract.periodicity === data.periodicity) {
     return { ok: true, contractId };
   }
 
-  const { count: paymentsCount, error: countError } = await supabase
-    .from("payments")
-    .select("id", { count: "exact", head: true })
-    .eq("contract_id", contractId);
-
-  if (countError) {
-    return { ok: false, error: safeError(countError, "Erro ao verificar pagamentos.") };
-  }
-  if ((paymentsCount ?? 0) > 0) {
-    return {
-      ok: false,
-      error: "Não é possível alterar a periodicidade depois que algum pagamento foi registrado.",
-    };
-  }
-
-  // Sem pagamentos ainda (garantido acima): seguro apagar e regenerar todas
-  // as parcelas a partir da nova periodicidade.
-  const { error: deleteInstallmentsError } = await supabase
-    .from("installments")
-    .delete()
-    .eq("contract_id", contractId);
-  if (deleteInstallmentsError) {
-    return { ok: false, error: safeError(deleteInstallmentsError, "Erro ao recalcular parcelas.") };
-  }
-
-  const newInstallments = generateInstallments({
-    totalAmount: contract.total_amount,
-    installmentsCount: contract.installments_count,
-    periodicity: data.periodicity,
-    firstDueDate: contract.first_due_date,
-  }).map((installment) => ({
-    owner_id: contract.owner_id,
-    contract_id: contractId,
+  const scheduleInput = contract.installments.map((installment) => ({
     number: installment.number,
-    amount: installment.amount,
     due_date: installment.due_date,
+    locked: installment.paid_principal_amount > 0 || installment.paid_interest_amount > 0,
   }));
+  const reflowed = reflowSchedule(scheduleInput, data.periodicity, contract.first_due_date);
+  const dueDateByNumber = new Map(reflowed.filter((r) => r.changed).map((r) => [r.number, r.due_date]));
 
-  const { error: installmentsError } = await supabase.from("installments").insert(newInstallments);
-  if (installmentsError) {
-    return { ok: false, error: safeError(installmentsError, "Erro ao gerar novas parcelas.") };
+  if (dueDateByNumber.size > 0) {
+    const updates = contract.installments
+      .filter((installment) => dueDateByNumber.has(installment.number))
+      .map((installment) =>
+        supabase
+          .from("installments")
+          .update({ due_date: dueDateByNumber.get(installment.number) })
+          .eq("id", installment.id),
+      );
+    const results = await Promise.all(updates);
+    const failed = results.find((r) => r.error);
+    if (failed?.error) {
+      return { ok: false, error: safeError(failed.error, "Erro ao recalcular datas das parcelas.") };
+    }
   }
 
   const { error: contractUpdateError } = await supabase
@@ -1430,13 +1427,18 @@ export async function updateContractPeriodicity(
   revalidatePath(`/contracts/${contractId}`);
   revalidatePath("/");
   revalidatePath("/clientes");
+  revalidatePath("/debtors");
   await logAudit(supabase, {
     actorEmail: await getCurrentUserEmail(supabase),
     ownerId: contract.owner_id,
     action: "contract_periodicity_updated",
     resourceType: "contract",
     resourceId: contractId,
-    metadata: { before: contract.periodicity, after: data.periodicity },
+    metadata: {
+      before: contract.periodicity,
+      after: data.periodicity,
+      installmentsRescheduled: dueDateByNumber.size,
+    },
   });
   return { ok: true, contractId };
 }
