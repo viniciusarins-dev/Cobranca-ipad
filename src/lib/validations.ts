@@ -222,3 +222,16 @@ export const contractPeriodicitySchema = z.object({
 });
 
 export type ContractPeriodicityInput = z.infer<typeof contractPeriodicitySchema>;
+
+/**
+ * Renovação de parcela (paga só o juros de atraso e empurra o vencimento 1
+ * período) — ver `renewInstallment` em actions.ts. Nunca recebe um valor
+ * digitado pelo usuário: o juros é sempre o calculado ao vivo no servidor
+ * no momento da confirmação, igual ao resto do sistema.
+ */
+export const renewInstallmentSchema = z.object({
+  notes: z.string().trim().max(500, "Observação muito longa.").optional().or(z.literal("")),
+  idempotencyKey: z.string().uuid().optional(),
+});
+
+export type RenewInstallmentInput = z.infer<typeof renewInstallmentSchema>;

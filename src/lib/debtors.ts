@@ -5,7 +5,7 @@ import type { Client, Contract, Installment } from "@/lib/types";
 
 export interface DebtorInstallmentRow {
   installment: Installment;
-  contract: Pick<Contract, "id" | "type" | "description" | "installments_count" | "principal_amount">;
+  contract: Pick<Contract, "id" | "type" | "description" | "installments_count" | "principal_amount" | "periodicity">;
   outstandingPrincipal: number;
   interestOwed: number;
   totalDue: number;
@@ -106,7 +106,7 @@ export async function getTodayDebtors(
     supabase
       .from("installments")
       .select(
-        "*, contract:contracts(id, type, status, description, installments_count, principal_amount, client:clients(*))",
+        "*, contract:contracts(id, type, status, description, installments_count, principal_amount, periodicity, client:clients(*))",
       )
       .in("status", ["pendente", "atrasado", "parcial"])
       .lte("due_date", todayStr),
@@ -122,7 +122,10 @@ export async function getTodayDebtors(
   ]);
 
   type InstallmentRow = Installment & {
-    contract: Pick<Contract, "id" | "type" | "status" | "description" | "installments_count" | "principal_amount"> & {
+    contract: Pick<
+      Contract,
+      "id" | "type" | "status" | "description" | "installments_count" | "principal_amount" | "periodicity"
+    > & {
       client: Client;
     };
   };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { reflowSchedule, type ScheduleInstallmentInput } from "@/lib/installments";
+import { nextDueDate, reflowSchedule, type ScheduleInstallmentInput } from "@/lib/installments";
 
 function installment(overrides: Partial<ScheduleInstallmentInput> = {}): ScheduleInstallmentInput {
   return { number: 1, due_date: "2026-01-01", locked: false, ...overrides };
@@ -67,5 +67,19 @@ describe("reflowSchedule", () => {
     ];
     const result = reflowSchedule(installments, "mensal", "2026-01-01");
     expect(result.every((r) => !r.changed)).toBe(true);
+  });
+});
+
+describe("nextDueDate", () => {
+  it("empurra 1 mês (calendário, não 30 dias fixos) — usado pela renovação de parcela", () => {
+    expect(nextDueDate("2026-01-31", "mensal")).toBe("2026-02-28");
+  });
+
+  it("empurra 7 dias no semanal", () => {
+    expect(nextDueDate("2026-01-01", "semanal")).toBe("2026-01-08");
+  });
+
+  it("empurra 15 dias no quinzenal", () => {
+    expect(nextDueDate("2026-01-01", "quinzenal")).toBe("2026-01-16");
   });
 });

@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { InstallmentStatusBadge } from "@/components/status-badge";
 import { RegisterPaymentDialog } from "@/components/register-payment-dialog";
+import { RenewInstallmentDialog } from "@/components/renew-installment-dialog";
+import { calculateLateInterest } from "@/lib/financial-rules";
 import { type Client, type Contract, type Installment } from "@/lib/types";
 import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { buildWhatsAppReminderLink } from "@/lib/whatsapp-reminder-link";
@@ -20,6 +22,7 @@ type ReminderContract = Pick<
   | "down_payment_amount"
   | "installments_count"
   | "interest_rate_percent"
+  | "periodicity"
 >;
 type ReminderClient = Pick<Client, "name" | "phone">;
 
@@ -33,6 +36,20 @@ function InstallmentRow({
   client: ReminderClient;
 }) {
   const router = useRouter();
+
+  // Só pra decidir se mostra o botão "Renovar" — o servidor sempre
+  // recalcula este valor de novo antes de gravar qualquer coisa, nunca
+  // confia neste número calculado na tela.
+  const interestOwed =
+    installment.status !== "pago"
+      ? calculateLateInterest({
+          contractType: contract.type,
+          originalPrincipalAmount: contract.principal_amount,
+          dueDate: installment.due_date,
+          status: installment.status,
+          paidInterestAmount: installment.paid_interest_amount,
+        })
+      : 0;
 
   function handleSendReminder() {
     // Monta o link e abre o WhatsApp de forma síncrona, na mesma interação
@@ -89,6 +106,16 @@ function InstallmentRow({
             contractType={contract.type}
             contractPrincipalAmount={contract.principal_amount}
             onPaid={() => router.refresh()}
+          />
+        )}
+
+        {contract.type === "emprestimo" && interestOwed > 0 && (
+          <RenewInstallmentDialog
+            installmentId={installment.id}
+            installmentLabel={`parcela ${installment.number}/${contract.installments_count}`}
+            interestOwed={interestOwed}
+            dueDate={installment.due_date}
+            periodicity={contract.periodicity}
           />
         )}
 

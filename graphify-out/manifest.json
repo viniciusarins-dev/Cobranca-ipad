@@ -152,9 +152,9 @@
     "semantic_hash": "280fa206da5113a6c39dc3f4ed3d3564"
   },
   "src/app/actions.ts": {
-    "mtime": 1793224023.0262287,
-    "seen": 1793224155.6796463,
-    "ast_hash": "495e5654d35ea7ede39ce9fc060d6b8e",
+    "mtime": 1793225260.6985295,
+    "seen": 1793225422.5076098,
+    "ast_hash": "5ad73e696c28b23d8ce8079e4e69e596",
     "semantic_hash": ""
   },
   "src/app/api/backup/report/route.ts": {
@@ -218,9 +218,9 @@
     "semantic_hash": "5e32eeec5aefe8e64e01e5b8d5289afd"
   },
   "src/components/debtors-view.tsx": {
-    "mtime": 1793189438.6805089,
-    "seen": 1793189723.2034974,
-    "ast_hash": "f639d3e3c920d9c578eb4355c0027961",
+    "mtime": 1793225355.3985274,
+    "seen": 1793225422.508162,
+    "ast_hash": "423c71df3ab5e9b9542141170ddecd31",
     "semantic_hash": ""
   },
   "src/components/delete-contract-dialog.tsx": {
@@ -248,9 +248,9 @@
     "semantic_hash": "780eeba8e58be0e4de0e30e0690adfcc"
   },
   "src/components/installments-grid.tsx": {
-    "mtime": 1793025221.9310188,
-    "seen": 1793025342.421368,
-    "ast_hash": "26666c8f39ceb1e63e810ee123e04ce8",
+    "mtime": 1793225312.1665285,
+    "seen": 1793225422.5083532,
+    "ast_hash": "ee917d99e35e604cbafecefcee537918",
     "semantic_hash": ""
   },
   "src/components/iphone-sale-edit-dialog.tsx": {
@@ -458,10 +458,10 @@
     "semantic_hash": "7ebe6fa6ae76831d03426fa109b5bc1a"
   },
   "src/lib/debtors.ts": {
-    "mtime": 1792898385.6623585,
-    "seen": 1792939028.8828857,
-    "ast_hash": "122c6f3fb0f24ec10b1827c6f98a7e3c",
-    "semantic_hash": "122c6f3fb0f24ec10b1827c6f98a7e3c"
+    "mtime": 1793225333.9905279,
+    "seen": 1793225422.510006,
+    "ast_hash": "50f966f93e7860cd9e39150e7dc66c7b",
+    "semantic_hash": ""
   },
   "src/lib/file-validation.ts": {
     "mtime": 1792898385.6623585,
@@ -476,9 +476,9 @@
     "semantic_hash": ""
   },
   "src/lib/installments.ts": {
-    "mtime": 1793224093.694227,
-    "seen": 1793224155.6816177,
-    "ast_hash": "bc2153da26f472cdca5424bd22675f76",
+    "mtime": 1793225199.514531,
+    "seen": 1793225422.5102131,
+    "ast_hash": "6fa8e0c3f53f71f47c93cf9eaa02d2b3",
     "semantic_hash": ""
   },
   "src/lib/iphone-sales.ts": {
@@ -542,9 +542,9 @@
     "semantic_hash": "bfd3a49a8a020c21d5336293d3426191"
   },
   "src/lib/validations.ts": {
-    "mtime": 1793222753.9044747,
-    "seen": 1793223014.7676272,
-    "ast_hash": "664dde508d2be240f7f0b0bafd74cd1a",
+    "mtime": 1793225228.4025302,
+    "seen": 1793225422.510637,
+    "ast_hash": "d5a9ab61f359ba9fb860520d633b5974",
     "semantic_hash": ""
   },
   "src/lib/whatsapp-reminder-link.ts": {
@@ -734,9 +734,15 @@
     "semantic_hash": ""
   },
   "src/lib/installments.test.ts": {
-    "mtime": 1793223969.0542297,
-    "seen": 1793224155.6816127,
-    "ast_hash": "ebacb8f5d26f1c874303d69530da7c6e",
+    "mtime": 1793225209.0985308,
+    "seen": 1793225422.5102096,
+    "ast_hash": "114fc01f8d2769b329a42d5835089d95",
+    "semantic_hash": ""
+  },
+  "src/components/renew-installment-dialog.tsx": {
+    "mtime": 1793225292.3865287,
+    "seen": 1793225422.5086389,
+    "ast_hash": "9fabd36faa44449588f2bd3684651e72",
     "semantic_hash": ""
   }
 }

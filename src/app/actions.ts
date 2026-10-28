@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit-log";
 import { getBusinessToday } from "@/lib/date-utils";
 import { detectSafeDocumentType } from "@/lib/file-validation";
-import { generateInstallments, reflowSchedule } from "@/lib/installments";
+import { generateInstallments, nextDueDate, reflowSchedule } from "@/lib/installments";
 import { normalizeImei } from "@/lib/imei";
 import { sendCollectionReminder } from "@/lib/whatsapp";
 import {
@@ -30,6 +30,7 @@ import {
   contractDisbursementSchema,
   settleContractSchema,
   contractPeriodicitySchema,
+  renewInstallmentSchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
@@ -40,6 +41,7 @@ import {
   type ContractDisbursementInput,
   type SettleContractInput,
   type ContractPeriodicityInput,
+  type RenewInstallmentInput,
 } from "@/lib/validations";
 import type { ContractStatus, ContractType, InstallmentStatus, Periodicity, WeeklyChargeStatus } from "@/lib/types";
 import { formatCurrency, onlyDigits } from "@/lib/utils";
@@ -664,6 +666,157 @@ export async function registerPayment(input: PaymentInput): Promise<ActionResult
       newStatus,
     },
   });
+  return { ok: true, contractId: installment.contract_id };
+}
+
+/**
+ * Renovação de parcela: paga só o juros de atraso pendente agora e empurra
+ * o vencimento 1 período (semanal/quinzenal/mensal, conforme o contrato)
+ * para frente — o principal da parcela NUNCA é reduzido aqui, continua
+ * integralmente em aberto até um pagamento normal de verdade (registerPayment).
+ * Uso típico: empréstimo onde o cliente só paga o juros todo mês e "rola"
+ * a dívida, até decidir quitar o principal.
+ *
+ * Só faz sentido para empréstimo (venda de produto nunca tem juros de
+ * atraso) e só quando há juros de fato pendente agora — sem isso, não há o
+ * que renovar. O juros é sempre recalculado ao vivo no servidor
+ * (`calculateLateInterest`), nunca um valor vindo da tela.
+ */
+export async function renewInstallment(installmentId: string, input: RenewInstallmentInput): Promise<ActionResult> {
+  const parsed = renewInstallmentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+
+  type RenewInstallmentRow = {
+    id: string;
+    contract_id: string;
+    due_date: string;
+    status: InstallmentStatus;
+    paid_principal_amount: number;
+    paid_interest_amount: number;
+    contract: {
+      client_id: string;
+      type: ContractType;
+      status: ContractStatus;
+      principal_amount: number;
+      periodicity: Periodicity;
+    } | null;
+  };
+
+  const [{ data: existingPayment }, { data: installmentData, error: installmentError }] = await Promise.all([
+    data.idempotencyKey
+      ? supabase.from("payments").select("contract_id").eq("idempotency_key", data.idempotencyKey).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("installments")
+      .select(
+        "id, contract_id, due_date, status, paid_principal_amount, paid_interest_amount, contract:contracts(client_id, type, status, principal_amount, periodicity)",
+      )
+      .eq("id", installmentId)
+      .single(),
+  ]);
+
+  if (existingPayment) {
+    return { ok: true, contractId: existingPayment.contract_id };
+  }
+
+  if (installmentError || !installmentData) {
+    return { ok: false, error: safeError(installmentError, "Parcela não encontrada.") };
+  }
+  const installment = installmentData as unknown as RenewInstallmentRow;
+  const contract = installment.contract;
+  if (!contract) {
+    return { ok: false, error: "Contrato não encontrado." };
+  }
+  if (contract.status === "cancelado") {
+    return { ok: false, error: "Este empréstimo foi cancelado. Não é possível renovar parcela." };
+  }
+  if (installment.status === "pago") {
+    return { ok: false, error: "Esta parcela já está totalmente paga." };
+  }
+
+  const interestOwed = calculateLateInterest({
+    contractType: contract.type,
+    originalPrincipalAmount: contract.principal_amount,
+    dueDate: installment.due_date,
+    status: installment.status,
+    paidInterestAmount: installment.paid_interest_amount,
+  });
+  if (interestOwed <= 0) {
+    return { ok: false, error: "Esta parcela não tem juros de atraso pendente para renovar." };
+  }
+
+  const newDueDate = nextDueDate(installment.due_date, contract.periodicity);
+  const newStatus: InstallmentStatus = daysLate(newDueDate) > 0 ? "atrasado" : "pendente";
+
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
+  const createdByEmail = await getCurrentUserEmail(supabase);
+
+  type RenewRpcResult = { payment_id: string; already_existed: boolean };
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc("renew_installment_atomic", {
+      p_installment_id: installment.id,
+      p_owner_id: ownerId,
+      p_contract_id: installment.contract_id,
+      p_client_id: contract.client_id,
+      p_interest_amount: interestOwed,
+      p_new_due_date: newDueDate,
+      p_new_status: newStatus,
+      p_expected_paid_principal: installment.paid_principal_amount,
+      p_expected_paid_interest: installment.paid_interest_amount,
+      p_expected_status: installment.status,
+      p_expected_due_date: installment.due_date,
+      p_method: "outro",
+      p_notes: data.notes || null,
+      p_created_by_email: createdByEmail,
+      p_idempotency_key: data.idempotencyKey ?? null,
+    })
+    .single();
+
+  if (rpcError) {
+    if (rpcError.message?.includes("installment_changed_concurrently")) {
+      return {
+        ok: false,
+        error: "Esta parcela foi alterada enquanto a tela estava aberta. Atualize e tente de novo.",
+      };
+    }
+    if (rpcError.code === "23505" && data.idempotencyKey) {
+      return { ok: true, contractId: installment.contract_id };
+    }
+    return { ok: false, error: safeError(rpcError, "Erro ao renovar a parcela.") };
+  }
+
+  const rpcResult = rpcData as unknown as RenewRpcResult | null;
+  if (rpcResult?.already_existed) {
+    return { ok: true, contractId: installment.contract_id };
+  }
+
+  await recalculateContractStatus(supabase, installment.contract_id);
+
+  revalidatePath(`/contracts/${installment.contract_id}`);
+  revalidatePath("/");
+  revalidatePath("/clientes");
+  revalidatePath("/debtors");
+
+  await logAudit(supabase, {
+    actorEmail: createdByEmail,
+    ownerId,
+    action: "installment_renewed",
+    resourceType: "installment",
+    resourceId: installment.id,
+    metadata: {
+      interestAmount: interestOwed,
+      previousDueDate: installment.due_date,
+      newDueDate,
+    },
+  });
+
   return { ok: true, contractId: installment.contract_id };
 }
 

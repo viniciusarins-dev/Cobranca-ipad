@@ -20,6 +20,11 @@ function addPeriod(date: Date, periodicity: Periodicity, periods: number) {
   }
 }
 
+/** Um período (na periodicidade dada) depois de `dueDate` — ex.: renovação de parcela, correção de periodicidade. */
+export function nextDueDate(dueDate: string, periodicity: Periodicity): string {
+  return format(addPeriod(parseISO(dueDate), periodicity, 1), "yyyy-MM-dd");
+}
+
 export interface ScheduleInstallmentInput {
   number: number;
   due_date: string;
@@ -61,13 +66,14 @@ export function reflowSchedule(
       continue;
     }
 
-    const nextDueDate: string =
-      previousDueDate === null
-        ? firstDueDate
-        : format(addPeriod(parseISO(previousDueDate), periodicity, 1), "yyyy-MM-dd");
+    const computedDueDate: string = previousDueDate === null ? firstDueDate : nextDueDate(previousDueDate, periodicity);
 
-    result.push({ number: installment.number, due_date: nextDueDate, changed: nextDueDate !== installment.due_date });
-    previousDueDate = nextDueDate;
+    result.push({
+      number: installment.number,
+      due_date: computedDueDate,
+      changed: computedDueDate !== installment.due_date,
+    });
+    previousDueDate = computedDueDate;
   }
 
   return result;
