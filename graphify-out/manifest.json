@@ -446,10 +446,10 @@
     "semantic_hash": "27390bd2cc23c3e5f0e578916373ed08"
   },
   "src/lib/dashboard-metrics.ts": {
-    "mtime": 1792900375.302567,
-    "seen": 1792939028.8828359,
-    "ast_hash": "e4d851fd3a597a4f6875e70b5dcf5ada",
-    "semantic_hash": "e4d851fd3a597a4f6875e70b5dcf5ada"
+    "mtime": 1793226935.179912,
+    "seen": 1793227024.976437,
+    "ast_hash": "de17a606ccf2e5d385e8473f4a129359",
+    "semantic_hash": ""
   },
   "src/lib/date-utils.ts": {
     "mtime": 1792898385.6623585,
@@ -743,6 +743,12 @@
     "mtime": 1793225292.3865287,
     "seen": 1793225422.5086389,
     "ast_hash": "9fabd36faa44449588f2bd3684651e72",
+    "semantic_hash": ""
+  },
+  "src/lib/dashboard-metrics.test.ts": {
+    "mtime": 1793226957.4999115,
+    "seen": 1793227024.9764335,
+    "ast_hash": "b5c279c19a212ded09a51bd8d3eaaa1e",
     "semantic_hash": ""
   }
 }

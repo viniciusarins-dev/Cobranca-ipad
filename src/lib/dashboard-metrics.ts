@@ -228,7 +228,15 @@ export function computeDashboardMetrics(
 
     addToPeriod(lateInterestReceived, payment.interest_amount, paidAt, boundaries);
 
-    const markupRatio = payment.installment_id ? (markupRatioByContract.get(payment.contract_id) ?? 0) : 0;
+    // Sempre pela taxa de markup do CONTRATO, nunca "0 se installment_id for
+    // nulo" — essa checagem era só um proxy pra "é entrada?" (down payment),
+    // que de fato nunca gera lucro (sempre venda de produto, cujo markup já
+    // é sempre 0). Mas uma quitação total/abatimento (is_settlement) também
+    // tem installment_id nulo, e PODE ser de um empréstimo com markup > 0 —
+    // usar o proxy aqui zerava o lucro de quem quita um empréstimo de uma
+    // vez só. A taxa de markup do próprio contrato já responde certo nos
+    // dois casos, sem precisar distinguir o tipo de pagamento.
+    const markupRatio = markupRatioByContract.get(payment.contract_id) ?? 0;
     const earnedFromPrincipal = roundCents(payment.principal_amount * markupRatio);
     addToPeriod(earnings, roundCents(earnedFromPrincipal + payment.interest_amount), paidAt, boundaries);
 
