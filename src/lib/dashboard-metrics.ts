@@ -1,6 +1,30 @@
 import { businessDayRangeUTC, businessMonthStartUTC, businessWeekStartUTC, getBusinessToday } from "@/lib/date-utils";
 import { calculateFinancedAmount, roundCents } from "@/lib/financial-rules";
-import type { ContractWithInstallments, Expense, Payment, PaymentMethod, Phone } from "@/lib/types";
+import type { Contract, Expense, Installment, Payment, PaymentMethod, Phone } from "@/lib/types";
+
+/** Só as colunas de `installments` que os indicadores de dashboard de fato leem. */
+export type DashboardInstallmentInput = Pick<Installment, "amount" | "paid_principal_amount" | "status">;
+
+/** Só as colunas de `contracts` (+ `installments` aninhadas) que os indicadores de dashboard de fato leem. */
+export type DashboardContractInput = Pick<
+  Contract,
+  | "id"
+  | "status"
+  | "type"
+  | "principal_amount"
+  | "total_amount"
+  | "has_down_payment"
+  | "down_payment_amount"
+  | "installments_count"
+  | "interest_rate_percent"
+  | "disbursed_at"
+> & { installments: DashboardInstallmentInput[] };
+
+/** Só as colunas de `payments` que os indicadores de dashboard de fato leem. */
+export type DashboardPaymentInput = Pick<Payment, "paid_at" | "principal_amount" | "interest_amount" | "method" | "contract_id">;
+
+/** Só as colunas de `expenses` que os indicadores de dashboard de fato leem. */
+export type DashboardExpenseInput = Pick<Expense, "amount" | "expense_date" | "method">;
 
 export interface PeriodAmounts {
   today: number;
@@ -128,9 +152,9 @@ const EMPTY_METHOD_TOTALS: Record<PaymentMethod, number> = {
  * de contratos/parcelas mudou de "buscar aqui" para "receber como parâmetro").
  */
 export function computeDashboardMetrics(
-  allContracts: ContractWithInstallments[],
-  payments: Payment[],
-  expenses: Expense[],
+  allContracts: DashboardContractInput[],
+  payments: DashboardPaymentInput[],
+  expenses: DashboardExpenseInput[],
   phones: Pick<Phone, "id" | "contract_id" | "cost_amount">[],
 ): DashboardMetrics {
   const now = new Date();
