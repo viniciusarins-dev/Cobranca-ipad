@@ -17,6 +17,8 @@ import {
   getEvolutionQrCode,
   logoutEvolutionInstance,
 } from "@/lib/whatsapp/evolution-instance";
+import { checkEvolutionConnection } from "@/lib/whatsapp/evolution-health";
+import { checkMetaConnection } from "@/lib/whatsapp/meta-health";
 import {
   allocateSettlement,
   calculateFinancedAmount,
@@ -2147,6 +2149,42 @@ function buildEvolutionWebhookUrl(): string | null {
   const base = process.env.APP_BASE_URL;
   if (!base) return null;
   return `${base.replace(/\/$/, "")}/api/webhooks/evolution`;
+}
+
+/**
+ * Consulta ao vivo se o provedor ativo está realmente conectado — nunca
+ * assume isso só porque existe uma configuração salva. Evolution/Meta têm
+ * mecanismos de checagem próprios (sessão vs. credencial); os demais
+ * provedores não têm healthcheck implementado, então aparecem como
+ * "não verificável" em vez de um falso positivo/negativo.
+ */
+export async function getWhatsAppConnectionStatus(): Promise<
+  { ok: true; state?: string; checked: boolean } | { ok: false; error: string; checked: boolean }
+> {
+  const supabase = await createClient();
+  const { data: settings } = await supabase
+    .from("message_settings")
+    .select("*")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!settings) {
+    return { ok: false, error: "Nenhuma configuração ativa encontrada.", checked: true };
+  }
+
+  if (settings.provider === "evolution") {
+    const result = await checkEvolutionConnection(settings);
+    return result.ok
+      ? { ok: true, state: result.state, checked: true }
+      : { ok: false, error: result.error ?? "Instância não conectada.", checked: true };
+  }
+
+  if (settings.provider === "meta") {
+    const result = await checkMetaConnection(settings);
+    return result.ok ? { ok: true, checked: true } : { ok: false, error: result.error ?? "Credenciais inválidas.", checked: true };
+  }
+
+  return { ok: true, checked: false };
 }
 
 /**

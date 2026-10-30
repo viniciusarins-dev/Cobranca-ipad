@@ -152,9 +152,9 @@
     "semantic_hash": "280fa206da5113a6c39dc3f4ed3d3564"
   },
   "src/app/actions.ts": {
-    "mtime": 1793373502.8488476,
-    "seen": 1793373749.8390665,
-    "ast_hash": "7c77f8acb22eba5893613cb6c2b43f2b",
+    "mtime": 1793373976.7968757,
+    "seen": 1793374279.2093115,
+    "ast_hash": "d46b4424f98c6768c671f66879b0d533",
     "semantic_hash": ""
   },
   "src/app/api/backup/report/route.ts": {
@@ -194,9 +194,9 @@
     "semantic_hash": "e011b1a48054be169f9c60384b158dc4"
   },
   "src/components/app-nav.tsx": {
-    "mtime": 1792939165.8872154,
-    "seen": 1792939233.5878904,
-    "ast_hash": "705492f9631ae0d50ec7dffcb828d4f4",
+    "mtime": 1793374176.4128876,
+    "seen": 1793374279.209512,
+    "ast_hash": "9dfdfaaace58a4fc6e854f88d174757e",
     "semantic_hash": ""
   },
   "src/components/client-details-card.tsx": {
@@ -302,10 +302,10 @@
     "semantic_hash": ""
   },
   "src/components/status-badge.tsx": {
-    "mtime": 1792898385.6583583,
-    "seen": 1792939028.8820999,
-    "ast_hash": "1c8a7b939aa63edac52d0ae7a6110274",
-    "semantic_hash": "1c8a7b939aa63edac52d0ae7a6110274"
+    "mtime": 1793373833.1968672,
+    "seen": 1793374279.210142,
+    "ast_hash": "690688f1fe9034a557140ba6878a20b9",
+    "semantic_hash": ""
   },
   "src/components/ui/aurora-background.tsx": {
     "mtime": 1792939165.891971,
@@ -542,9 +542,9 @@
     "semantic_hash": "bfd3a49a8a020c21d5336293d3426191"
   },
   "src/lib/validations.ts": {
-    "mtime": 1793373373.04084,
-    "seen": 1793373749.84111,
-    "ast_hash": "765ea775dc0c2140c82d471f2bc87187",
+    "mtime": 1793374131.4408848,
+    "seen": 1793374279.211377,
+    "ast_hash": "0ad00d53bf5f506d576db6df3e021770",
     "semantic_hash": ""
   },
   "src/lib/whatsapp-reminder-link.ts": {
@@ -758,15 +758,15 @@
     "semantic_hash": ""
   },
   "src/lib/whatsapp/campaign-queue.ts": {
-    "mtime": 1793373306.3048358,
-    "seen": 1793373749.8411624,
-    "ast_hash": "5d05c368afcd68fafd08b222ba6735b2",
+    "mtime": 1793373920.7088723,
+    "seen": 1793374279.2114258,
+    "ast_hash": "f71a149d258a2d0f3d7674fd042833c6",
     "semantic_hash": ""
   },
   "src/lib/whatsapp/campaign-recipients.ts": {
-    "mtime": 1793373222.832831,
-    "seen": 1793373749.8411648,
-    "ast_hash": "c34bbec384284608e2194a39281ef291",
+    "mtime": 1793374101.192883,
+    "seen": 1793374279.2114277,
+    "ast_hash": "43c3e7d46df81b269aad3fd4c3c20ec1",
     "semantic_hash": ""
   },
   "src/lib/whatsapp/evolution-instance.ts": {
@@ -779,6 +779,48 @@
     "mtime": 1793373664.688857,
     "seen": 1793373749.8412995,
     "ast_hash": "6b9ef5fb857d14dd4b1b310372fd5d41",
+    "semantic_hash": ""
+  },
+  "src/app/(app)/whatsapp/page.tsx": {
+    "mtime": 1793373934.7448733,
+    "seen": 1793374279.2093081,
+    "ast_hash": "7e913edbb7f9ba7a8c4aace5b01abbfe",
+    "semantic_hash": ""
+  },
+  "src/components/whatsapp/campaigns-panel.tsx": {
+    "mtime": 1793374203.7648892,
+    "seen": 1793374279.2106712,
+    "ast_hash": "0dbf31ec190cefd000c0a42c9590bfda",
+    "semantic_hash": ""
+  },
+  "src/components/whatsapp/connection-panel.tsx": {
+    "mtime": 1793373995.0808768,
+    "seen": 1793374279.2106733,
+    "ast_hash": "44292ec9f6ea0bebd02d307dce9d0ec6",
+    "semantic_hash": ""
+  },
+  "src/components/whatsapp/consent-panel.tsx": {
+    "mtime": 1793374025.2608786,
+    "seen": 1793374279.2106755,
+    "ast_hash": "b8429d145f8fda98217047f2824b2b44",
+    "semantic_hash": ""
+  },
+  "src/components/whatsapp/history-panel.tsx": {
+    "mtime": 1793374010.0248778,
+    "seen": 1793374279.2106771,
+    "ast_hash": "6f4d06a867c70b1eaf2bef998ac23cea",
+    "semantic_hash": ""
+  },
+  "src/components/whatsapp/new-campaign-dialog.tsx": {
+    "mtime": 1793374200.484889,
+    "seen": 1793374279.2106793,
+    "ast_hash": "b00b9615a08e9822e2ee75e74c0b8a9e",
+    "semantic_hash": ""
+  },
+  "src/components/whatsapp/whatsapp-center-view.tsx": {
+    "mtime": 1793374206.2088892,
+    "seen": 1793374279.2106807,
+    "ast_hash": "fea79bad7b19e7c0b8178aa9c6155ff6",
     "semantic_hash": ""
   }
 }

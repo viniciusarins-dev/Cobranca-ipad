@@ -77,19 +77,29 @@ function flattenToInstallmentRows(contracts: ContractRow[], statuses: Installmen
   return rows;
 }
 
+/**
+ * `restrictToClientIds`, quando informado, SEMPRE restringe o resultado a
+ * essa lista — não só quando `filterType` é "selecao_manual". É o que
+ * permite a tela de confirmação (`new-campaign-dialog.tsx`) desmarcar
+ * clientes específicos de QUALQUER filtro antes de criar a campanha de
+ * verdade: a campanha final é sempre restrita exatamente ao que foi
+ * confirmado na prévia, nunca recalculada "do zero" a partir só do filtro.
+ */
 async function resolveDebtors(
   supabase: SupabaseClient,
   filterType: WhatsAppCampaignFilterType,
-  manualClientIds: string[] | undefined,
+  restrictToClientIds: string[] | undefined,
 ): Promise<Debtor[]> {
   if (filterType === "devedores_do_dia") {
     const { debtors } = await getTodayDebtors(supabase);
-    return debtors;
+    if (!restrictToClientIds) return debtors;
+    const allowed = new Set(restrictToClientIds);
+    return debtors.filter((debtor) => allowed.has(debtor.client.id));
   }
 
   const statuses: Installment["status"][] =
     filterType === "parcelas_vencidas" ? ["atrasado"] : ["pendente", "atrasado", "parcial"];
-  const clientIds = filterType === "selecao_manual" ? (manualClientIds ?? []) : undefined;
+  const clientIds = filterType === "selecao_manual" ? (restrictToClientIds ?? []) : restrictToClientIds;
 
   const contracts = await fetchOpenContracts(supabase, clientIds);
   const rows = flattenToInstallmentRows(contracts, statuses);

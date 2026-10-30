@@ -30,6 +30,37 @@ function extractProviderMessageId(body: unknown): string | null {
   return null;
 }
 
+export type CampaignMessageStatusCounts = Record<WhatsAppCampaignMessageStatus, number>;
+
+const ALL_MESSAGE_STATUSES: WhatsAppCampaignMessageStatus[] = [
+  "pendente",
+  "processando",
+  "aceita",
+  "enviada",
+  "entregue",
+  "falha",
+  "cancelada",
+];
+
+/**
+ * Totais por status em TODAS as campanhas do usuário (painel principal da
+ * Central de WhatsApp) — uma contagem por status via `count: "exact",
+ * head: true` (nunca baixa as linhas em si), já que o Supabase JS não tem
+ * um `group by` embutido.
+ */
+export async function getCampaignMessageStatusCounts(supabase: SupabaseClient): Promise<CampaignMessageStatusCounts> {
+  const results = await Promise.all(
+    ALL_MESSAGE_STATUSES.map((status) =>
+      supabase.from("whatsapp_campaign_messages").select("id", { count: "exact", head: true }).eq("status", status),
+    ),
+  );
+
+  return ALL_MESSAGE_STATUSES.reduce((acc, status, index) => {
+    acc[status] = results[index].count ?? 0;
+    return acc;
+  }, {} as CampaignMessageStatusCounts);
+}
+
 export interface CampaignBatchSummary {
   ok: boolean;
   reason?: string;

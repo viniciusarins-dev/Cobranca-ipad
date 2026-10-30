@@ -8,6 +8,7 @@ import {
   LayoutDashboardIcon,
   LogOutIcon,
   MenuIcon,
+  MessageCircleIcon,
   PackageIcon,
   SettingsIcon,
   ShieldCheckIcon,
@@ -24,6 +25,7 @@ const FINANCEIRO_ITEMS: NavItem[] = [
   { href: "/", label: "Visão Geral", icon: LayoutDashboardIcon, exact: true },
   { href: "/clientes", label: "Clientes", icon: UsersIcon, exact: false },
   { href: "/debtors", label: "Devedores do Dia", icon: CalendarClockIcon, exact: false },
+  { href: "/whatsapp", label: "Central de WhatsApp", icon: MessageCircleIcon, exact: false },
 ];
 
 const LOJA_ITEMS: NavItem[] = [{ href: "/phones", label: "Vendas de Produtos", icon: PackageIcon, exact: false }];

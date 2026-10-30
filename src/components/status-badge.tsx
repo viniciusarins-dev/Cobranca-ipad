@@ -5,10 +5,14 @@ import {
   CONTRACT_STATUS_LABELS,
   CONTRACT_TYPE_LABELS,
   INSTALLMENT_STATUS_LABELS,
+  WHATSAPP_CAMPAIGN_MESSAGE_STATUS_LABELS,
+  WHATSAPP_CAMPAIGN_STATUS_LABELS,
   type BackupRunStatus,
   type ContractStatus,
   type ContractType,
   type InstallmentStatus,
+  type WhatsAppCampaignMessageStatus,
+  type WhatsAppCampaignStatus,
 } from "@/lib/types";
 
 const CONTRACT_VARIANT: Record<ContractStatus, "success" | "warning" | "destructive" | "secondary"> = {
@@ -79,6 +83,37 @@ const BACKUP_RUN_LABELS: Record<BackupRunStatus, string> = {
   running: "Em andamento",
   failed: "Falhou",
 };
+
+const CAMPAIGN_VARIANT: Record<WhatsAppCampaignStatus, "secondary" | "success" | "warning" | "destructive" | "outline"> = {
+  rascunho: "outline",
+  em_andamento: "secondary",
+  pausada: "warning",
+  concluida: "success",
+  cancelada: "destructive",
+};
+
+export function WhatsAppCampaignStatusBadge({ status }: { status: WhatsAppCampaignStatus }) {
+  return <Badge variant={CAMPAIGN_VARIANT[status]}>{WHATSAPP_CAMPAIGN_STATUS_LABELS[status]}</Badge>;
+}
+
+const CAMPAIGN_MESSAGE_VARIANT: Record<WhatsAppCampaignMessageStatus, "secondary" | "success" | "warning" | "destructive" | "outline"> = {
+  pendente: "outline",
+  processando: "secondary",
+  aceita: "secondary",
+  enviada: "success",
+  entregue: "success",
+  falha: "destructive",
+  cancelada: "warning",
+};
+
+export function WhatsAppCampaignMessageStatusBadge({ status }: { status: WhatsAppCampaignMessageStatus }) {
+  return (
+    <Badge variant={CAMPAIGN_MESSAGE_VARIANT[status]}>
+      {status === "falha" && <PulseDot />}
+      {WHATSAPP_CAMPAIGN_MESSAGE_STATUS_LABELS[status]}
+    </Badge>
+  );
+}
 
 export function BackupRunStatusBadge({ status }: { status: BackupRunStatus }) {
   return (

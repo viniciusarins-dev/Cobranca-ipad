@@ -238,8 +238,12 @@ export type RenewInstallmentInput = z.infer<typeof renewInstallmentSchema>;
 
 /**
  * Prévia de uma campanha da Central de WhatsApp — ver
- * `previewWhatsAppCampaign` em actions.ts. `manualClientIds` só é
- * obrigatório quando `filterType` é "selecao_manual".
+ * `previewWhatsAppCampaign` em actions.ts. `manualClientIds`, quando
+ * informado, SEMPRE restringe o resultado a essa lista (não só quando
+ * `filterType` é "selecao_manual" — é assim que a tela de confirmação
+ * permite desmarcar clientes de qualquer filtro antes de criar a
+ * campanha de verdade); só é OBRIGATÓRIO quando `filterType` é
+ * "selecao_manual" (os demais filtros funcionam sem nenhuma restrição).
  */
 export const campaignPreviewSchema = z
   .object({
