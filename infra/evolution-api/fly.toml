@@ -1,0 +1,59 @@
+# Evolution API — container independente da aplicação Next.js (que roda na
+# Vercel, serverless, e por isso nunca poderia hospedar um processo de longa
+# duração como este). Uma única instância Fly.io sempre ligada, na mesma
+# região da Vercel (gru = São Paulo), hospeda a Evolution API; o Cobrança/
+# Recebe cria UMA "instância" interna da Evolution por usuário (reaproveitando
+# o mesmo base_url/admin key, token por instância) — não é necessário um
+# container por usuário.
+#
+# Versão fixada de propósito (nunca "latest" em produção). Antes de atualizar,
+# confira a release mais recente em:
+# https://github.com/EvolutionAPI/evolution-api/releases
+#
+# Deploy (a partir desta pasta):
+#   fly launch --no-deploy        # primeira vez só, cria o app (escolha "não" para Postgres/Redis)
+#   fly volumes create evolution_data --region gru --size 1
+#   fly secrets set AUTHENTICATION_API_KEY=... WEBHOOK_GLOBAL_URL=... --app <nome-do-app>
+#   fly deploy
+
+app = "SUBSTITUA-pelo-nome-do-seu-app-fly" # ex: cobranca-evolution
+primary_region = "gru"
+
+[build]
+  image = "evoapicloud/evolution-api:v2.3.7"
+
+[env]
+  # SERVER_URL precisa bater com a URL pública deste app (usada pela própria
+  # Evolution para montar links/QR Code internamente) — ajuste após o primeiro
+  # deploy, quando a URL definitiva do app Fly for conhecida.
+  SERVER_URL = "https://SUBSTITUA-pelo-nome-do-seu-app-fly.fly.dev"
+  LOG_LEVEL = "ERROR"
+  # Nunca sensível aqui — segredos (AUTHENTICATION_API_KEY, webhook) só via
+  # `fly secrets set`, nunca commitados neste arquivo (ver .env.example).
+  WEBHOOK_GLOBAL_ENABLED = "true"
+
+# Persiste as sessões do WhatsApp (pareamento via QR Code) entre reinícios —
+# sem isso, qualquer restart/deploy exigiria escanear o QR Code de novo.
+[[mounts]]
+  source = "evolution_data"
+  destination = "/evolution/instances"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Precisa ficar sempre ligado: a sessão do WhatsApp cai se a máquina for
+  # suspensa, diferente de uma API comum sem estado.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+    method = "GET"
+    path = "/"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

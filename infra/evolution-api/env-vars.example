@@ -1,0 +1,24 @@
+# Segredos do container da Evolution API — NUNCA commitar valores reais
+# (este arquivo é só referência; os valores de verdade vão via
+# `fly secrets set NOME=valor --app <nome-do-app>`, nunca neste repositório).
+
+# Chave mestra que protege TODOS os endpoints administrativos da Evolution
+# (criar/listar/apagar instância, obter QR Code). Gere um valor aleatório
+# forte, ex.: `openssl rand -hex 32`. O backend do Cobrança/Recebe guarda a
+# MESMA chave como variável de ambiente só no servidor da Vercel
+# (EVOLUTION_ADMIN_API_KEY, a definir na Fase 2 — backend) — nunca é exposta
+# ao navegador nem a usuários individuais (cada usuário recebe só o token da
+# PRÓPRIA instância, gerado pelo backend, nunca esta chave mestra).
+AUTHENTICATION_API_KEY=
+
+# URL do webhook global para onde a Evolution envia eventos (conexão,
+# mensagens, status de entrega) — vai apontar para
+# https://<seu-dominio-vercel>/api/webhooks/evolution (rota a ser criada na
+# Fase 2/4 — backend + webhooks). Deixe em branco até essa rota existir.
+WEBHOOK_GLOBAL_URL=
+
+# Segredo compartilhado para a rota de webhook validar que o evento recebido
+# realmente veio da sua instância Evolution (gere outro valor aleatório,
+# diferente do AUTHENTICATION_API_KEY acima). Guardado também na Vercel como
+# EVOLUTION_WEBHOOK_SECRET.
+WEBHOOK_SECRET=
