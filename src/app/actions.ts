@@ -10,6 +10,13 @@ import { detectSafeDocumentType } from "@/lib/file-validation";
 import { generateInstallments, nextDueDate, reflowSchedule } from "@/lib/installments";
 import { normalizeImei } from "@/lib/imei";
 import { sendCollectionReminder } from "@/lib/whatsapp";
+import { getCampaignCandidates, type CampaignCandidate, type CampaignExclusion } from "@/lib/whatsapp/campaign-recipients";
+import { processCampaignBatch } from "@/lib/whatsapp/campaign-queue";
+import {
+  createEvolutionInstance,
+  getEvolutionQrCode,
+  logoutEvolutionInstance,
+} from "@/lib/whatsapp/evolution-instance";
 import {
   allocateSettlement,
   calculateFinancedAmount,
@@ -31,6 +38,9 @@ import {
   settleContractSchema,
   contractPeriodicitySchema,
   renewInstallmentSchema,
+  campaignPreviewSchema,
+  createCampaignSchema,
+  whatsappConsentSchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
@@ -42,6 +52,9 @@ import {
   type SettleContractInput,
   type ContractPeriodicityInput,
   type RenewInstallmentInput,
+  type CampaignPreviewInput,
+  type CreateCampaignInput,
+  type WhatsAppConsentInput,
 } from "@/lib/validations";
 import type { ContractStatus, ContractType, InstallmentStatus, Periodicity, WeeklyChargeStatus } from "@/lib/types";
 import { formatCurrency, onlyDigits } from "@/lib/utils";
@@ -1917,4 +1930,310 @@ export async function sendTestMessage(phone: string): Promise<ActionResult> {
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Erro ao enviar mensagem de teste." };
   }
+}
+
+// ============================================================
+// Central de WhatsApp — campanhas de cobrança em lote
+// ============================================================
+
+/**
+ * Prévia (somente leitura) de uma campanha: aplica o filtro escolhido e
+ * devolve exatamente quem seria incluído (com a mensagem já renderizada
+ * para conferência) e quem seria excluído e por quê — nunca persiste
+ * nada. Chamada sempre que o usuário muda o filtro/template na tela de
+ * "Nova campanha", antes da confirmação final.
+ */
+export async function previewWhatsAppCampaign(
+  input: CampaignPreviewInput,
+): Promise<{ ok: true; candidates: CampaignCandidate[]; excluded: CampaignExclusion[] } | { ok: false; error: string }> {
+  const parsed = campaignPreviewSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const supabase = await createClient();
+  const { candidates, excluded } = await getCampaignCandidates(
+    supabase,
+    parsed.data.filterType,
+    parsed.data.messageTemplate,
+    parsed.data.manualClientIds,
+  );
+  return { ok: true, candidates, excluded };
+}
+
+/**
+ * Cria a campanha e já monta a fila inteira (`whatsapp_campaign_messages`,
+ * uma linha por destinatário, mensagem já renderizada e congelada) —
+ * nasce em status "rascunho", sem enviar nada ainda. A lista de
+ * destinatários é sempre recalculada aqui no servidor no momento da
+ * criação (nunca confia numa lista vinda do navegador), para refletir o
+ * estado real do banco mesmo que algo tenha mudado desde a prévia.
+ */
+export async function createWhatsAppCampaign(input: CreateCampaignInput): Promise<ActionResult & { campaignId?: string }> {
+  const parsed = createCampaignSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const { candidates } = await getCampaignCandidates(supabase, data.filterType, data.messageTemplate, data.manualClientIds);
+  if (candidates.length === 0) {
+    return { ok: false, error: "Nenhum destinatário elegível para este filtro (telefone inválido ou contato bloqueado para todos)." };
+  }
+
+  const createdByEmail = await getCurrentUserEmail(supabase);
+  const { data: campaign, error: campaignError } = await supabase
+    .from("whatsapp_campaigns")
+    .insert({
+      owner_id: ownerId,
+      name: data.name,
+      filter_type: data.filterType,
+      message_template: data.messageTemplate,
+      interval_seconds: data.intervalSeconds,
+      status: "rascunho",
+      total_count: candidates.length,
+      created_by_email: createdByEmail,
+    })
+    .select("id")
+    .single();
+
+  if (campaignError || !campaign) {
+    return { ok: false, error: safeError(campaignError, "Erro ao criar campanha.") };
+  }
+
+  const messageRows = candidates.map((candidate) => ({
+    owner_id: ownerId,
+    campaign_id: campaign.id as string,
+    client_id: candidate.clientId,
+    contract_id: candidate.contractId,
+    installment_id: candidate.installmentId,
+    to_phone: candidate.toPhone,
+    message_content: candidate.message,
+    status: "pendente" as const,
+    idempotency_key: crypto.randomUUID(),
+  }));
+
+  const { error: messagesError } = await supabase.from("whatsapp_campaign_messages").insert(messageRows);
+  if (messagesError) {
+    // Nunca deixa uma campanha "rascunho" sem nenhuma mensagem na fila.
+    await supabase.from("whatsapp_campaigns").delete().eq("id", campaign.id);
+    return { ok: false, error: safeError(messagesError, "Erro ao montar a fila da campanha.") };
+  }
+
+  await logAudit(supabase, {
+    actorEmail: createdByEmail,
+    ownerId,
+    action: "whatsapp_campaign_created",
+    resourceType: "whatsapp_campaign",
+    resourceId: campaign.id as string,
+    metadata: { filterType: data.filterType, recipients: candidates.length },
+  });
+
+  revalidatePath("/whatsapp");
+  return { ok: true, campaignId: campaign.id as string };
+}
+
+/** Só sai de "rascunho" ou "pausada" — nunca reinicia uma campanha concluída/cancelada. */
+export async function startWhatsAppCampaign(campaignId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("whatsapp_campaigns")
+    .update({ status: "em_andamento" })
+    .eq("id", campaignId)
+    .in("status", ["rascunho", "pausada"]);
+
+  if (error) return { ok: false, error: safeError(error, "Erro ao iniciar campanha.") };
+  revalidatePath("/whatsapp");
+  return { ok: true };
+}
+
+/** Mensagens já "processando"/"enviada" não são afetadas — só as ainda "pendente" param de verdade. */
+export async function pauseWhatsAppCampaign(campaignId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("whatsapp_campaigns")
+    .update({ status: "pausada" })
+    .eq("id", campaignId)
+    .eq("status", "em_andamento");
+
+  if (error) return { ok: false, error: safeError(error, "Erro ao pausar campanha.") };
+  revalidatePath("/whatsapp");
+  return { ok: true };
+}
+
+/** Cancela a campanha e todas as mensagens ainda não processadas — nunca desfaz o que já foi enviado. */
+export async function cancelWhatsAppCampaign(campaignId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("whatsapp_campaigns")
+    .update({ status: "cancelada" })
+    .eq("id", campaignId)
+    .in("status", ["rascunho", "em_andamento", "pausada"]);
+
+  if (error) return { ok: false, error: safeError(error, "Erro ao cancelar campanha.") };
+
+  await supabase
+    .from("whatsapp_campaign_messages")
+    .update({ status: "cancelada" })
+    .eq("campaign_id", campaignId)
+    .in("status", ["pendente", "processando"]);
+
+  revalidatePath("/whatsapp");
+  return { ok: true };
+}
+
+/**
+ * Processa um lote da campanha — chamada repetidamente pela tela enquanto
+ * a campanha estiver "em_andamento" (o app roda na Vercel, serverless, sem
+ * processo de fundo contínuo; ver `campaign-queue.ts` para o porquê deste
+ * desenho). Intervalo entre envios é sempre o configurado na campanha,
+ * nunca randômico.
+ */
+export async function runWhatsAppCampaignBatch(campaignId: string) {
+  const supabase = await createClient();
+  const summary = await processCampaignBatch(supabase, campaignId);
+  revalidatePath("/whatsapp");
+  return summary;
+}
+
+/**
+ * Bloqueia/desbloqueia um cliente para receber cobrança por WhatsApp
+ * (LGPD). Bloquear remove o cliente de qualquer campanha nova
+ * imediatamente (checado em `campaign-recipients.ts`) e impede reenvio
+ * automático (checado no processamento da fila).
+ */
+export async function setWhatsAppConsent(input: WhatsAppConsentInput): Promise<ActionResult> {
+  const parsed = whatsappConsentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const data = parsed.data;
+  const supabase = await createClient();
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("whatsapp_consents").upsert(
+    {
+      owner_id: ownerId,
+      client_id: data.clientId,
+      category: "cobranca",
+      is_blocked: data.isBlocked,
+      blocked_at: data.isBlocked ? now : null,
+      consent_recorded_at: data.isBlocked ? null : now,
+      consent_source: data.isBlocked ? null : "manual",
+      notes: data.notes || null,
+    },
+    { onConflict: "owner_id,client_id,category" },
+  );
+
+  if (error) return { ok: false, error: safeError(error, "Erro ao salvar consentimento.") };
+  revalidatePath("/whatsapp");
+  return { ok: true };
+}
+
+// ============================================================
+// Central de WhatsApp — conexão (Evolution API)
+// ============================================================
+
+function buildEvolutionWebhookUrl(): string | null {
+  const base = process.env.APP_BASE_URL;
+  if (!base) return null;
+  return `${base.replace(/\/$/, "")}/api/webhooks/evolution`;
+}
+
+/**
+ * Conecta (ou reconecta) a instância Evolution do usuário autenticado:
+ * cria a instância na primeira vez (uma por usuário, dentro do mesmo
+ * container compartilhado) e devolve o QR Code para escanear. Só
+ * funciona com o provedor "evolution" — os demais (Z-API, Twilio,
+ * WPPConnect, Meta) não usam esse fluxo de pareamento por QR Code.
+ */
+export async function connectWhatsAppEvolution(): Promise<
+  { ok: true; qrCodeBase64?: string; pairingCode?: string; alreadyConnected?: boolean } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const { data: settings } = await supabase
+    .from("message_settings")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!settings || settings.provider !== "evolution") {
+    return { ok: false, error: "Ative o provedor Evolution API em Ajustes antes de conectar." };
+  }
+
+  if (!settings.instance_id || !settings.api_key) {
+    const webhookUrl = buildEvolutionWebhookUrl();
+    const webhookSecret = process.env.EVOLUTION_WEBHOOK_SECRET;
+    if (!webhookUrl || !webhookSecret) {
+      return { ok: false, error: "Integração ainda não configurada no servidor (APP_BASE_URL/EVOLUTION_WEBHOOK_SECRET)." };
+    }
+
+    const instanceName = `owner-${ownerId}`;
+    const created = await createEvolutionInstance(instanceName, webhookUrl, webhookSecret);
+    if (!created.ok || !created.instanceToken) {
+      return { ok: false, error: created.error ?? "Erro ao criar instância na Evolution API." };
+    }
+
+    const { error: updateError } = await supabase
+      .from("message_settings")
+      .update({ instance_id: instanceName, api_key: created.instanceToken })
+      .eq("id", settings.id);
+    if (updateError) {
+      return { ok: false, error: safeError(updateError, "Erro ao salvar a instância criada.") };
+    }
+
+    settings.instance_id = instanceName;
+    settings.api_key = created.instanceToken;
+  }
+
+  const qr = await getEvolutionQrCode(settings);
+  if (!qr.ok) {
+    return { ok: false, error: qr.error ?? "Erro ao obter QR Code." };
+  }
+
+  revalidatePath("/whatsapp");
+  return { ok: true, qrCodeBase64: qr.qrCodeBase64, pairingCode: qr.pairingCode, alreadyConnected: qr.alreadyConnected };
+}
+
+/** Encerra a sessão do WhatsApp sem apagar a instância — reconectar depois só pede um novo QR Code. */
+export async function disconnectWhatsAppEvolution(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const ownerId = await getCurrentUserId(supabase);
+  if (!ownerId) {
+    return { ok: false, error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const { data: settings } = await supabase
+    .from("message_settings")
+    .select("base_url, api_key, instance_id")
+    .eq("owner_id", ownerId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!settings) {
+    return { ok: false, error: "Nenhuma configuração ativa encontrada." };
+  }
+
+  const result = await logoutEvolutionInstance(settings);
+  if (!result.ok) {
+    return { ok: false, error: result.error ?? "Erro ao desconectar." };
+  }
+
+  revalidatePath("/whatsapp");
+  return { ok: true };
 }

@@ -23,6 +23,95 @@ export interface Debtor {
   maxDaysLate: number;
 }
 
+export type DebtorSourceInstallment = Installment & {
+  contract: Pick<
+    Contract,
+    "id" | "type" | "status" | "description" | "installments_count" | "principal_amount" | "periodicity"
+  > & {
+    client: Client;
+  };
+};
+
+/**
+ * Agrupa parcelas em aberto por cliente, calculando juros/saldo com as
+ * mesmas fórmulas de sempre (`calculateLateInterest`, nunca recalculada).
+ * Extraído de `getTodayDebtors` para ser reaproveitado pelos filtros de
+ * campanha da Central de WhatsApp (`parcelas_vencidas`, `parcelas_em_
+ * aberto`, `selecao_manual`) sem duplicar a lógica — só muda a QUERY que
+ * busca as parcelas (filtro de status/data/cliente), nunca o cálculo.
+ * Contratos cancelados já devem ter sido filtrados por quem chama.
+ */
+export function groupDebtorsByClient(installments: DebtorSourceInstallment[], now: Date): Debtor[] {
+  const todayStr = getBusinessToday(now);
+  const debtorsByClient = new Map<string, Debtor>();
+
+  for (const installment of installments) {
+    const outstandingPrincipal = roundCents(
+      Math.max(installment.amount - installment.paid_principal_amount, 0),
+    );
+    if (outstandingPrincipal <= 0) continue;
+
+    const interestOwed = calculateLateInterest({
+      contractType: installment.contract.type,
+      originalPrincipalAmount: installment.contract.principal_amount,
+      dueDate: installment.due_date,
+      status: installment.status,
+      paidInterestAmount: installment.paid_interest_amount,
+    });
+    const late = daysLate(installment.due_date, now);
+    const isOverdue = late > 0;
+    const isDueToday = installment.due_date === todayStr;
+    const totalDue = roundCents(outstandingPrincipal + interestOwed);
+
+    const client = installment.contract.client;
+    const row: DebtorInstallmentRow = {
+      installment,
+      contract: installment.contract,
+      outstandingPrincipal,
+      interestOwed,
+      totalDue,
+      daysLate: late,
+      isOverdue,
+      isDueToday,
+    };
+
+    const existing = debtorsByClient.get(client.id);
+    if (existing) {
+      existing.rows.push(row);
+      existing.totalDue = roundCents(existing.totalDue + totalDue);
+      existing.hasOverdue = existing.hasOverdue || isOverdue;
+      existing.hasDueToday = existing.hasDueToday || isDueToday;
+      existing.maxDaysLate = Math.max(existing.maxDaysLate, late);
+    } else {
+      debtorsByClient.set(client.id, {
+        client,
+        rows: [row],
+        totalDue,
+        hasOverdue: isOverdue,
+        hasDueToday: isDueToday,
+        maxDaysLate: late,
+      });
+    }
+  }
+
+  const debtors = Array.from(debtorsByClient.values());
+  for (const debtor of debtors) {
+    // Mais atrasada primeiro; empatado em atraso (ex.: nenhuma atrasada
+    // ainda), a de vencimento mais próximo primeiro — critério usado pela
+    // Central de WhatsApp para escolher a parcela mais urgente de um
+    // cliente com várias em aberto.
+    debtor.rows.sort((a, b) => b.daysLate - a.daysLate || a.installment.due_date.localeCompare(b.installment.due_date));
+  }
+  // Prioridade: atrasados primeiro, depois vence hoje, depois maior valor pendente.
+  debtors.sort((a, b) => {
+    if (a.hasOverdue !== b.hasOverdue) return a.hasOverdue ? -1 : 1;
+    if (a.hasDueToday !== b.hasDueToday) return a.hasDueToday ? -1 : 1;
+    return b.totalDue - a.totalDue;
+  });
+
+  return debtors;
+}
+
 export interface TodayDebtorsSummary {
   debtorsCount: number;
   installmentsCount: number;
@@ -121,86 +210,19 @@ export async function getTodayDebtors(
       .order("paid_at", { ascending: false }),
   ]);
 
-  type InstallmentRow = Installment & {
-    contract: Pick<
-      Contract,
-      "id" | "type" | "status" | "description" | "installments_count" | "principal_amount" | "periodicity"
-    > & {
-      client: Client;
-    };
-  };
-  const allInstallments = (installmentsData ?? []) as InstallmentRow[];
+  const allInstallments = (installmentsData ?? []) as DebtorSourceInstallment[];
   // Um empréstimo cancelado (ex.: cadastrado errado e excluído) nunca deve
   // continuar cobrando o cliente nem aparecer nos indicadores.
   const installments = allInstallments.filter((installment) => installment.contract.status !== "cancelado");
 
-  const debtorsByClient = new Map<string, Debtor>();
+  const debtors = groupDebtorsByClient(installments, now);
 
-  let expectedAmount = 0;
-  let lateInterestAmount = 0;
-
-  for (const installment of installments) {
-    const outstandingPrincipal = roundCents(
-      Math.max(installment.amount - installment.paid_principal_amount, 0),
-    );
-    if (outstandingPrincipal <= 0) continue;
-
-    const interestOwed = calculateLateInterest({
-      contractType: installment.contract.type,
-      originalPrincipalAmount: installment.contract.principal_amount,
-      dueDate: installment.due_date,
-      status: installment.status,
-      paidInterestAmount: installment.paid_interest_amount,
-    });
-    const late = daysLate(installment.due_date, now);
-    const isOverdue = late > 0;
-    const isDueToday = installment.due_date === todayStr;
-    const totalDue = roundCents(outstandingPrincipal + interestOwed);
-
-    expectedAmount = roundCents(expectedAmount + outstandingPrincipal);
-    lateInterestAmount = roundCents(lateInterestAmount + interestOwed);
-
-    const client = installment.contract.client;
-    const row: DebtorInstallmentRow = {
-      installment,
-      contract: installment.contract,
-      outstandingPrincipal,
-      interestOwed,
-      totalDue,
-      daysLate: late,
-      isOverdue,
-      isDueToday,
-    };
-
-    const existing = debtorsByClient.get(client.id);
-    if (existing) {
-      existing.rows.push(row);
-      existing.totalDue = roundCents(existing.totalDue + totalDue);
-      existing.hasOverdue = existing.hasOverdue || isOverdue;
-      existing.hasDueToday = existing.hasDueToday || isDueToday;
-      existing.maxDaysLate = Math.max(existing.maxDaysLate, late);
-    } else {
-      debtorsByClient.set(client.id, {
-        client,
-        rows: [row],
-        totalDue,
-        hasOverdue: isOverdue,
-        hasDueToday: isDueToday,
-        maxDaysLate: late,
-      });
-    }
-  }
-
-  const debtors = Array.from(debtorsByClient.values());
-  for (const debtor of debtors) {
-    debtor.rows.sort((a, b) => b.daysLate - a.daysLate);
-  }
-  // Prioridade: atrasados primeiro, depois vence hoje, depois maior valor pendente.
-  debtors.sort((a, b) => {
-    if (a.hasOverdue !== b.hasOverdue) return a.hasOverdue ? -1 : 1;
-    if (a.hasDueToday !== b.hasDueToday) return a.hasDueToday ? -1 : 1;
-    return b.totalDue - a.totalDue;
-  });
+  // Os totais somam exatamente as mesmas linhas que compõem `debtors` acima
+  // (nunca um cálculo paralelo) — por isso são derivados delas, não de um
+  // segundo laço sobre `installments`.
+  const allRows = debtors.flatMap((debtor) => debtor.rows);
+  const expectedAmount = roundCents(allRows.reduce((sum, row) => sum + row.outstandingPrincipal, 0));
+  const lateInterestAmount = roundCents(allRows.reduce((sum, row) => sum + row.interestOwed, 0));
 
   type PaymentTodayRow = {
     installment_id: string;

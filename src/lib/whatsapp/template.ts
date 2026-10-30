@@ -1,5 +1,6 @@
 import { calculateLateInterest, daysLate, roundCents } from "@/lib/financial-rules";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import type { Debtor } from "@/lib/debtors";
 import type { Client, Contract, Installment } from "@/lib/types";
 
 /**
@@ -24,15 +25,20 @@ export function renderReminderMessage(
     "number" | "amount" | "due_date" | "status" | "paid_principal_amount" | "paid_interest_amount"
   >,
   installmentsCount: number,
+  /** Opcional — só para teste determinístico; em produção é sempre "agora" (padrão). */
+  referenceDate: Date = new Date(),
 ) {
   const outstandingPrincipal = roundCents(Math.max(installment.amount - installment.paid_principal_amount, 0));
-  const lateInterestOwed = calculateLateInterest({
-    contractType: contract.type,
-    originalPrincipalAmount: contract.principal_amount,
-    dueDate: installment.due_date,
-    status: installment.status,
-    paidInterestAmount: installment.paid_interest_amount,
-  });
+  const lateInterestOwed = calculateLateInterest(
+    {
+      contractType: contract.type,
+      originalPrincipalAmount: contract.principal_amount,
+      dueDate: installment.due_date,
+      status: installment.status,
+      paidInterestAmount: installment.paid_interest_amount,
+    },
+    referenceDate,
+  );
   const totalDueNow = roundCents(outstandingPrincipal + lateInterestOwed);
 
   return template
@@ -40,9 +46,38 @@ export function renderReminderMessage(
     .replaceAll("{numero_parcela}", `${installment.number}/${installmentsCount}`)
     .replaceAll("{valor}", formatCurrency(installment.amount).replace("R$", "").trim())
     .replaceAll("{data_vencimento}", formatDate(installment.due_date))
-    .replaceAll("{dias_atraso}", String(daysLate(installment.due_date)))
+    .replaceAll("{dias_atraso}", String(daysLate(installment.due_date, referenceDate)))
     .replaceAll("{juros_dia}", formatCurrency(lateInterestOwed).replace("R$", "").trim())
     .replaceAll("{valor_atualizado}", formatCurrency(totalDueNow).replace("R$", "").trim());
+}
+
+/**
+ * Mesma substituição de `renderReminderMessage`, mas também aceita as duas
+ * variáveis agregadas por CLIENTE (não por parcela) pedidas para campanhas
+ * da Central de WhatsApp — reaproveita o `Debtor` já calculado por
+ * `groupDebtorsByClient`/`getTodayDebtors`, nunca soma de novo:
+ * `{quantidade_parcelas_atraso}` (quantas parcelas em aberto desse cliente
+ * estão atrasadas) e `{saldo_total_em_aberto}` (soma de tudo que esse
+ * cliente deve, parcela + juros, em todos os contratos em aberto).
+ */
+export function renderCampaignMessage(
+  template: string,
+  client: Pick<Client, "name">,
+  contract: Pick<Contract, "type" | "principal_amount">,
+  installment: Pick<
+    Installment,
+    "number" | "amount" | "due_date" | "status" | "paid_principal_amount" | "paid_interest_amount"
+  >,
+  installmentsCount: number,
+  debtor: Pick<Debtor, "rows" | "totalDue">,
+  referenceDate: Date = new Date(),
+): string {
+  const base = renderReminderMessage(template, client, contract, installment, installmentsCount, referenceDate);
+  const overdueCount = debtor.rows.filter((row) => row.isOverdue).length;
+
+  return base
+    .replaceAll("{quantidade_parcelas_atraso}", String(overdueCount))
+    .replaceAll("{saldo_total_em_aberto}", formatCurrency(debtor.totalDue).replace("R$", "").trim());
 }
 
 /**

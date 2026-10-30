@@ -235,3 +235,47 @@ export const renewInstallmentSchema = z.object({
 });
 
 export type RenewInstallmentInput = z.infer<typeof renewInstallmentSchema>;
+
+/**
+ * Prévia de uma campanha da Central de WhatsApp — ver
+ * `previewWhatsAppCampaign` em actions.ts. `manualClientIds` só é
+ * obrigatório quando `filterType` é "selecao_manual".
+ */
+export const campaignPreviewSchema = z
+  .object({
+    filterType: z.enum(["devedores_do_dia", "parcelas_vencidas", "parcelas_em_aberto", "selecao_manual"]),
+    messageTemplate: z.string().trim().min(1, "Informe o texto da mensagem."),
+    manualClientIds: z.array(z.string().uuid()).optional(),
+  })
+  .refine((data) => data.filterType !== "selecao_manual" || (data.manualClientIds?.length ?? 0) > 0, {
+    message: "Selecione ao menos um cliente.",
+    path: ["manualClientIds"],
+  });
+
+export type CampaignPreviewInput = z.infer<typeof campaignPreviewSchema>;
+
+/** Criação efetiva da campanha — mesmo filtro já confirmado na prévia, mais nome e intervalo. */
+export const createCampaignSchema = z
+  .object({
+    name: z.string().trim().min(2, "Dê um nome para a campanha."),
+    filterType: z.enum(["devedores_do_dia", "parcelas_vencidas", "parcelas_em_aberto", "selecao_manual"]),
+    messageTemplate: z.string().trim().min(1, "Informe o texto da mensagem."),
+    manualClientIds: z.array(z.string().uuid()).optional(),
+    /** Intervalo fixo entre envios, em segundos — nunca randômico. */
+    intervalSeconds: z.number().int().min(0, "O intervalo não pode ser negativo.").max(600, "Intervalo muito longo."),
+  })
+  .refine((data) => data.filterType !== "selecao_manual" || (data.manualClientIds?.length ?? 0) > 0, {
+    message: "Selecione ao menos um cliente.",
+    path: ["manualClientIds"],
+  });
+
+export type CreateCampaignInput = z.infer<typeof createCampaignSchema>;
+
+/** Bloqueio/desbloqueio de contato por WhatsApp de um cliente (LGPD) — ver `setWhatsAppConsent` em actions.ts. */
+export const whatsappConsentSchema = z.object({
+  clientId: z.string().uuid(),
+  isBlocked: z.boolean(),
+  notes: z.string().trim().max(500, "Observação muito longa.").optional().or(z.literal("")),
+});
+
+export type WhatsAppConsentInput = z.infer<typeof whatsappConsentSchema>;
