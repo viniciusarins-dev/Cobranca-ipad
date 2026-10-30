@@ -10,6 +10,23 @@ export type WhatsAppProviderName = "evolution" | "zapi" | "twilio" | "wppconnect
 
 export type WeeklyChargeStatus = "PENDENTE" | "PAGO" | "CANCELADO";
 
+export type WhatsAppCampaignFilterType =
+  | "devedores_do_dia"
+  | "parcelas_vencidas"
+  | "parcelas_em_aberto"
+  | "selecao_manual";
+
+export type WhatsAppCampaignStatus = "rascunho" | "em_andamento" | "pausada" | "concluida" | "cancelada";
+
+export type WhatsAppCampaignMessageStatus =
+  | "pendente"
+  | "processando"
+  | "aceita"
+  | "enviada"
+  | "entregue"
+  | "falha"
+  | "cancelada";
+
 export type PaymentMethod = "dinheiro" | "pix" | "cartao" | "outro";
 
 export type PhoneStatus = "estoque" | "vendido";
@@ -229,11 +246,83 @@ export interface WeeklyCharge {
 
 export interface MessageLog {
   id: string;
+  /** Dono do registro (auth.users.id) — RLS própria desde a migration 0017. */
+  owner_id: string;
   installment_id: string;
   client_id: string;
   status: "sent" | "failed";
   provider_response: unknown;
   sent_at: string;
+}
+
+/**
+ * Autorização de contato por WhatsApp de um cliente (LGPD). Ausência de
+ * linha para um cliente = autorizado (comportamento atual preservado,
+ * nenhum cliente é bloqueado retroativamente). `is_blocked = true` remove
+ * o cliente de novas campanhas e impede reenvio automático.
+ */
+export interface WhatsAppConsent {
+  id: string;
+  owner_id: string;
+  client_id: string;
+  category: "cobranca";
+  is_blocked: boolean;
+  consent_source: string | null;
+  consent_recorded_at: string | null;
+  blocked_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Uma campanha de cobrança em lote via WhatsApp (Central de WhatsApp).
+ * Nunca usa delay randômico nem variação de texto — diferente da fila
+ * semanal legada (`weekly_charges`), que mantém esse comportamento por ser
+ * funcionalidade já existente, fora do escopo desta adição.
+ */
+export interface WhatsAppCampaign {
+  id: string;
+  owner_id: string;
+  name: string;
+  filter_type: WhatsAppCampaignFilterType;
+  message_template: string;
+  /** Intervalo fixo entre envios, em segundos — nunca randômico. */
+  interval_seconds: number;
+  status: WhatsAppCampaignStatus;
+  total_count: number;
+  sent_count: number;
+  failed_count: number;
+  created_by_email: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Um destinatário de uma campanha — a fila em si. `message_content` é um
+ * snapshot do texto já renderizado no momento da criação (o histórico
+ * mostra exatamente o que foi enviado, mesmo que o template ou os dados
+ * do cliente mudem depois).
+ */
+export interface WhatsAppCampaignMessage {
+  id: string;
+  owner_id: string;
+  campaign_id: string;
+  client_id: string;
+  contract_id: string | null;
+  installment_id: string | null;
+  to_phone: string;
+  message_content: string;
+  status: WhatsAppCampaignMessageStatus;
+  /** Id retornado pelo provedor — correlaciona com eventos de webhook para marcar "entregue" só com evidência real. */
+  provider_message_id: string | null;
+  error_message: string | null;
+  attempt_count: number;
+  idempotency_key: string | null;
+  created_at: string;
+  attempted_at: string | null;
+  confirmed_at: string | null;
+  delivered_at: string | null;
 }
 
 export type BackupRunStatus = "running" | "success" | "failed";
@@ -315,4 +404,29 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 export const PHONE_STATUS_LABELS: Record<PhoneStatus, string> = {
   estoque: "Em estoque",
   vendido: "Vendido",
+};
+
+export const WHATSAPP_CAMPAIGN_FILTER_LABELS: Record<WhatsAppCampaignFilterType, string> = {
+  devedores_do_dia: "Devedores do dia",
+  parcelas_vencidas: "Parcelas vencidas",
+  parcelas_em_aberto: "Clientes com parcelas em aberto",
+  selecao_manual: "Seleção manual",
+};
+
+export const WHATSAPP_CAMPAIGN_STATUS_LABELS: Record<WhatsAppCampaignStatus, string> = {
+  rascunho: "Rascunho",
+  em_andamento: "Em andamento",
+  pausada: "Pausada",
+  concluida: "Concluída",
+  cancelada: "Cancelada",
+};
+
+export const WHATSAPP_CAMPAIGN_MESSAGE_STATUS_LABELS: Record<WhatsAppCampaignMessageStatus, string> = {
+  pendente: "Pendente",
+  processando: "Processando",
+  aceita: "Aceita pela API",
+  enviada: "Enviada",
+  entregue: "Entregue",
+  falha: "Falha",
+  cancelada: "Cancelada",
 };
