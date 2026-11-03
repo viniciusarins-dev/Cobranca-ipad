@@ -38,10 +38,18 @@ jobs:
       # novo que ele mesmo ("server version mismatch"). Por isso instala a
       # versão 17 direto do repositório oficial do PostgreSQL (PGDG).
       - name: Instalar cliente Postgres 17
+        # set -euo pipefail: sem isso, uma falha no `curl` do meio de um pipe
+        # (ex.: curl | gpg) pode não derrubar o step — já aconteceu uma vez
+        # (execução #145, 29/10: "curl: (56) Failure when receiving data from
+        # the peer" baixando a chave GPG do postgresql.org) e passou
+        # despercebido até o gpg reclamar depois. --retry trata o caso mais
+        # comum (blip transiente de rede num servidor de terceiro) sem
+        # precisar esperar a falha acontecer de novo pra notar.
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y curl ca-certificates gnupg
-          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17

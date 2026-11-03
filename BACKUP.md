@@ -9,6 +9,7 @@ navegador ou de alguém estar logado.
 
 ```
 GitHub Actions (cron a cada 6h)
+  -> reporta "running" (heartbeat) para /api/backup/report
   -> pg_dump (conexão direta ao Postgres do Supabase, schemas public + auth)
   -> baixa todos os arquivos do bucket privado client-documents
   -> empacota tudo num .tar
@@ -16,13 +17,31 @@ GitHub Actions (cron a cada 6h)
   -> verifica que consegue descriptografar de volta (nunca sobe um arquivo não verificado)
   -> envia para Cloudflare R2 (backups/6h/, .../daily/, .../monthly/)
   -> aplica a política de retenção
-  -> reporta o resultado para /api/backup/report (fica visível em /backups no app)
+  -> reporta o resultado final (sucesso/falha) para /api/backup/report (fica visível em /backups no app)
+
+GitHub Actions separado — watchdog (cron a cada 4h, independente do de cima)
+  -> consulta /api/backup/watchdog: há um backup bem-sucedido recente?
+     alguma execução ficou travada em "running"?
+  -> se achar problema: alerta por WhatsApp + falha o próprio step (e-mail do GitHub)
 ```
 
 Todo o processamento roda no runner do GitHub Actions — nunca na Vercel,
 nunca no navegador. O `pg_dump` lê o banco a partir de um snapshot MVCC
 consistente (mecanismo nativo do Postgres) sem bloquear pagamentos nem
 qualquer outra escrita simultânea.
+
+**Auditoria de 03/11/2026 — achado e correção:** das últimas 160
+execuções, só uma falhou (#145, 29/10), e falhou baixando a chave GPG do
+`postgresql.org` (erro de rede transiente) — **antes** mesmo do
+`backup.mjs` rodar, então nenhuma linha chegou a ser gravada em
+`backup_runs` e a falha ficou invisível na tela `/backups` (só o e-mail
+automático do GitHub Actions avisou). Duas correções:
+1. O passo de instalar o `pg_dump` agora tenta de novo automaticamente
+   (`curl --retry`) antes de desistir.
+2. O "heartbeat" acima + o workflow de watchdog cobrem justamente esse
+   tipo de falha: ele não depende do `backup.mjs` ter rodado nem
+   conseguido reportar nada — só olha o estado já salvo de fora, num
+   workflow e agendamento totalmente separados.
 
 ## 1. Rodar a migration
 
@@ -75,18 +94,26 @@ repository secret**, crie cada um destes:
 | `R2_BUCKET_NAME` | Nome do bucket criado no passo 2 |
 | `APP_URL` | URL de produção do app (ex.: `https://cobranca-ipad.vercel.app`) |
 | `BACKUP_REPORT_SECRET` | Uma string aleatória nova (ex.: gere como no passo 4) |
+| `BACKUP_WATCHDOG_SECRET` | Outra string aleatória nova, diferente das demais (ex.: gere como no passo 4) |
 
-`BACKUP_REPORT_SECRET` também precisa ser configurada como variável de
-ambiente **na Vercel** (Settings → Environment Variables), com o
-**mesmo valor**, para o endpoint `/api/backup/report` conseguir validar
-quem está chamando — é um segredo próprio, diferente do `CRON_SECRET` já
+`BACKUP_REPORT_SECRET` e `BACKUP_WATCHDOG_SECRET` também precisam ser
+configuradas como variável de ambiente **na Vercel** (Settings →
+Environment Variables), com o **mesmo valor** de cada uma, para os
+endpoints `/api/backup/report` e `/api/backup/watchdog` conseguirem
+validar quem está chamando — cada uma é um segredo próprio, diferente do
+`CRON_SECRET` já
 usado pelos outros crons.
 
 ## 6. Testar manualmente antes de confiar no agendamento
 
 No repositório → aba **Actions** → **Backup automático (a cada 6h)** →
 **Run workflow**. Acompanhe o log; ao final, confira em **/backups** no
-app se a execução aparece como "Concluído".
+app se a execução aparece como "Concluído" (passa primeiro por "Em
+andamento" — é o heartbeat, normal).
+
+Teste também o watchdog: aba **Actions** → **Watchdog do backup
+(monitoramento independente)** → **Run workflow**. Com um backup recente
+bem-sucedido, o step deve terminar verde (sem alerta).
 
 ## 7. Retenção
 
@@ -102,11 +129,17 @@ prazo de retenção.
 ## 8. Alertas de falha
 
 - **Automático, sem configurar nada**: o GitHub envia e-mail para os
-  donos do repositório sempre que uma execução agendada falha.
+  donos do repositório sempre que uma execução agendada falha — tanto do
+  backup quanto do watchdog.
+- **Watchdog independente** (a cada 4h, workflow separado): verifica de
+  fora se há um backup bem-sucedido recente e se nenhuma execução ficou
+  travada em "Em andamento" — cobre justamente o caso em que o backup
+  falha tão cedo que nunca chega a reportar nada (foi o que aconteceu na
+  única falha real já registrada, ver seção "Arquitetura" acima).
 - **Opcional**: preencha "Telefone para alertas" em Ajustes → Alertas de
   sistema para também receber um WhatsApp (reaproveita o provedor já
-  configurado ali).
-- Toda execução (sucesso ou falha) fica visível em **/backups** no app.
+  configurado ali) — tanto o backup quanto o watchdog usam o mesmo envio.
+- Toda execução (sucesso, falha ou travada) fica visível em **/backups** no app.
 
 ## 9. Restauração
 
@@ -148,6 +181,13 @@ relacionamentos cliente → contrato → parcela → pagamento.
   este sistema (uma empresa, poucos MB por backup), isso é bem distante.
 - O alerta por WhatsApp depende de você já ter um provedor configurado em
   Ajustes — sem isso, só o e-mail do GitHub Actions avisa sobre falhas.
-- O agendamento do GitHub Actions pode atrasar alguns minutos em horários
-  de pico da própria infraestrutura do GitHub (fora do nosso controle) —
-  não afeta a garantia de execução, só a pontualidade exata do minuto 0.
+- O agendamento `schedule` do GitHub Actions é best-effort, não exato — a
+  auditoria de 03/11 mediu intervalos reais entre ~4h e ~10h nas últimas
+  160 execuções (não exatos 6h), o que é esperado e documentado pelo
+  próprio GitHub (fora do nosso controle). Isso não é uma falha: é por
+  isso que a tela `/backups` e o watchdog usam uma margem de tolerância
+  generosa antes de soar qualquer alerta, em vez de 6h cravadas.
+- O watchdog detecta o problema (nenhum backup recente, ou uma execução
+  travada), mas não força uma nova execução sozinho — a próxima tentativa
+  real ainda depende do próximo disparo do `schedule` (ou de alguém rodar
+  manualmente via **Actions → Run workflow**).

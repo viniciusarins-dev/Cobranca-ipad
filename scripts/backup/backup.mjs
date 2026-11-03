@@ -15,6 +15,12 @@ function requireEnv(name) {
   return value;
 }
 
+/**
+ * Devolve o corpo JSON da resposta (usado só pelo heartbeat, para pegar o
+ * `runId` da linha criada) — `null` em qualquer falha, nunca lança: um
+ * problema ao REPORTAR não pode virar a causa de o job falhar por um motivo
+ * diferente do real, só avisa no log do próprio Actions.
+ */
 async function reportResult(appUrl, reportSecret, payload) {
   try {
     const response = await fetch(`${appUrl.replace(/\/$/, "")}/api/backup/report`, {
@@ -28,11 +34,12 @@ async function reportResult(appUrl, reportSecret, payload) {
     if (!response.ok) {
       const body = await response.text().catch(() => "");
       console.error(`Falha ao reportar resultado do backup para a aplicação: HTTP ${response.status} — ${body}`);
+      return null;
     }
+    return await response.json().catch(() => null);
   } catch (error) {
-    // Nunca deixa uma falha ao REPORTAR virar a causa de o job falhar por um
-    // motivo diferente do real — só avisa no log do próprio Actions.
     console.error("Falha ao reportar resultado do backup para a aplicação:", error.message);
+    return null;
   }
 }
 
@@ -52,6 +59,21 @@ async function main() {
 
   const knownSecrets = [databaseUrl, serviceRoleKey, encryptionKeyBase64, r2SecretAccessKey, reportSecret];
   const encryptionKey = loadEncryptionKey(encryptionKeyBase64);
+
+  // Heartbeat: grava "running" ANTES de qualquer passo pesado. Se o processo
+  // morrer no meio (ex.: pg_dump trava, o runner é encerrado por timeout),
+  // esta linha fica visível como "running" na tela /backups e é pega pelo
+  // workflow separado de watchdog — em vez de a execução simplesmente não
+  // aparecer em lugar nenhum (era assim antes; foi exatamente o que
+  // aconteceu na execução que falhou instalando o pg_dump, achado #1 da
+  // auditoria de 03/11 — só que aquela falhou ainda mais cedo, antes mesmo
+  // deste script rodar, então nem este heartbeat teria pego; o watchdog
+  // separado é o que cobre esse caso).
+  const heartbeat = await reportResult(appUrl, reportSecret, {
+    startedAt: startedAt.toISOString(),
+    status: "running",
+  });
+  const runId = heartbeat?.runId ?? null;
 
   const workDir = await mkdtemp(join(tmpdir(), "cobranca-backup-"));
   const validation = { dump_ok: false, documents_ok: false, package_ok: false, encryption_ok: false, upload_ok: false };
@@ -128,6 +150,7 @@ async function main() {
       startedAt: startedAt.toISOString(),
       finishedAt: finishedAt.toISOString(),
       status: "success",
+      runId,
       tiers,
       sizeBytes: encrypted.length,
       durationSeconds: Math.round((finishedAt.getTime() - startedAt.getTime()) / 1000),
@@ -147,6 +170,7 @@ async function main() {
       startedAt: startedAt.toISOString(),
       finishedAt: finishedAt.toISOString(),
       status: "failed",
+      runId,
       tiers: [],
       durationSeconds: Math.round((finishedAt.getTime() - startedAt.getTime()) / 1000),
       validation,

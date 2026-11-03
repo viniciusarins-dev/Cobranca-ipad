@@ -1,0 +1,27 @@
+name: Watchdog do backup (monitoramento independente)
+
+# Workflow SEPARADO do backup.yml de propósito (achado da auditoria de
+# 03/11): se o backup.yml falhar antes de scripts/backup/backup.mjs rodar,
+# ele nunca chega a reportar nada para a aplicação — este workflow não
+# depende disso, só consulta o estado já salvo em backup_runs de fora.
+# Roda num horário deslocado do backup.yml (minuto 15, a cada 4h) para não
+# competir por runner nem checar bem no instante em que o backup pode
+# ainda estar rodando.
+on:
+  schedule:
+    - cron: "15 */4 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checar estado do backup
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          BACKUP_WATCHDOG_SECRET: ${{ secrets.BACKUP_WATCHDOG_SECRET }}
+        run: |
+          curl -fsS \
+            -H "Authorization: Bearer $BACKUP_WATCHDOG_SECRET" \
+            "${APP_URL%/}/api/backup/watchdog"

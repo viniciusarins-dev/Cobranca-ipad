@@ -14,10 +14,10 @@
     "ast_empty": true
   },
   ".github/workflows/backup.yml": {
-    "mtime": 1792898385.643004,
-    "seen": 1792939028.8751569,
-    "ast_hash": "3e7f939286550ff8cb5e0bb2dec5bd1f",
-    "semantic_hash": "3e7f939286550ff8cb5e0bb2dec5bd1f"
+    "mtime": 1793706841.7767024,
+    "seen": 1793707112.4375508,
+    "ast_hash": "301e7ab342178322eb4661728bf1687f",
+    "semantic_hash": ""
   },
   "eslint.config.mjs": {
     "mtime": 1792898385.643004,
@@ -50,10 +50,10 @@
     "semantic_hash": "ad13123ef61987431c1593b0fdf37ef0"
   },
   "scripts/backup/backup.mjs": {
-    "mtime": 1792898385.6516569,
-    "seen": 1792939028.8753507,
-    "ast_hash": "4247979cd2a5497216b17304769c6c79",
-    "semantic_hash": "4247979cd2a5497216b17304769c6c79"
+    "mtime": 1793706901.3927045,
+    "seen": 1793707112.437641,
+    "ast_hash": "599e1054af066816d11762440b387cc3",
+    "semantic_hash": ""
   },
   "scripts/backup/lib/documents.mjs": {
     "mtime": 1792898385.6520875,
@@ -104,10 +104,10 @@
     "semantic_hash": "31e25b26b5f4dd86fe91a5f1751dd9d8"
   },
   "src/app/(app)/backups/page.tsx": {
-    "mtime": 1792898385.6526875,
-    "seen": 1792939028.8757727,
-    "ast_hash": "d3fbb38b0c546bb826514adb65d91a0f",
-    "semantic_hash": "d3fbb38b0c546bb826514adb65d91a0f"
+    "mtime": 1793706978.152707,
+    "seen": 1793707112.4378097,
+    "ast_hash": "1a57240a935838c31065dfd3463d3e8b",
+    "semantic_hash": ""
   },
   "src/app/(app)/clientes/page.tsx": {
     "mtime": 1792974083.3472304,
@@ -158,10 +158,10 @@
     "semantic_hash": ""
   },
   "src/app/api/backup/report/route.ts": {
-    "mtime": 1792898385.6555254,
-    "seen": 1792939028.8760846,
-    "ast_hash": "6eb003f69ecd815046afeaa96ea73150",
-    "semantic_hash": "6eb003f69ecd815046afeaa96ea73150"
+    "mtime": 1793706868.4687033,
+    "seen": 1793707112.438021,
+    "ast_hash": "812a4ec058aa9a52730d117e3086a2a2",
+    "semantic_hash": ""
   },
   "src/app/api/cron/check-overdue/route.ts": {
     "mtime": 1792898385.655737,
@@ -620,9 +620,9 @@
     "semantic_hash": ""
   },
   "BACKUP.md": {
-    "mtime": 1792898385.643004,
-    "seen": 1792939233.5898042,
-    "ast_hash": "fb30daca5c23d3ebd653dc53c4548492",
+    "mtime": 1793707103.9127116,
+    "seen": 1793707112.439971,
+    "ast_hash": "34574c7691e8f38119ad13fe366e5a5a",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -821,6 +821,18 @@
     "mtime": 1793374206.2088892,
     "seen": 1793374279.2106807,
     "ast_hash": "fea79bad7b19e7c0b8178aa9c6155ff6",
+    "semantic_hash": ""
+  },
+  ".github/workflows/backup-watchdog.yml": {
+    "mtime": 1793706929.4647055,
+    "seen": 1793707112.4375477,
+    "ast_hash": "6e8ef8692aeb71e0184a76833356083e",
+    "semantic_hash": ""
+  },
+  "src/app/api/backup/watchdog/route.ts": {
+    "mtime": 1793706923.8927052,
+    "seen": 1793707112.4380226,
+    "ast_hash": "6dcdf1a73d76a2d2c05dbda15a4f8806",
     "semantic_hash": ""
   }
 }

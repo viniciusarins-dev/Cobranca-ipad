@@ -13,8 +13,16 @@ import type { BackupRun } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 const EXPECTED_INTERVAL_HOURS = 6;
-/** Margem de tolerância antes de considerar o backup "atrasado" (execuções raramente caem no minuto exato). */
-const OVERDUE_TOLERANCE_HOURS = 2;
+/**
+ * Margem de tolerância antes de considerar o backup "atrasado". O
+ * agendador `schedule` do GitHub Actions é best-effort — a auditoria de
+ * 03/11 mediu intervalos reais entre ~4h e ~10h nas últimas 160 execuções
+ * (não exatos 6h) — por isso a margem é generosa o bastante pra não virar
+ * alarme falso com o atraso normal da plataforma. O watchdog independente
+ * (.github/workflows/backup-watchdog.yml) usa um limite próprio, mais alto
+ * ainda, pra só soar quando for de fato um problema.
+ */
+const OVERDUE_TOLERANCE_HOURS = 4;
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) return "—";
@@ -55,12 +63,23 @@ export default async function BackupsPage() {
   const runs = (data ?? []) as BackupRun[];
   const lastSuccess = runs.find((r) => r.status === "success");
   const lastFailure = runs.find((r) => r.status === "failed");
+  const lastRun = runs[0] ?? null;
 
   const hoursSinceLastSuccess = lastSuccess ? hoursSince(lastSuccess.started_at) : null;
   const isOverdue = hoursSinceLastSuccess === null || hoursSinceLastSuccess > EXPECTED_INTERVAL_HOURS + OVERDUE_TOLERANCE_HOURS;
 
   const totalRuns = runs.length;
   const successCount = runs.filter((r) => r.status === "success").length;
+
+  // "Running" há mais de 2h não é mais uma execução em andamento de
+  // verdade (o job tem timeout de 90min) — é uma que morreu no meio sem
+  // reportar o resultado final (ver backup-watchdog.yml, que já alerta
+  // sobre isso de fora; aqui é só pra deixar visível pra quem olhar a tela).
+  const stuckRuns = runs.filter((r) => r.status === "running" && hoursSince(r.started_at) > 2);
+
+  // Estimativa simples (último início + intervalo nominal) — nunca exata:
+  // o agendador do GitHub Actions é best-effort (ver nota de OVERDUE_TOLERANCE_HOURS).
+  const nextExpected = lastRun ? new Date(new Date(lastRun.started_at).getTime() + EXPECTED_INTERVAL_HOURS * 60 * 60 * 1000) : null;
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-10">
@@ -82,7 +101,15 @@ export default async function BackupsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {stuckRuns.length > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+          <AlertTriangleIcon className="size-4 shrink-0" />
+          {stuckRuns.length} execução(ões) iniciada(s) mas nunca concluída(s) (travada(s) em &quot;Em andamento&quot;) —
+          provável falha no meio do processo. O watchdog independente verifica isso a cada 4h.
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <SpotlightCard className="flex flex-col gap-3 p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -104,6 +131,16 @@ export default async function BackupsPage() {
           <span className={`text-lg font-bold tracking-tight ${lastFailure ? "text-destructive" : "text-accent-cyan"}`}>
             {lastFailure ? formatDateTime(lastFailure.started_at) : "Nenhuma"}
           </span>
+        </SpotlightCard>
+        <SpotlightCard className="flex flex-col gap-3 p-4 sm:p-5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Próxima execução prevista
+            </span>
+            <ClockIcon className="size-4 text-muted-foreground" />
+          </div>
+          <span className="text-lg font-bold tracking-tight">{nextExpected ? formatDateTime(nextExpected.toISOString()) : "—"}</span>
+          <span className="text-xs text-muted-foreground">Estimativa — o agendamento real varia (ver nota acima).</span>
         </SpotlightCard>
       </div>
 
