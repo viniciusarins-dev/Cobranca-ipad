@@ -20,10 +20,12 @@ export const dynamic = "force-dynamic";
  * Detecta dois problemas:
  * 1. Nenhum backup bem-sucedido recente (o último "success" está mais
  *    velho que o limite tolerado — generoso o bastante pra não disparar
- *    por causa do atraso normal do agendador do GitHub Actions, que na
- *    prática varia de ~4h a ~10h entre execuções, não exatos 6h).
+ *    por causa do atraso normal do agendador do GitHub Actions, mas bem
+ *    mais apertado que o intervalo nominal de 6h medido na auditoria de
+ *    03/11, já que o backup passou a ser horário em 06/11 — um sistema de
+ *    cobrança em produção não pode ficar muitas horas sem alerta).
  * 2. Uma execução "running" (heartbeat) mais velha que o timeout do job
- *    (90min, ver backup.yml) — sinal de que o processo morreu no meio sem
+ *    (45min, ver backup.yml) — sinal de que o processo morreu no meio sem
  *    nunca reportar o resultado final.
  *
  * Responde com HTTP 500 quando encontra um problema — de propósito: o
@@ -32,8 +34,8 @@ export const dynamic = "force-dynamic";
  * para execução agendada com falha — um SEGUNDO canal de alerta,
  * independente do WhatsApp enviado aqui dentro.
  */
-const STALE_SUCCESS_HOURS = 12;
-const STUCK_RUNNING_HOURS = 2;
+const STALE_SUCCESS_HOURS = 3;
+const STUCK_RUNNING_HOURS = 1;
 
 function hoursSince(isoDate: string): number {
   return (Date.now() - new Date(isoDate).getTime()) / (1000 * 60 * 60);

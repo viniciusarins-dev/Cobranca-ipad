@@ -2,24 +2,24 @@
 
 Backup completo do banco (Postgres) + documentos dos clientes (Storage),
 criptografado e enviado para um armazenamento externo (Cloudflare R2),
-rodando a cada 6h via GitHub Actions — independente da Vercel, do
+rodando a cada 1h via GitHub Actions — independente da Vercel, do
 navegador ou de alguém estar logado.
 
 ## Arquitetura
 
 ```
-GitHub Actions (cron a cada 6h)
+GitHub Actions (cron a cada 1h)
   -> reporta "running" (heartbeat) para /api/backup/report
   -> pg_dump (conexão direta ao Postgres do Supabase, schemas public + auth)
   -> baixa todos os arquivos do bucket privado client-documents
   -> empacota tudo num .tar
   -> criptografa com AES-256-GCM
   -> verifica que consegue descriptografar de volta (nunca sobe um arquivo não verificado)
-  -> envia para Cloudflare R2 (backups/6h/, .../daily/, .../monthly/)
+  -> envia para Cloudflare R2 (backups/hourly/, .../daily/, .../monthly/)
   -> aplica a política de retenção
   -> reporta o resultado final (sucesso/falha) para /api/backup/report (fica visível em /backups no app)
 
-GitHub Actions separado — watchdog (cron a cada 4h, independente do de cima)
+GitHub Actions separado — watchdog (cron a cada 1h, deslocado 20min do de cima)
   -> consulta /api/backup/watchdog: há um backup bem-sucedido recente?
      alguma execução ficou travada em "running"?
   -> se achar problema: alerta por WhatsApp + falha o próprio step (e-mail do GitHub)
@@ -42,6 +42,16 @@ automático do GitHub Actions avisou). Duas correções:
    tipo de falha: ele não depende do `backup.mjs` ter rodado nem
    conseguido reportar nada — só olha o estado já salvo de fora, num
    workflow e agendamento totalmente separados.
+
+**06/11/2026 — frequência passou de 6h para 1h** (sistema de cobrança em
+produção, cliente ativo diariamente — pedido explícito pra reduzir o
+período sem backup recente). A camada antes chamada "6h" virou "hourly" e
+sua retenção caiu de 7 dias para 48h (senão o volume cresceria sem
+controle); diário continua 30 dias, mensal passou de 12 para 6 meses. O
+`timeout-minutes` do job caiu de 90 para 45 e o watchdog passou a rodar a
+cada 1h (era 4h) com um limite de atraso bem mais apertado — ver seção
+"Limitações conhecidas" sobre o impacto nos minutos gratuitos do GitHub
+Actions.
 
 ## 1. Rodar a migration
 
@@ -106,7 +116,7 @@ usado pelos outros crons.
 
 ## 6. Testar manualmente antes de confiar no agendamento
 
-No repositório → aba **Actions** → **Backup automático (a cada 6h)** →
+No repositório → aba **Actions** → **Backup automático (a cada 1h)** →
 **Run workflow**. Acompanhe o log; ao final, confira em **/backups** no
 app se a execução aparece como "Concluído" (passa primeiro por "Em
 andamento" — é o heartbeat, normal).
@@ -117,9 +127,9 @@ bem-sucedido, o step deve terminar verde (sem alerta).
 
 ## 7. Retenção
 
-- Backups de 6 em 6 horas: mantidos por 7 dias.
+- Backups horários: mantidos por 48 horas.
 - O primeiro backup de cada dia (00:00 UTC) também vira o backup "diário": mantido por 30 dias.
-- O primeiro backup de cada mês (dia 1º, 00:00 UTC) também vira o "mensal": mantido por 12 meses.
+- O primeiro backup de cada mês (dia 1º, 00:00 UTC) também vira o "mensal": mantido por 6 meses.
 
 A cópia para as camadas diária/mensal é feita do lado do R2 (sem reenviar
 o arquivo), então não duplica processamento. Um backup nunca é apagado se
@@ -131,7 +141,7 @@ prazo de retenção.
 - **Automático, sem configurar nada**: o GitHub envia e-mail para os
   donos do repositório sempre que uma execução agendada falha — tanto do
   backup quanto do watchdog.
-- **Watchdog independente** (a cada 4h, workflow separado): verifica de
+- **Watchdog independente** (a cada 1h, workflow separado): verifica de
   fora se há um backup bem-sucedido recente e se nenhuma execução ficou
   travada em "Em andamento" — cobre justamente o caso em que o backup
   falha tão cedo que nunca chega a reportar nada (foi o que aconteceu na
@@ -155,7 +165,7 @@ export R2_SECRET_ACCESS_KEY="..."
 export R2_BUCKET_NAME="..."
 
 node restore.mjs \
-  --key "6h/2026-09-20T10-00-00Z.enc" \
+  --key "hourly/2026-09-20T10-00-00Z.enc" \
   --target-db "postgres://usuario:senha@host:5432/postgres" \
   --documents-dir ./restored-documents
 ```
@@ -177,17 +187,34 @@ relacionamentos cliente → contrato → parcela → pagamento.
 
 ## Limitações conhecidas
 
-- O R2 grátis cobre 10GB — acima disso, é cobrado (~US$0,015/GB/mês); para
-  este sistema (uma empresa, poucos MB por backup), isso é bem distante.
+- O R2 grátis cobre 10GB e 1 milhão de operações/mês — mesmo com backup
+  horário (~24 execuções/dia, poucas operações cada), isso continua bem
+  distante do limite para este sistema (uma empresa, poucos MB por backup).
+- **Minutos do GitHub Actions**: se o repositório for PRIVADO, o plano
+  Free do GitHub dá 2.000 minutos/mês de runner grátis; cada execução do
+  backup (download de dependências, `pg_dump`, upload) soma alguns
+  minutos, e passar de 6h para 1h multiplica por 6 o consumo mensal — vale
+  conferir em **Settings → Billing → Actions** depois de alguns dias
+  rodando, pra confirmar que não vai estourar o gratuito (se o repositório
+  for PÚBLICO, minutos em runner padrão são ilimitados, sem custo). Isso
+  não foi medido com precisão nesta auditoria — só estimado.
 - O alerta por WhatsApp depende de você já ter um provedor configurado em
   Ajustes — sem isso, só o e-mail do GitHub Actions avisa sobre falhas.
 - O agendamento `schedule` do GitHub Actions é best-effort, não exato — a
   auditoria de 03/11 mediu intervalos reais entre ~4h e ~10h nas últimas
-  160 execuções (não exatos 6h), o que é esperado e documentado pelo
-  próprio GitHub (fora do nosso controle). Isso não é uma falha: é por
-  isso que a tela `/backups` e o watchdog usam uma margem de tolerância
-  generosa antes de soar qualquer alerta, em vez de 6h cravadas.
+  160 execuções, quando o agendamento nominal ainda era de 6h (não exatos
+  6h), o que é esperado e documentado pelo próprio GitHub (fora do nosso
+  controle). Isso não é uma falha: é por isso que a tela `/backups` e o
+  watchdog usam uma margem de tolerância antes de soar qualquer alerta,
+  em vez do intervalo nominal cravado.
 - O watchdog detecta o problema (nenhum backup recente, ou uma execução
   travada), mas não força uma nova execução sozinho — a próxima tentativa
   real ainda depende do próximo disparo do `schedule` (ou de alguém rodar
   manualmente via **Actions → Run workflow**).
+- Objetos já existentes no R2 sob o prefixo antigo `6h/` (de antes de
+  06/11) continuam lá — a política de retenção agora só gerencia
+  `hourly/`/`daily/`/`monthly/`, então esses arquivos antigos não são mais
+  apagados automaticamente. Inofensivo (congelados no tamanho que tinham,
+  dentro da margem gratuita do R2), mas quem quiser pode apagá-los
+  manualmente no painel do Cloudflare R2 depois de confirmar que não
+  precisa mais deles.

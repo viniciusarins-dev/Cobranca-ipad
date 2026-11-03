@@ -14,9 +14,9 @@
     "ast_empty": true
   },
   ".github/workflows/backup.yml": {
-    "mtime": 1793706841.7767024,
-    "seen": 1793707112.4375508,
-    "ast_hash": "301e7ab342178322eb4661728bf1687f",
+    "mtime": 1793708302.5369413,
+    "seen": 1793708490.1093936,
+    "ast_hash": "16ccf242b2bf50367d04aeb07731771c",
     "semantic_hash": ""
   },
   "eslint.config.mjs": {
@@ -50,9 +50,9 @@
     "semantic_hash": "ad13123ef61987431c1593b0fdf37ef0"
   },
   "scripts/backup/backup.mjs": {
-    "mtime": 1793706901.3927045,
-    "seen": 1793707112.437641,
-    "ast_hash": "599e1054af066816d11762440b387cc3",
+    "mtime": 1793708319.388942,
+    "seen": 1793708490.1095142,
+    "ast_hash": "8dc763468dc91e4b2ca6a444b9e105ad",
     "semantic_hash": ""
   },
   "scripts/backup/lib/documents.mjs": {
@@ -74,10 +74,10 @@
     "semantic_hash": "1993d170aea8d9416f56eb4975b7932f"
   },
   "scripts/backup/lib/retention.mjs": {
-    "mtime": 1792898385.65218,
-    "seen": 1792939028.8754632,
-    "ast_hash": "11d46a3934351155ff86df4a250ef732",
-    "semantic_hash": "11d46a3934351155ff86df4a250ef732"
+    "mtime": 1793708314.1249418,
+    "seen": 1793708490.1096232,
+    "ast_hash": "88e5555a79fb7ee040139c3b6f7b298a",
+    "semantic_hash": ""
   },
   "scripts/backup/lib/sanitize.mjs": {
     "mtime": 1792898385.65218,
@@ -98,15 +98,15 @@
     "semantic_hash": "535cdf6f261d9ea43c445f13c3bdc013"
   },
   "scripts/backup/restore.mjs": {
-    "mtime": 1792898385.65218,
-    "seen": 1792939028.875741,
-    "ast_hash": "31e25b26b5f4dd86fe91a5f1751dd9d8",
-    "semantic_hash": "31e25b26b5f4dd86fe91a5f1751dd9d8"
+    "mtime": 1793708435.852946,
+    "seen": 1793708490.109711,
+    "ast_hash": "16b9babb4a506fb01c139ef36ef5b2c2",
+    "semantic_hash": ""
   },
   "src/app/(app)/backups/page.tsx": {
-    "mtime": 1793706978.152707,
-    "seen": 1793707112.4378097,
-    "ast_hash": "1a57240a935838c31065dfd3463d3e8b",
+    "mtime": 1793708340.9209428,
+    "seen": 1793708490.1097376,
+    "ast_hash": "e9445e58c4d88f62e42e0feddd777fec",
     "semantic_hash": ""
   },
   "src/app/(app)/clientes/page.tsx": {
@@ -158,9 +158,9 @@
     "semantic_hash": ""
   },
   "src/app/api/backup/report/route.ts": {
-    "mtime": 1793706868.4687033,
-    "seen": 1793707112.438021,
-    "ast_hash": "812a4ec058aa9a52730d117e3086a2a2",
+    "mtime": 1793708424.8449457,
+    "seen": 1793708490.1100578,
+    "ast_hash": "f425a5e7666f8fa5af3026122404dc1c",
     "semantic_hash": ""
   },
   "src/app/api/cron/check-overdue/route.ts": {
@@ -530,9 +530,9 @@
     "semantic_hash": "ce0c8b38b074ae22425355f1091d63ff"
   },
   "src/lib/types.ts": {
-    "mtime": 1793369716.718707,
-    "seen": 1793369804.9961846,
-    "ast_hash": "c4782f20ed4c2c996308c88af44286bb",
+    "mtime": 1793708428.1289458,
+    "seen": 1793708490.1125402,
+    "ast_hash": "735b0dbe1ac89bc0ea3cd5989f93f7a5",
     "semantic_hash": ""
   },
   "src/lib/utils.ts": {
@@ -620,9 +620,9 @@
     "semantic_hash": ""
   },
   "BACKUP.md": {
-    "mtime": 1793707103.9127116,
-    "seen": 1793707112.439971,
-    "ast_hash": "34574c7691e8f38119ad13fe366e5a5a",
+    "mtime": 1793708404.360945,
+    "seen": 1793708490.1132016,
+    "ast_hash": "33c2a24bd1b897b231e21c900f072230",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -632,9 +632,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1792978996.3793778,
-    "seen": 1792979037.146119,
-    "ast_hash": "163f41126795be2493bfe2c8c58b7212",
+    "mtime": 1793708410.816945,
+    "seen": 1793708490.1132283,
+    "ast_hash": "d39460c3c26b97c587a853184035ddf4",
     "semantic_hash": ""
   },
   "public/apple-touch-icon.png": {
@@ -824,15 +824,15 @@
     "semantic_hash": ""
   },
   ".github/workflows/backup-watchdog.yml": {
-    "mtime": 1793706929.4647055,
-    "seen": 1793707112.4375477,
-    "ast_hash": "6e8ef8692aeb71e0184a76833356083e",
+    "mtime": 1793708347.836943,
+    "seen": 1793708490.1093888,
+    "ast_hash": "d9367cfec87ee1abd112ebbd294b992a",
     "semantic_hash": ""
   },
   "src/app/api/backup/watchdog/route.ts": {
-    "mtime": 1793706923.8927052,
-    "seen": 1793707112.4380226,
-    "ast_hash": "6dcdf1a73d76a2d2c05dbda15a4f8806",
+    "mtime": 1793708360.9649434,
+    "seen": 1793708490.11006,
+    "ast_hash": "cd5cd0ddc10007f09e9defcb6a29e88e",
     "semantic_hash": ""
   }
 }

@@ -1,20 +1,24 @@
 import { copyObject, deleteObject, listObjects } from "./storage.mjs";
 
 /**
- * Política de retenção (item 6): a mesma camada "6h" nunca é duplicada nas
- * camadas diária/mensal — o backup do horário 00:00 UTC é copiado (do lado
- * do servidor, sem reprocessar) também para "daily/"; o do dia 1º do mês
- * também para "monthly/".
+ * Política de retenção (item 6): a mesma camada "hourly" nunca é
+ * duplicada nas camadas diária/mensal — o backup do horário 00:00 UTC é
+ * copiado (do lado do servidor, sem reprocessar) também para "daily/"; o
+ * do dia 1º do mês também para "monthly/".
+ *
+ * Valores (pedido explícito de 06/11 — backup horário, cliente não pode
+ * ficar sem proteção recente): horário mantido por 48h, diário por 30
+ * dias, mensal por ~6 meses (180 dias).
  */
 export const RETENTION_TIERS = {
-  "6h": { prefix: "6h/", maxAgeDays: 7 },
+  hourly: { prefix: "hourly/", maxAgeDays: 2 },
   daily: { prefix: "daily/", maxAgeDays: 30 },
-  monthly: { prefix: "monthly/", maxAgeDays: 365 },
+  monthly: { prefix: "monthly/", maxAgeDays: 180 },
 };
 
-/** Quais camadas este horário de execução alimenta, além da "6h" (sempre). */
+/** Quais camadas este horário de execução alimenta, além da "hourly" (sempre). */
 export function tiersForRun(now = new Date()) {
-  const tiers = ["6h"];
+  const tiers = ["hourly"];
   if (now.getUTCHours() === 0) tiers.push("daily");
   if (now.getUTCHours() === 0 && now.getUTCDate() === 1) tiers.push("monthly");
   return tiers;
@@ -51,7 +55,7 @@ export async function copyToExtraTiers(client, bucket, sourceKey, tiers, timesta
     monthly: `monthly/${timestampLabel.slice(0, 7)}.enc`,
   };
   for (const tier of tiers) {
-    if (tier === "6h") continue;
+    if (tier === "hourly") continue;
     const destKey = labelByTier[tier];
     if (destKey) await copyObject(client, bucket, sourceKey, destKey);
   }

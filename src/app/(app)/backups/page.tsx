@@ -12,17 +12,20 @@ import type { BackupRun } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-const EXPECTED_INTERVAL_HOURS = 6;
+/** Desde 06/11: backup horário (era a cada 6h) — cliente em produção, sem período longo exposto. */
+const EXPECTED_INTERVAL_HOURS = 1;
 /**
  * Margem de tolerância antes de considerar o backup "atrasado". O
  * agendador `schedule` do GitHub Actions é best-effort — a auditoria de
- * 03/11 mediu intervalos reais entre ~4h e ~10h nas últimas 160 execuções
- * (não exatos 6h) — por isso a margem é generosa o bastante pra não virar
- * alarme falso com o atraso normal da plataforma. O watchdog independente
- * (.github/workflows/backup-watchdog.yml) usa um limite próprio, mais alto
- * ainda, pra só soar quando for de fato um problema.
+ * 03/11 mediu intervalos reais entre ~4h e ~10h nas últimas 160 execuções,
+ * quando o agendamento nominal ainda era de 6h (não exatos 6h) — por isso
+ * a margem segue generosa o bastante pra não virar alarme falso com o
+ * atraso normal da plataforma, mesmo agora horário. O watchdog
+ * independente (.github/workflows/backup-watchdog.yml) usa um limite
+ * próprio, calibrado separadamente, pra só soar quando for de fato um
+ * problema.
  */
-const OVERDUE_TOLERANCE_HOURS = 4;
+const OVERDUE_TOLERANCE_HOURS = 2;
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) return "—";
@@ -43,7 +46,7 @@ function formatDuration(seconds: number | null): string {
 }
 
 function tierLabel(tiers: string[]): string {
-  const labels: Record<string, string> = { "6h": "6h", daily: "Diário", monthly: "Mensal" };
+  const labels: Record<string, string> = { hourly: "Horário", daily: "Diário", monthly: "Mensal" };
   return tiers.map((t) => labels[t] ?? t).join(" + ") || "—";
 }
 
@@ -87,7 +90,7 @@ export default async function BackupsPage() {
         <ShinyText className="text-xs font-semibold uppercase tracking-widest">Painel · RECEBE</ShinyText>
         <GradientHeading className="text-3xl sm:text-4xl">Backups</GradientHeading>
         <p className="mt-1 text-sm text-muted-foreground">
-          Histórico das execuções do backup automático (a cada 6h, via GitHub Actions). Só metadados — nunca o
+          Histórico das execuções do backup automático (a cada 1h, via GitHub Actions). Só metadados — nunca o
           conteúdo, a chave de criptografia ou as credenciais de armazenamento.
         </p>
       </div>

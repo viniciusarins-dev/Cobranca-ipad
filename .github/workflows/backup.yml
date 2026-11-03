@@ -1,11 +1,17 @@
-name: Backup automático (a cada 6h)
+name: Backup automático (a cada 1h)
 
 # Roda independente da Vercel/navegador — o GitHub Actions é quem dispara,
 # 24/7, mesmo sem ninguém acessando o sistema. `workflow_dispatch` permite
 # rodar manualmente (ex.: para testar) pela aba Actions do repositório.
+#
+# Frequência horária (pedido explícito de 06/11: sistema de cobrança em
+# produção, o cliente não pode ficar sem proteção recente dos dados) — era
+# a cada 6h antes. O intervalo real entre execuções continua sujeito ao
+# mesmo atraso best-effort do agendador do GitHub Actions já documentado
+# em BACKUP.md (não é exclusivo de nenhuma frequência).
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 * * * *"
   workflow_dispatch: {}
 
 # Nunca deixa duas execuções rodarem ao mesmo tempo (item 9 da auditoria de
@@ -22,8 +28,12 @@ jobs:
     # Se o backup passar disso, o job é encerrado e marcado como falha —
     # dispara o alerta (e-mail automático do GitHub para execuções
     # agendadas com falha) para investigar a causa, em vez de deixar rodar
-    # indefinidamente competindo com a próxima execução agendada.
-    timeout-minutes: 90
+    # indefinidamente competindo com a próxima execução agendada. Reduzido
+    # de 90 para 45min ao passar para agendamento horário: com
+    # `cancel-in-progress: false` (acima), uma execução travada perto de
+    # 90min ficaria rodando além da hora seguinte, empilhando execuções na
+    # fila em vez de só uma atrasada.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 

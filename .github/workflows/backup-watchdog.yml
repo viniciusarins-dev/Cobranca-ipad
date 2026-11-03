@@ -4,12 +4,12 @@ name: Watchdog do backup (monitoramento independente)
 # 03/11): se o backup.yml falhar antes de scripts/backup/backup.mjs rodar,
 # ele nunca chega a reportar nada para a aplicação — este workflow não
 # depende disso, só consulta o estado já salvo em backup_runs de fora.
-# Roda num horário deslocado do backup.yml (minuto 15, a cada 4h) para não
-# competir por runner nem checar bem no instante em que o backup pode
-# ainda estar rodando.
+# Roda no minuto 20 de cada hora — deslocado do minuto 0 do backup.yml
+# (desde 06/11, também horário) pra não checar bem no instante em que o
+# backup pode ainda estar rodando.
 on:
   schedule:
-    - cron: "15 */4 * * *"
+    - cron: "20 * * * *"
   workflow_dispatch: {}
 
 jobs:
