@@ -5,7 +5,7 @@ import { getISODay, parseISO } from "date-fns";
 
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit-log";
-import { getBusinessToday } from "@/lib/date-utils";
+import { businessDayRangeUTC, getBusinessToday } from "@/lib/date-utils";
 import { detectSafeDocumentType } from "@/lib/file-validation";
 import { generateInstallments, nextDueDate, reflowSchedule } from "@/lib/installments";
 import { normalizeImei } from "@/lib/imei";
@@ -43,6 +43,7 @@ import {
   campaignPreviewSchema,
   createCampaignSchema,
   whatsappConsentSchema,
+  financialReportRangeSchema,
   type TransactionInput,
   type MessageSettingsInput,
   type PaymentInput,
@@ -57,8 +58,9 @@ import {
   type CampaignPreviewInput,
   type CreateCampaignInput,
   type WhatsAppConsentInput,
+  type FinancialReportRangeInput,
 } from "@/lib/validations";
-import type { ContractStatus, ContractType, InstallmentStatus, Periodicity, WeeklyChargeStatus } from "@/lib/types";
+import type { ContractStatus, ContractType, InstallmentStatus, Periodicity, PaymentMethod, WeeklyChargeStatus } from "@/lib/types";
 import { formatCurrency, onlyDigits } from "@/lib/utils";
 
 /**
@@ -2274,4 +2276,147 @@ export async function disconnectWhatsAppEvolution(): Promise<ActionResult> {
 
   revalidatePath("/whatsapp");
   return { ok: true };
+}
+
+// ============================================================
+// Filtro financeiro da Visão Geral
+// ============================================================
+
+export interface FinancialReportRow {
+  id: string;
+  paidAt: string;
+  clientName: string;
+  totalAmount: number;
+  interestAmount: number;
+  /** "Parcela 3/10" | "Quitação total" | "Entrada" — mesma lógica de payment-history.tsx, nunca uma regra nova. */
+  reference: string;
+  method: PaymentMethod;
+}
+
+export interface FinancialReportSummary {
+  /** Soma de principal + juros de todos os pagamentos do período (item 1 do filtro). */
+  totalReceived: number;
+  paymentsCount: number;
+  /** Só juros efetivamente recebidos no período — nunca juros futuros/pendentes. */
+  totalInterestReceived: number;
+  /** Soma de principal_amount dos contratos cujo disbursed_at caiu dentro do período. */
+  totalDisbursed: number;
+  /**
+   * Saldo total em aberto AGORA (mesma fórmula do card "Em aberto" da
+   * Visão Geral) — não é limitado ao período selecionado, de propósito:
+   * um "pendente" só do período não é acionável (não diz quanto falta
+   * receber de verdade). Rotulado como tal na tela.
+   */
+  outstandingBalance: number;
+  /** Clientes distintos com pelo menos 1 pagamento no período. */
+  distinctClientsCount: number;
+}
+
+type FinancialReportPaymentRow = {
+  id: string;
+  paid_at: string;
+  principal_amount: number;
+  interest_amount: number;
+  method: PaymentMethod;
+  client_id: string;
+  is_settlement: boolean;
+  client: { name: string } | null;
+  installment: { number: number; contract: { installments_count: number } | null } | null;
+};
+
+function buildFinancialReportReference(row: FinancialReportPaymentRow): string {
+  if (row.is_settlement) return "Quitação total";
+  if (row.installment) return `Parcela ${row.installment.number}/${row.installment.contract?.installments_count ?? "?"}`;
+  return "Entrada";
+}
+
+/**
+ * Relatório financeiro de um período arbitrário (filtro da Visão Geral) —
+ * nunca reaproveita o `computeDashboardMetrics` (que é sempre vitalício/
+ * hoje-semana-mês fixos): consulta só os pagamentos/contratos do
+ * intervalo pedido, direto no Supabase (RLS do usuário autenticado já
+ * isola os dados — nenhum filtro extra de owner_id é necessário).
+ */
+export async function getFinancialReport(
+  input: FinancialReportRangeInput,
+): Promise<
+  | { ok: true; summary: FinancialReportSummary; rows: FinancialReportRow[]; generatedByEmail: string | null }
+  | { ok: false; error: string }
+> {
+  const parsed = financialReportRangeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const { startDate, endDate } = parsed.data;
+
+  const supabase = await createClient();
+  const rangeStart = businessDayRangeUTC(startDate).start;
+  const rangeEnd = businessDayRangeUTC(endDate).end;
+
+  const [{ data: paymentsData, error: paymentsError }, { data: disbursedData }, { data: openInstallmentsData }] =
+    await Promise.all([
+      supabase
+        .from("payments")
+        .select(
+          "id, paid_at, principal_amount, interest_amount, method, client_id, is_settlement, client:clients(name), installment:installments(number, contract:contracts(installments_count))",
+        )
+        .gte("paid_at", rangeStart.toISOString())
+        .lt("paid_at", rangeEnd.toISOString())
+        .order("paid_at", { ascending: false }),
+      supabase
+        .from("contracts")
+        .select("principal_amount")
+        .not("disbursed_at", "is", null)
+        .gte("disbursed_at", startDate)
+        .lte("disbursed_at", endDate),
+      supabase
+        .from("installments")
+        .select("amount, paid_principal_amount, status, contract:contracts(status)")
+        .neq("status", "pago"),
+    ]);
+
+  if (paymentsError) {
+    return { ok: false, error: safeError(paymentsError, "Erro ao carregar o relatório financeiro.") };
+  }
+
+  const paymentRows = (paymentsData ?? []) as unknown as FinancialReportPaymentRow[];
+
+  const rows: FinancialReportRow[] = paymentRows.map((row) => ({
+    id: row.id,
+    paidAt: row.paid_at,
+    clientName: row.client?.name ?? "—",
+    totalAmount: roundCents(row.principal_amount + row.interest_amount),
+    interestAmount: roundCents(row.interest_amount),
+    reference: buildFinancialReportReference(row),
+    method: row.method,
+  }));
+
+  const totalReceived = roundCents(rows.reduce((sum, row) => sum + row.totalAmount, 0));
+  const totalInterestReceived = roundCents(rows.reduce((sum, row) => sum + row.interestAmount, 0));
+  const distinctClientsCount = new Set(paymentRows.map((row) => row.client_id)).size;
+
+  const totalDisbursed = roundCents(
+    (disbursedData ?? []).reduce((sum, contract) => sum + contract.principal_amount, 0),
+  );
+
+  type OpenInstallmentRow = { amount: number; paid_principal_amount: number; contract: { status: ContractStatus } | null };
+  const outstandingBalance = roundCents(
+    ((openInstallmentsData ?? []) as unknown as OpenInstallmentRow[])
+      .filter((row) => row.contract?.status !== "cancelado")
+      .reduce((sum, row) => sum + Math.max(row.amount - row.paid_principal_amount, 0), 0),
+  );
+
+  return {
+    ok: true,
+    summary: {
+      totalReceived,
+      paymentsCount: rows.length,
+      totalInterestReceived,
+      totalDisbursed,
+      outstandingBalance,
+      distinctClientsCount,
+    },
+    rows,
+    generatedByEmail: await getCurrentUserEmail(supabase),
+  };
 }

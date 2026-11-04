@@ -283,3 +283,16 @@ export const whatsappConsentSchema = z.object({
 });
 
 export type WhatsAppConsentInput = z.infer<typeof whatsappConsentSchema>;
+
+/** Período do filtro financeiro da Visão Geral — ver `getFinancialReport` em actions.ts. */
+export const financialReportRangeSchema = z
+  .object({
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inicial inválida."),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data final inválida."),
+  })
+  .refine((data) => data.startDate <= data.endDate, {
+    message: "A data inicial não pode ser depois da data final.",
+    path: ["endDate"],
+  });
+
+export type FinancialReportRangeInput = z.infer<typeof financialReportRangeSchema>;

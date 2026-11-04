@@ -1,24 +1,24 @@
-# Graph Report - Cobranca-ipad  (2026-11-03)
+# Graph Report - Cobranca-ipad  (2026-11-04)
 
 ## Corpus Check
-- 159 files · ~81,428 words
+- 164 files · ~83,926 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 1, .example 1, .toml 1)
 
 ## Summary
-- 983 nodes · 3207 edges · 60 communities (49 shown, 11 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 8 edges (avg confidence: 0.85)
+- 1013 nodes · 3341 edges · 62 communities (49 shown, 13 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 9 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a40331b0`
+- Built from commit: `6f164933`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- types.ts
-- dashboard-metrics.ts
-- debtors.ts
+- cn
+- (app)/page.tsx
+- whatsapp-reminder-link.ts
 - new-transaction-dialog.tsx
 - actions.ts
 - backup.mjs
@@ -41,12 +41,12 @@
 - AGENTS.md
 - CLAUDE.md
 - Orchestrator AI - Specification Driven Development
-- whatsapp-reminder-link.test.ts
+- template.ts
 - postcss.config.mjs
 - vercel.json
 - server.ts
 - CodeGraph MCP Server Integration
-- cn
+- [id]/page.tsx
 - 🇬🇧 English Welcome Message
 - Workflow Engine Integration (v2.1.0)
 - Module Integration Examples
@@ -57,37 +57,39 @@
 - ファイル出力要件
 - 標準ワークフロー
 - watchdog
-- auth-actions.ts
+- types.ts
 - providers.ts
 - installments-grid.tsx
-- app-nav.tsx
-- evolution-instance.ts
+- debtors-view.tsx
+- weekly-dispatch-queue.ts
 - campaign-recipients.ts
 - zod
 - installments.ts
 - imei.ts
-- file-validation.ts
-- getCampaignCandidates
-- getBusinessToday
+- uploadClientDocument
+- campaign-queue.ts
+- dashboard-metrics.test.ts
 - @supabase/ssr
-- next.config.ts
-- @radix-ui/react-select
-- clsx
-- tailwind-merge
-- @radix-ui/react-checkbox
-- @radix-ui/react-label
+- spintax.ts
+- date-fns
+- @radix-ui/react-dialog
+- @radix-ui/react-dropdown-menu
+- @radix-ui/react-tabs
+- react-dom@19.2.8
+- recharts
+- @supabase/supabase-js@^2.112.3
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 65 edges
-2. `createClient()` - 57 edges
-3. `Button()` - 46 edges
-4. `react` - 45 edges
-5. `formatCurrency()` - 42 edges
-6. `next` - 40 edges
-7. `lucide-react` - 39 edges
-8. `roundCents()` - 37 edges
-9. `Input()` - 33 edges
-10. `DialogContent()` - 30 edges
+2. `createClient()` - 58 edges
+3. `Button()` - 48 edges
+4. `react` - 46 edges
+5. `formatCurrency()` - 45 edges
+6. `lucide-react` - 40 edges
+7. `next` - 40 edges
+8. `roundCents()` - 38 edges
+9. `Input()` - 35 edges
+10. `SpotlightCard()` - 31 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `CampaignRow()` --indirect_call--> `startWhatsAppCampaign()`  [INFERRED]
@@ -96,35 +98,35 @@
   src/components/whatsapp/campaigns-panel.tsx → src/app/actions.ts
 - `CampaignRow()` --indirect_call--> `cancelWhatsAppCampaign()`  [INFERRED]
   src/components/whatsapp/campaigns-panel.tsx → src/app/actions.ts
-- `handleBlock()` --calls--> `setWhatsAppConsent()`  [EXTRACTED]
-  src/components/whatsapp/consent-panel.tsx → src/app/actions.ts
-- `handleUnblock()` --calls--> `setWhatsAppConsent()`  [EXTRACTED]
-  src/components/whatsapp/consent-panel.tsx → src/app/actions.ts
+- `CardFooter()` --calls--> `cn()`  [EXTRACTED]
+  src/components/ui/card.tsx → src/lib/utils.ts
+- `BackupsPage()` --calls--> `StatTile()`  [EXTRACTED]
+  src/app/(app)/backups/page.tsx → src/components/ui/stat-tile.tsx
 
 ## Import Cycles
 - None detected.
 
-## Communities (60 total, 11 thin omitted)
+## Communities (62 total, 13 thin omitted)
 
-### Community 0 - "types.ts"
-Cohesion: 0.07
-Nodes (72): runWhatsAppCampaignBatch(), BackupsPage(), dynamic, formatBytes(), formatDuration(), hoursSince(), tierLabel(), ClientsTable() (+64 more)
+### Community 0 - "cn"
+Cohesion: 0.08
+Nodes (67): runWhatsAppCampaignBatch(), BackupsPage(), dynamic, formatBytes(), formatDuration(), hoursSince(), tierLabel(), ClientesPage() (+59 more)
 
-### Community 1 - "dashboard-metrics.ts"
-Cohesion: 0.14
-Nodes (16): DashboardPageContract, dynamic, addToPeriod(), computeDashboardMetrics(), DashboardContractInput, DashboardExpenseInput, DashboardInstallmentInput, DashboardMetrics (+8 more)
+### Community 1 - "(app)/page.tsx"
+Cohesion: 0.06
+Nodes (59): vitest, buildFinancialReportReference(), FinancialReportRow, getFinancialReport(), DebtorsPage(), dynamic, DashboardPage(), DashboardPageContract (+51 more)
 
-### Community 2 - "debtors.ts"
-Cohesion: 0.26
-Nodes (12): Debtor, DebtorInstallmentRow, LateInterestDetailRow, PaidTodayRow, IphoneSale, IphoneSalesSummary, WeeklyChargeWithRelations, Client (+4 more)
+### Community 2 - "whatsapp-reminder-link.ts"
+Cohesion: 0.23
+Nodes (7): DebtorInstallmentRow, Contract, Installment, ConsolidatedReminderRow, ReminderContract, ReminderInstallment, ReminderLinkResult
 
 ### Community 3 - "new-transaction-dialog.tsx"
 Cohesion: 0.16
-Nodes (59): @hookform/resolvers, lucide-react, next, react, react-hook-form, sonner, EditAddressDialog(), FilterBar() (+51 more)
+Nodes (57): @hookform/resolvers, lucide-react, react, react-hook-form, sonner, sendTestMessage(), EditAddressDialog(), FilterBar() (+49 more)
 
 ### Community 4 - "actions.ts"
-Cohesion: 0.11
-Nodes (31): ContractSettlementSummary, sendReminderAction(), SettlementContractRow, CampaignPreviewInput, campaignPreviewSchema, ClientAddressInput, clientAddressSchema, ClientInfoInput (+23 more)
+Cohesion: 0.10
+Nodes (34): ContractSettlementSummary, FinancialReportPaymentRow, FinancialReportSummary, SettlementContractRow, CampaignPreviewInput, campaignPreviewSchema, ClientAddressInput, clientAddressSchema (+26 more)
 
 ### Community 5 - "backup.mjs"
 Cohesion: 0.08
@@ -135,28 +137,28 @@ Cohesion: 0.06
 Nodes (30): runs-on, steps, timeout-minutes, concurrency, cancel-in-progress, group, APP_URL, BACKUP_ENCRYPTION_KEY (+22 more)
 
 ### Community 7 - "createClient"
-Cohesion: 0.18
-Nodes (32): cancelWhatsAppCampaign(), createTransaction(), createWhatsAppCampaign(), deleteClientDocument(), deleteContract(), getCurrentUserEmail(), getCurrentUserId(), pauseWhatsAppCampaign() (+24 more)
+Cohesion: 0.12
+Nodes (28): ActionResult, cancelWhatsAppCampaign(), createWhatsAppCampaign(), pauseWhatsAppCampaign(), safeError(), saveMessageSettings(), setWhatsAppConsent(), startWhatsAppCampaign() (+20 more)
 
 ### Community 8 - "compilerOptions"
 Cohesion: 0.11
 Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+10 more)
 
 ### Community 9 - "dependencies"
-Cohesion: 0.11
-Nodes (19): dependencies, date-fns@^4.4.0, @hookform/resolvers@^5.7.1, lucide-react@^1.31.0, next@16.3.5, @radix-ui/react-dialog@^1.1.23, @radix-ui/react-slot@^1.3.3, @radix-ui/react-tabs@^1.1.21 (+11 more)
+Cohesion: 0.12
+Nodes (17): dependencies, class-variance-authority@^0.7.1, clsx@^2.1.1, @hookform/resolvers@^5.7.1, lucide-react@^1.31.0, next@16.3.5, @radix-ui/react-checkbox@^1.3.11, @radix-ui/react-label@^2.1.15 (+9 more)
 
 ### Community 10 - "Agent Selection Matrix (25 Skills)"
 Cohesion: 0.09
 Nodes (21): Additional Skills (Beyond Original 25), Agent Selection Matrix (25 Skills), By SDD Workflow Stage, By Task Type, Category 1: Orchestration & Management (3 Skills), Category 2: Requirements & Planning (3 Skills), Category 3: Architecture & Design (4 Skills), Category 4: Development & Implementation (2 Skills) (+13 more)
 
 ### Community 11 - "devDependencies"
-Cohesion: 0.15
-Nodes (13): devDependencies, tailwindcss@^4, @tailwindcss/postcss@^4, @types/node@^22, @types/react@^19, @types/react-dom@^19, typescript@^5, tailwindcss (+5 more)
+Cohesion: 0.14
+Nodes (14): devDependencies, tailwindcss@^4, @tailwindcss/postcss@^4, @types/node@^22, @types/react@^19, @types/react-dom@^19, typescript@^5, vitest@^5.0.5 (+6 more)
 
 ### Community 12 - "package.json"
-Cohesion: 0.14
-Nodes (13): class-variance-authority@^0.7.1, @radix-ui/react-dropdown-menu@^2.1.24, @radix-ui/react-switch@^1.3.7, recharts@^3.10.1, @supabase/supabase-js@^2.112.3, @supabase/supabase-js, name, private (+5 more)
+Cohesion: 0.17
+Nodes (11): @radix-ui/react-slot@^1.3.3, @radix-ui/react-switch@^1.3.7, tailwind-merge@^3.6.0, tw-animate-css@^1.4.0, name, private, version, @radix-ui/react-slot (+3 more)
 
 ### Community 13 - "Backup automático — configuração e restauração"
 Cohesion: 0.07
@@ -179,16 +181,16 @@ Cohesion: 0.33
 Nodes (6): scripts, build, dev, lint, start, test
 
 ### Community 18 - "financial-rules.ts"
-Cohesion: 0.20
-Nodes (8): DEFAULT_LOAN_INTEREST_RATE_PERCENT, FinancedAmountResult, LATE_INTEREST_RATE_PER_DAY, SettlementAllocation, SettlementAllocationResult, SettlementInstallmentInput, SplitPaymentResult, REF
+Cohesion: 0.21
+Nodes (11): DEFAULT_LOAN_INTEREST_RATE_PERCENT, FinancedAmountInput, FinancedAmountResult, LATE_INTEREST_RATE_PER_DAY, LateInterestInstallmentInput, SettlementAllocation, SettlementAllocationResult, SettlementInstallmentInput (+3 more)
 
 ### Community 20 - "app/layout.tsx"
 Cohesion: 0.23
 Nodes (8): cinzel, geistMono, inter, metadata, RootLayout(), viewport, AuroraBackground(), Toaster()
 
 ### Community 21 - "roundCents"
-Cohesion: 0.44
-Nodes (9): buildSettlementInstallmentInputs(), getContractSettlementSummary(), payDownContractBalance(), recalculateContractStatus(), settleContract(), syncWeeklyChargeStatus(), allocateSettlement(), roundCents() (+1 more)
+Cohesion: 0.24
+Nodes (19): buildSettlementInstallmentInputs(), deleteContract(), getContractSettlementSummary(), getCurrentUserEmail(), getCurrentUserId(), payDownContractBalance(), recalculateContractStatus(), registerExpense() (+11 more)
 
 ### Community 23 - "CLAUDE.md"
 Cohesion: 0.40
@@ -198,21 +200,21 @@ Nodes (4): graphify, how graphify, orchestrator and security tooling fit togethe
 Cohesion: 0.20
 Nodes (9): Before Starting Orchestration, Benefits, Guardrails Commands (v3.9.0 NEW), Language Preference Policy, Orchestrator AI - Specification Driven Development, Project Memory (Steering System), Role Definition, Your Responsibilities (+1 more)
 
-### Community 25 - "whatsapp-reminder-link.test.ts"
-Cohesion: 0.12
-Nodes (9): vitest@^5.0.5, vitest, DebtorSourceInstallment, client(), installmentRow(), REF, client, contract (+1 more)
+### Community 25 - "template.ts"
+Cohesion: 0.21
+Nodes (12): Debtor, DispatchResult, dispatchWeeklyCharge(), WeeklyChargeWithRelations, Client, SendReminderResult, buildReminderTemplateParams(), renderCampaignMessage() (+4 more)
 
 ### Community 28 - "server.ts"
 Cohesion: 0.08
-Nodes (38): dynamic, POST(), reportSchema, dynamic, GET(), hoursSince(), dynamic, GET() (+30 more)
+Nodes (37): CONTENT_SECURITY_POLICY, nextConfig, SECURITY_HEADERS, next, dynamic, POST(), reportSchema, dynamic (+29 more)
 
 ### Community 29 - "CodeGraph MCP Server Integration"
 Cohesion: 0.20
 Nodes (10): CodeGraph MCP Server Integration, CodeGraph MCP インストール・設定, CodeGraph活用ワークフロー, Step 1: 環境確認, Step 2: インストール実行, Step 3: プロジェクトインデックス作成, Step 4: 設定ファイル作成（オプション選択）, プロジェクトのインデックス作成 (+2 more)
 
-### Community 30 - "cn"
-Cohesion: 0.07
-Nodes (49): getWhatsAppConnectionStatus(), sendTestMessage(), ClientesPage(), dynamic, ContractDetailPage(), dynamic, DebtorsPage(), dynamic (+41 more)
+### Community 30 - "[id]/page.tsx"
+Cohesion: 0.11
+Nodes (32): buildEvolutionWebhookUrl(), connectWhatsAppEvolution(), disconnectWhatsAppEvolution(), getWhatsAppConnectionStatus(), ContractDetailPage(), dynamic, BrandMark(), dynamic (+24 more)
 
 ### Community 31 - "🇬🇧 English Welcome Message"
 Cohesion: 0.20
@@ -254,71 +256,71 @@ Nodes (5): ワークフロー1: 新機能開発（フルサイクル）, ワー�
 Cohesion: 0.12
 Nodes (15): APP_URL, BACKUP_WATCHDOG_SECRET, jobs, watchdog, name, cron, env, name (+7 more)
 
-### Community 41 - "auth-actions.ts"
-Cohesion: 0.22
-Nodes (10): ActionResult, clientIp(), signIn(), AuditLogEntry, Bucket, buckets, checkRateLimit(), resetRateLimit() (+2 more)
+### Community 41 - "types.ts"
+Cohesion: 0.09
+Nodes (28): BACKUP_RUN_LABELS, BACKUP_RUN_VARIANT, CAMPAIGN_MESSAGE_VARIANT, CAMPAIGN_VARIANT, CONTRACT_TYPE_VARIANT, CONTRACT_VARIANT, INSTALLMENT_VARIANT, BackupRun (+20 more)
 
 ### Community 42 - "providers.ts"
-Cohesion: 0.06
-Nodes (49): dynamic, WhatsAppBlockedClientRow, WhatsAppHistoryRow, WhatsAppPage(), MethodFilter, PaymentHistory(), PaymentHistoryProps, Tabs() (+41 more)
+Cohesion: 0.13
+Nodes (14): sendReminderAction(), MessageSettings, EvolutionHealthResult, sendCollectionReminder(), createWhatsAppProvider(), EvolutionApiProvider, MetaCloudApiProvider, parseResponse() (+6 more)
 
 ### Community 43 - "installments-grid.tsx"
+Cohesion: 0.38
+Nodes (9): markReminderOpened(), InstallmentRow(), handleSendReminder(), InstallmentsGrid(), ReminderClient, ReminderContract, InstallmentStatusBadge(), formatDate() (+1 more)
+
+### Community 44 - "debtors-view.tsx"
 Cohesion: 0.19
-Nodes (18): markReminderOpened(), DebtorBadge(), DebtorsView(), handleCollectWhatsApp(), groupRowsByContract(), InstallmentRow(), handleSendReminder(), InstallmentsGrid() (+10 more)
+Nodes (15): DebtorBadge(), DebtorsView(), handleCollectWhatsApp(), FilterTab, groupRowsByContract(), SORT_OPTIONS, SortKey, TABS (+7 more)
 
-### Community 44 - "app-nav.tsx"
-Cohesion: 0.29
-Nodes (9): AppShellLayout(), AppNav(), BrandMark(), FINANCEIRO_ITEMS, LOJA_ITEMS, NavGroup(), NavItem, SidebarContent() (+1 more)
-
-### Community 45 - "evolution-instance.ts"
+### Community 45 - "weekly-dispatch-queue.ts"
 Cohesion: 0.22
-Nodes (12): buildEvolutionWebhookUrl(), connectWhatsAppEvolution(), disconnectWhatsAppEvolution(), createEvolutionInstance(), CreateInstanceResult, EvolutionAdminConfig, extractInstanceToken(), getEvolutionAdminConfig() (+4 more)
+Nodes (14): getBrazilDateInfo(), getBrazilDateString(), getBrazilIsoWeekday(), isWithinDispatchWindow(), WEEKDAY_TO_ISO, delayForProvider(), emptySummary(), runWeeklyDispatchQueue() (+6 more)
 
 ### Community 46 - "campaign-recipients.ts"
-Cohesion: 0.26
-Nodes (12): getTodayDebtors(), groupDebtorsByClient(), toWhatsAppDigits(), CampaignCandidate, CampaignCandidatesResult, CampaignExclusion, ContractRow, fetchOpenContracts() (+4 more)
+Cohesion: 0.21
+Nodes (11): previewWhatsAppCampaign(), handlePreview(), WhatsAppCampaignFilterType, CampaignCandidate, CampaignCandidatesResult, CampaignExclusion, ContractRow, fetchOpenContracts() (+3 more)
 
 ### Community 48 - "installments.ts"
-Cohesion: 0.31
-Nodes (8): addPeriod(), GeneratedInstallment, generateInstallments(), nextDueDate(), reflowSchedule(), ScheduleInstallmentInput, splitAmount(), Periodicity
+Cohesion: 0.23
+Nodes (11): dateStringToUTCTimestamp(), daysBetweenDateStrings(), addPeriod(), GeneratedInstallment, generateInstallments(), isOverdue(), nextDueDate(), reflowSchedule() (+3 more)
 
 ### Community 49 - "imei.ts"
-Cohesion: 0.70
-Nodes (3): IMEI_PATTERN, isValidImei(), normalizeImei()
+Cohesion: 0.33
+Nodes (7): createTransaction(), toBusinessWeekday(), updateIphoneSale(), calculateFinancedAmount(), IMEI_PATTERN, isValidImei(), normalizeImei()
 
-### Community 50 - "file-validation.ts"
-Cohesion: 0.67
-Nodes (3): bytesStartWith(), DetectedFileType, detectSafeDocumentType()
+### Community 50 - "uploadClientDocument"
+Cohesion: 0.31
+Nodes (8): deleteClientDocument(), uploadClientDocument(), DocumentSection(), handleRemove(), handleUpload(), bytesStartWith(), DetectedFileType, detectSafeDocumentType()
 
-### Community 52 - "getBusinessToday"
-Cohesion: 0.35
-Nodes (10): getPeriodBoundaries(), businessDateFormatter, businessDayRangeUTC(), businessMonthStartUTC(), businessWeekStartUTC(), dateStringToUTCTimestamp(), daysBetweenDateStrings(), getBusinessToday() (+2 more)
+### Community 51 - "campaign-queue.ts"
+Cohesion: 0.27
+Nodes (10): ALL_MESSAGE_STATUSES, buildTemplateParamsIfMeta(), CampaignBatchSummary, CampaignMessageStatusCounts, extractProviderMessageId(), isInstallmentStillOpen(), processCampaignBatch(), processOneMessage() (+2 more)
 
-### Community 53 - "@supabase/ssr"
-Cohesion: 0.28
-Nodes (5): @supabase/ssr@^0.12.4, @supabase/ssr, updateSession(), config, proxy()
+### Community 52 - "dashboard-metrics.test.ts"
+Cohesion: 0.29
+Nodes (5): PaymentHistoryProps, contract(), ContractWithClient, ContractWithInstallments, Payment
 
-### Community 54 - "next.config.ts"
-Cohesion: 0.50
-Nodes (3): CONTENT_SECURITY_POLICY, nextConfig, SECURITY_HEADERS
+### Community 54 - "spintax.ts"
+Cohesion: 0.53
+Nodes (5): CLOSINGS, pickClosing(), pickRandom(), resolveSpintax(), varyMessage()
 
 ## Knowledge Gaps
-- **11 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `next` connect `new-transaction-dialog.tsx` to `types.ts`, `dashboard-metrics.ts`, `actions.ts`, `dependencies`, `auth-actions.ts`, `installments-grid.tsx`, `package.json`, `app-nav.tsx`, `app/layout.tsx`, `@supabase/ssr`, `next.config.ts`, `server.ts`, `cn`?**
+- **Why does `next` connect `server.ts` to `cn`, `(app)/page.tsx`, `new-transaction-dialog.tsx`, `actions.ts`, `createClient`, `dependencies`, `installments-grid.tsx`, `package.json`, `debtors-view.tsx`, `app/layout.tsx`, `[id]/page.tsx`?**
   _High betweenness centrality (0.081) - this node is a cross-community bridge._
-- **Should `types.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07004103967168263 - nodes in this community are weakly interconnected._
-- **Why does `createClient()` connect `createClient` to `types.ts`, `dashboard-metrics.ts`, `debtors.ts`, `actions.ts`, `auth-actions.ts`, `providers.ts`, `installments-grid.tsx`, `app-nav.tsx`, `evolution-instance.ts`, `getCampaignCandidates`, `roundCents`, `server.ts`, `cn`?**
-  _High betweenness centrality (0.020) - this node is a cross-community bridge._
-- **Should `dashboard-metrics.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.14210526315789473 - nodes in this community are weakly interconnected._
-- **Why does `cn()` connect `cn` to `types.ts`, `new-transaction-dialog.tsx`, `providers.ts`, `installments-grid.tsx`, `app-nav.tsx`?**
-  _High betweenness centrality (0.019) - this node is a cross-community bridge._
+- **Should `cn` be split into smaller, more focused modules?**
+  _Cohesion score 0.07936507936507936 - nodes in this community are weakly interconnected._
+- **Why does `formatCurrency()` connect `new-transaction-dialog.tsx` to `cn`, `(app)/page.tsx`, `whatsapp-reminder-link.ts`, `actions.ts`, `installments-grid.tsx`, `debtors-view.tsx`, `roundCents`, `template.ts`, `[id]/page.tsx`?**
+  _High betweenness centrality (0.022) - this node is a cross-community bridge._
+- **Should `(app)/page.tsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.05886708626434654 - nodes in this community are weakly interconnected._
+- **Why does `createClient()` connect `createClient` to `cn`, `(app)/page.tsx`, `new-transaction-dialog.tsx`, `actions.ts`, `providers.ts`, `installments-grid.tsx`, `campaign-recipients.ts`, `imei.ts`, `uploadClientDocument`, `roundCents`, `server.ts`, `[id]/page.tsx`?**
+  _High betweenness centrality (0.017) - this node is a cross-community bridge._
 - **Should `actions.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.11363636363636363 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.10317460317460317 - nodes in this community are weakly interconnected._
 - **Should `backup.mjs` be split into smaller, more focused modules?**
-  _Cohesion score 0.08055152394775036 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07826694619147449 - nodes in this community are weakly interconnected._

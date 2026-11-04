@@ -134,9 +134,9 @@
     "semantic_hash": ""
   },
   "src/app/(app)/page.tsx": {
-    "mtime": 1793290679.860004,
-    "seen": 1793290798.6435938,
-    "ast_hash": "d6733b8b42a299ca903bdb1073715450",
+    "mtime": 1793799223.3025038,
+    "seen": 1793799288.1640215,
+    "ast_hash": "a6daa72fb5816e75c06058ba6250c298",
     "semantic_hash": ""
   },
   "src/app/(app)/phones/page.tsx": {
@@ -152,9 +152,9 @@
     "semantic_hash": "280fa206da5113a6c39dc3f4ed3d3564"
   },
   "src/app/actions.ts": {
-    "mtime": 1793373976.7968757,
-    "seen": 1793374279.2093115,
-    "ast_hash": "d46b4424f98c6768c671f66879b0d533",
+    "mtime": 1793798836.098481,
+    "seen": 1793799288.1640983,
+    "ast_hash": "3f1eb60b3c9c0e9aa53c783709297420",
     "semantic_hash": ""
   },
   "src/app/api/backup/report/route.ts": {
@@ -542,9 +542,9 @@
     "semantic_hash": "bfd3a49a8a020c21d5336293d3426191"
   },
   "src/lib/validations.ts": {
-    "mtime": 1793374131.4408848,
-    "seen": 1793374279.211377,
-    "ast_hash": "0ad00d53bf5f506d576db6df3e021770",
+    "mtime": 1793798749.4864757,
+    "seen": 1793799288.1660686,
+    "ast_hash": "f623f6a843f27b415f7c995333652402",
     "semantic_hash": ""
   },
   "src/lib/whatsapp-reminder-link.ts": {
@@ -833,6 +833,36 @@
     "mtime": 1793708360.9649434,
     "seen": 1793708490.11006,
     "ast_hash": "cd5cd0ddc10007f09e9defcb6a29e88e",
+    "semantic_hash": ""
+  },
+  "src/components/financial-report-panel.tsx": {
+    "mtime": 1793799191.170502,
+    "seen": 1793799288.1645813,
+    "ast_hash": "65bf0daba0e5b0c571d159cd1b5df303",
+    "semantic_hash": ""
+  },
+  "src/lib/csv-export.test.ts": {
+    "mtime": 1793798879.9944835,
+    "seen": 1793799288.1655266,
+    "ast_hash": "77cb65aa69de3ffbfb43e670874cc5d9",
+    "semantic_hash": ""
+  },
+  "src/lib/csv-export.ts": {
+    "mtime": 1793798866.6624827,
+    "seen": 1793799288.1655285,
+    "ast_hash": "71c6ee380666430dc519b078e1bd9a96",
+    "semantic_hash": ""
+  },
+  "src/lib/financial-report-presets.test.ts": {
+    "mtime": 1793798741.1224751,
+    "seen": 1793799288.1656535,
+    "ast_hash": "3e986b864fdebb64c5f4b6166ec7ead1",
+    "semantic_hash": ""
+  },
+  "src/lib/financial-report-presets.ts": {
+    "mtime": 1793798711.6384735,
+    "seen": 1793799288.1656554,
+    "ast_hash": "ecc5e6f7d91817ed29e2e233082639fd",
     "semantic_hash": ""
   }
 }

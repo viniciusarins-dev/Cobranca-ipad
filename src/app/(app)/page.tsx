@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AlertTriangleIcon, ArrowRightIcon, TrendingUpIcon, UsersIcon, WalletIcon } from "lucide-react";
 
+import { getFinancialReport } from "@/app/actions";
 import { DashboardOverview } from "@/components/dashboard-overview";
+import { FinancialReportPanel } from "@/components/financial-report-panel";
 import { GradientHeading } from "@/components/ui/gradient-heading";
 import { ShinyText } from "@/components/ui/shiny-text";
 import { StatTile } from "@/components/ui/stat-tile";
@@ -13,6 +15,7 @@ import {
   type DashboardPaymentInput,
 } from "@/lib/dashboard-metrics";
 import { getTodayDebtors } from "@/lib/debtors";
+import { resolvePresetRange } from "@/lib/financial-report-presets";
 import { createClient } from "@/lib/supabase/server";
 import type { Phone } from "@/lib/types";
 
@@ -30,6 +33,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
+  const defaultFinancialRange = resolvePresetRange("este_mes");
 
   // Todas as queries independentes desta página disparam juntas, numa
   // única rodada de ida-e-volta ao banco. `contracts` (com `installments`
@@ -41,6 +45,7 @@ export default async function DashboardPage() {
     { data: expensesData },
     { data: phonesData },
     { summary: debtorsSummary, debtors },
+    financialReport,
   ] = await Promise.all([
     supabase
       .from("contracts")
@@ -52,6 +57,7 @@ export default async function DashboardPage() {
     supabase.from("expenses").select("amount, expense_date, method"),
     supabase.from("phones").select("id, contract_id, cost_amount"),
     getTodayDebtors(supabase),
+    getFinancialReport(defaultFinancialRange),
   ]);
 
   const contracts = (data ?? []) as DashboardPageContract[];
@@ -123,6 +129,19 @@ export default async function DashboardPage() {
               accent="success"
             />
           </div>
+
+          {financialReport.ok ? (
+            <FinancialReportPanel
+              initialRange={defaultFinancialRange}
+              initialSummary={financialReport.summary}
+              initialRows={financialReport.rows}
+              initialGeneratedByEmail={financialReport.generatedByEmail}
+            />
+          ) : (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
+              Não foi possível carregar o relatório financeiro: {financialReport.error}
+            </div>
+          )}
 
           <DashboardOverview metrics={metrics} debtorsSummary={debtorsSummary} debtors={debtors} />
         </>
