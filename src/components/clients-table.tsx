@@ -69,75 +69,105 @@ export function ClientsTable({ contracts }: { contracts: ContractWithClient[] })
         </div>
       </div>
 
-      <SpotlightCard className="overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Telefone / WhatsApp</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Valor total</TableHead>
-              <TableHead>Parcelas</TableHead>
-              <TableHead>Periodicidade</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  Nenhum registro encontrado.
-                </TableCell>
-              </TableRow>
-            )}
+      {filtered.length === 0 ? (
+        <SpotlightCard className="py-10 text-center text-sm text-muted-foreground">
+          Nenhum registro encontrado.
+        </SpotlightCard>
+      ) : (
+        <>
+          {/* Mobile/tablet: cards (sem colunas cortadas nem rolagem horizontal). */}
+          <div className="flex flex-col gap-2 md:hidden">
             {filtered.map((contract) => (
-              <TableRow key={contract.id} className="cursor-pointer hover:bg-primary/8">
-                <TableCell>
-                  <Link
-                    href={`/contracts/${contract.id}`}
-                    className="-mx-4 -my-3 flex items-center gap-3 px-4 py-3 font-medium text-foreground"
-                  >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-accent-cyan text-xs font-bold text-primary-foreground">
-                      {initials(contract.client.name)}
-                    </span>
-                    {contract.client.name}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
-                    {formatPhone(contract.client.phone)}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
-                    <ContractTypeBadge type={contract.type} />
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
-                    {formatCurrency(contract.total_amount)}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
-                    {contract.installments_count}x
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
-                    {PERIODICITY_LABELS[contract.periodicity]}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
-                    <ContractStatusBadge status={contract.status} />
-                  </Link>
-                </TableCell>
-              </TableRow>
+              <Link
+                key={contract.id}
+                href={`/contracts/${contract.id}`}
+                className="block rounded-xl border border-border bg-card p-3 text-sm transition-colors hover:bg-primary/8"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-accent-cyan text-xs font-bold text-primary-foreground">
+                    {initials(contract.client.name)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-foreground">{contract.client.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{formatPhone(contract.client.phone)}</p>
+                  </div>
+                  <ContractStatusBadge status={contract.status} />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <ContractTypeBadge type={contract.type} />
+                  <span>{formatCurrency(contract.total_amount)}</span>
+                  <span>{contract.installments_count}x</span>
+                  <span>{PERIODICITY_LABELS[contract.periodicity]}</span>
+                </div>
+              </Link>
             ))}
-          </TableBody>
-        </Table>
-      </SpotlightCard>
+          </div>
+
+          {/* Desktop/tablet largo: tabela completa. */}
+          <SpotlightCard className="hidden overflow-hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Telefone / WhatsApp</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor total</TableHead>
+                  <TableHead>Parcelas</TableHead>
+                  <TableHead>Periodicidade</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((contract) => (
+                  <TableRow key={contract.id} className="cursor-pointer hover:bg-primary/8">
+                    <TableCell>
+                      <Link
+                        href={`/contracts/${contract.id}`}
+                        className="-mx-4 -my-3 flex items-center gap-3 px-4 py-3 font-medium text-foreground"
+                      >
+                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-accent-cyan text-xs font-bold text-primary-foreground">
+                          {initials(contract.client.name)}
+                        </span>
+                        {contract.client.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
+                        {formatPhone(contract.client.phone)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
+                        <ContractTypeBadge type={contract.type} />
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
+                        {formatCurrency(contract.total_amount)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
+                        {contract.installments_count}x
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
+                        {PERIODICITY_LABELS[contract.periodicity]}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/contracts/${contract.id}`} className="-mx-4 -my-3 block px-4 py-3">
+                        <ContractStatusBadge status={contract.status} />
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </SpotlightCard>
+        </>
+      )}
     </div>
   );
 }

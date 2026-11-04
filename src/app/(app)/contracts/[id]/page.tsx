@@ -121,7 +121,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           </div>
         </CardHeader>
         <CardContent>
-          <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-4 text-sm lg:grid-cols-4">
             <div>
               <dt className="text-muted-foreground">Tipo</dt>
               <dd className="font-medium">
@@ -173,17 +173,17 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               <dd className="font-semibold text-accent-cyan">{formatCurrency(contract.total_amount)}</dd>
             </div>
             {contract.description && (
-              <div className="col-span-2 sm:col-span-4">
+              <div className="col-span-2 lg:col-span-4">
                 <dt className="text-muted-foreground">Descrição</dt>
                 <dd className="font-medium">{contract.description}</dd>
               </div>
             )}
-            <div className="col-span-2 sm:col-span-4">
+            <div className="col-span-2 lg:col-span-4">
               <dt className="text-muted-foreground">1º vencimento</dt>
               <dd className="font-medium">{formatDate(contract.first_due_date)}</dd>
             </div>
             {contract.type === "emprestimo" && (
-              <div className="col-span-2 sm:col-span-4">
+              <div className="col-span-2 lg:col-span-4">
                 <dt className="text-muted-foreground">Dinheiro emprestado</dt>
                 <dd className="mt-1 flex flex-wrap items-center gap-2">
                   {contract.disbursed_at ? (
@@ -207,7 +207,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             <CardTitle className="text-base">Detalhes do produto vendido</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+            <dl className="grid grid-cols-2 gap-4 text-sm lg:grid-cols-3">
               <div>
                 <dt className="text-muted-foreground">Modelo</dt>
                 <dd className="font-medium">{linkedPhone.model}</dd>
@@ -226,7 +226,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
                 <dt className="text-muted-foreground">Custo do produto</dt>
                 <dd className="font-medium">{formatCurrency(linkedPhone.cost_amount)}</dd>
               </div>
-              <div className="col-span-2 sm:col-span-3">
+              <div className="col-span-2 lg:col-span-3">
                 <dt className="text-muted-foreground">IMEI</dt>
                 <dd className="mt-1 flex flex-wrap items-center gap-2">
                   {linkedPhone.imei ? (

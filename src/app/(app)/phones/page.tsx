@@ -24,7 +24,7 @@ export default async function PhonesPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <StatTile label="Vendas" value={summary.count} icon={BoxIcon} accent="primary" />
         <StatTile label="Total investido" value={summary.totalCost} format="currency" icon={WalletIcon} accent="cyan" />
         <StatTile

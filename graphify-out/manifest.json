@@ -104,9 +104,9 @@
     "semantic_hash": ""
   },
   "src/app/(app)/backups/page.tsx": {
-    "mtime": 1793708340.9209428,
-    "seen": 1793708490.1097376,
-    "ast_hash": "e9445e58c4d88f62e42e0feddd777fec",
+    "mtime": 1793823642.3980124,
+    "seen": 1793824397.058709,
+    "ast_hash": "be21c210630572d1102152ecb7e29cbc",
     "semantic_hash": ""
   },
   "src/app/(app)/clientes/page.tsx": {
@@ -116,16 +116,16 @@
     "semantic_hash": ""
   },
   "src/app/(app)/contracts/[id]/page.tsx": {
-    "mtime": 1793224060.1942277,
-    "seen": 1793224155.6794727,
-    "ast_hash": "61e963e33eafb70cbb811e9f170e4f9f",
+    "mtime": 1793823667.542548,
+    "seen": 1793824397.0587504,
+    "ast_hash": "ade844cc957a46155588ddaeff166b61",
     "semantic_hash": ""
   },
   "src/app/(app)/debtors/page.tsx": {
-    "mtime": 1792898385.6529174,
-    "seen": 1792939028.875873,
-    "ast_hash": "b5d8a6c6ec22b5b4d3f2237594e72527",
-    "semantic_hash": "b5d8a6c6ec22b5b4d3f2237594e72527"
+    "mtime": 1793823620.4402297,
+    "seen": 1793824397.0587528,
+    "ast_hash": "6b842c1c03424669c72fe80edbd73909",
+    "semantic_hash": ""
   },
   "src/app/(app)/layout.tsx": {
     "mtime": 1792939165.8872154,
@@ -134,16 +134,16 @@
     "semantic_hash": ""
   },
   "src/app/(app)/page.tsx": {
-    "mtime": 1793799223.3025038,
-    "seen": 1793799288.1640215,
-    "ast_hash": "a6daa72fb5816e75c06058ba6250c298",
+    "mtime": 1793823124.7602003,
+    "seen": 1793824397.0587862,
+    "ast_hash": "cf0f4983681dcb33ae65bf345737597f",
     "semantic_hash": ""
   },
   "src/app/(app)/phones/page.tsx": {
-    "mtime": 1792898385.6529174,
-    "seen": 1792939028.8759606,
-    "ast_hash": "4f763e790af2a9e163398a87dd4d3c75",
-    "semantic_hash": "4f763e790af2a9e163398a87dd4d3c75"
+    "mtime": 1793823646.1122313,
+    "seen": 1793824397.0587878,
+    "ast_hash": "c01330c4aaf3c3f44526a7f9e88b5004",
+    "semantic_hash": ""
   },
   "src/app/(app)/settings/page.tsx": {
     "mtime": 1792898385.6529174,
@@ -206,21 +206,21 @@
     "semantic_hash": "ec99ba68b940366a2f90fc1d66efa879"
   },
   "src/components/clients-table.tsx": {
-    "mtime": 1792977284.1272762,
-    "seen": 1792977782.5396392,
-    "ast_hash": "784e1635e9b311347363c197ba572b74",
+    "mtime": 1793823321.172212,
+    "seen": 1793824397.059193,
+    "ast_hash": "4ce43825b8d578f533a66920b13f923d",
     "semantic_hash": ""
   },
   "src/components/dashboard-overview.tsx": {
-    "mtime": 1792900387.738567,
-    "seen": 1792939028.8814323,
-    "ast_hash": "5e32eeec5aefe8e64e01e5b8d5289afd",
-    "semantic_hash": "5e32eeec5aefe8e64e01e5b8d5289afd"
+    "mtime": 1793823146.7322016,
+    "seen": 1793824397.05924,
+    "ast_hash": "98a616a56be1d8adcd8a8975ed51050f",
+    "semantic_hash": ""
   },
   "src/components/debtors-view.tsx": {
-    "mtime": 1793225355.3985274,
-    "seen": 1793225422.508162,
-    "ast_hash": "423c71df3ab5e9b9542141170ddecd31",
+    "mtime": 1793824086.6362574,
+    "seen": 1793824397.0592425,
+    "ast_hash": "dc5284d6a924f446c348c7b3b57491a2",
     "semantic_hash": ""
   },
   "src/components/delete-contract-dialog.tsx": {
@@ -260,9 +260,9 @@
     "semantic_hash": ""
   },
   "src/components/iphone-sales-table.tsx": {
-    "mtime": 1793189513.3365133,
-    "seen": 1793189723.203652,
-    "ast_hash": "1e6a1e41ca0982ef7dbb0eaa8e0942e1",
+    "mtime": 1793823354.900214,
+    "seen": 1793824397.05943,
+    "ast_hash": "107513b7f6e982b5dd60c236582c3902",
     "semantic_hash": ""
   },
   "src/components/late-interest-detail-dialog.tsx": {
@@ -392,9 +392,9 @@
     "semantic_hash": ""
   },
   "src/components/ui/stat-tile.tsx": {
-    "mtime": 1792939165.891971,
-    "seen": 1792939233.5888534,
-    "ast_hash": "c028ff24b5c5f244e7c312e0238953b9",
+    "mtime": 1793823240.932207,
+    "seen": 1793824397.0600646,
+    "ast_hash": "0984a2a2957e7ab6d14cc15611a93d5d",
     "semantic_hash": ""
   },
   "src/components/ui/switch.tsx": {
@@ -410,10 +410,10 @@
     "semantic_hash": "0df06fab2ebd4e00820c7fd0f27ffa83"
   },
   "src/components/ui/tabs.tsx": {
-    "mtime": 1792898385.662151,
-    "seen": 1792939028.8826694,
-    "ast_hash": "1bcb08fca7aa763f379026bf13a21260",
-    "semantic_hash": "1bcb08fca7aa763f379026bf13a21260"
+    "mtime": 1793823953.7282495,
+    "seen": 1793824397.0601182,
+    "ast_hash": "e53d72c949734d92300f118b10078b5a",
+    "semantic_hash": ""
   },
   "src/components/ui/textarea.tsx": {
     "mtime": 1792898385.662151,
@@ -608,9 +608,9 @@
     "semantic_hash": ""
   },
   "src/app/(app)/loading.tsx": {
-    "mtime": 1792939165.8872154,
-    "seen": 1792939233.5875156,
-    "ast_hash": "4abd831e4426b169562f455d0893fbe0",
+    "mtime": 1793823644.104231,
+    "seen": 1793824397.0587838,
+    "ast_hash": "d23e4f04e146e0394a2428334f00e9ec",
     "semantic_hash": ""
   },
   "AGENTS.md": {
@@ -818,9 +818,9 @@
     "semantic_hash": ""
   },
   "src/components/whatsapp/whatsapp-center-view.tsx": {
-    "mtime": 1793374206.2088892,
-    "seen": 1793374279.2106807,
-    "ast_hash": "fea79bad7b19e7c0b8178aa9c6155ff6",
+    "mtime": 1793823640.6602309,
+    "seen": 1793824397.0603602,
+    "ast_hash": "4dcc0447208a001f538fdc34c335ad71",
     "semantic_hash": ""
   },
   ".github/workflows/backup-watchdog.yml": {
@@ -836,9 +836,9 @@
     "semantic_hash": ""
   },
   "src/components/financial-report-panel.tsx": {
-    "mtime": 1793799191.170502,
-    "seen": 1793799288.1645813,
-    "ast_hash": "65bf0daba0e5b0c571d159cd1b5df303",
+    "mtime": 1793823678.1082332,
+    "seen": 1793824397.0593765,
+    "ast_hash": "c5491cb7ebd4075f9b0ace7106f7683b",
     "semantic_hash": ""
   },
   "src/lib/csv-export.test.ts": {

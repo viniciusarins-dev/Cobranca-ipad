@@ -173,14 +173,14 @@ export function FinancialReportPanel({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Indicadores do período
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
           <StatTile
             label="Total recebido"
             value={summary.totalReceived}
             format="currency"
             icon={WalletIcon}
             accent="success"
-            className="col-span-2 sm:col-span-1"
+            className="col-span-2 lg:col-span-1"
           />
           <StatTile label="Pagamentos" value={summary.paymentsCount} icon={ReceiptIcon} accent="primary" />
           <StatTile label="Juros recebidos" value={summary.totalInterestReceived} format="currency" icon={CoinsIcon} accent="cyan" />

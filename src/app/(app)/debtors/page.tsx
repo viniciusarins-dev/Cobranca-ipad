@@ -31,7 +31,7 @@ export default async function DebtorsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
         <StatTile label="Devedores" value={summary.debtorsCount} icon={AlertTriangleIcon} accent="warning" />
         <StatTile label="Parcelas" value={summary.installmentsCount} icon={ReceiptIcon} accent="primary" />
         <StatTile label="Valor previsto" value={summary.expectedAmount} format="currency" icon={WalletIcon} accent="cyan" />

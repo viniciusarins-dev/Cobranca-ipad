@@ -54,7 +54,7 @@ export function DashboardOverview({
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile label="Devedores" value={debtorsSummary.debtorsCount} icon={CalendarClockIcon} accent="warning" />
             <StatTile
               label="A receber"
@@ -83,7 +83,7 @@ export function DashboardOverview({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Empréstimos e vendas — Total
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
           <StatTile label="Total emprestado" value={metrics.loans.totalPrincipal} format="currency" icon={HandCoinsIcon} accent="primary" />
           <StatTile label="Previsto para receber" value={metrics.loans.totalExpected} format="currency" icon={WalletIcon} accent="cyan" />
           <StatTile
@@ -102,7 +102,7 @@ export function DashboardOverview({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Juros de atraso recebidos
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile label="Diário" value={metrics.lateInterestReceived.today} format="currency" icon={CoinsIcon} accent="success" />
           <StatTile label="Semanal" value={metrics.lateInterestReceived.week} format="currency" icon={CoinsIcon} accent="success" />
           <StatTile label="Mensal" value={metrics.lateInterestReceived.month} format="currency" icon={CoinsIcon} accent="success" />
@@ -114,7 +114,7 @@ export function DashboardOverview({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Ganhos (30% + juros de atraso já realizados)
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile label="Diário" value={metrics.earnings.today} format="currency" icon={TrendingUpIcon} accent="success" />
           <StatTile label="Semanal" value={metrics.earnings.week} format="currency" icon={TrendingUpIcon} accent="success" />
           <StatTile label="Mensal" value={metrics.earnings.month} format="currency" icon={TrendingUpIcon} accent="success" />
@@ -152,7 +152,7 @@ export function DashboardOverview({
             <CardTitle className="text-base">💵 Dinheiro em caixa</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3">
               <StatTile label="Entradas hoje" value={metrics.cash.income.today} format="currency" icon={BanknoteIcon} accent="cyan" />
               <StatTile label="Entradas semana" value={metrics.cash.income.week} format="currency" icon={BanknoteIcon} accent="cyan" />
               <StatTile label="Entradas mês" value={metrics.cash.income.month} format="currency" icon={BanknoteIcon} accent="cyan" />
@@ -172,7 +172,7 @@ export function DashboardOverview({
             <CardTitle className="text-base">💰 Saldo geral (todas as formas de pagamento)</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <StatTile label="Entradas" value={metrics.generalCash.income} format="currency" icon={BanknoteIcon} accent="cyan" />
               <StatTile label="Saídas (despesas)" value={metrics.generalCash.expensesTotal} format="currency" icon={ReceiptIcon} accent="destructive" />
               <StatTile
@@ -199,7 +199,7 @@ export function DashboardOverview({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Vendas de Produtos (operações individuais, separado dos empréstimos)
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
           <StatTile label="Vendas" value={metrics.phones.count} icon={BoxIcon} accent="cyan" />
           <StatTile
             label="Total investido"
@@ -243,7 +243,7 @@ export function DashboardOverview({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Recebido por forma de pagamento
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {(Object.keys(PAYMENT_METHOD_LABELS) as Array<keyof typeof PAYMENT_METHOD_LABELS>).map((method) => (
             <StatTile
               key={method}

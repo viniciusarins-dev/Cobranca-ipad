@@ -42,7 +42,69 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
         onChange={(e) => setQuery(e.target.value)}
       />
 
-      <SpotlightCard className="overflow-hidden">
+      {filtered.length === 0 ? (
+        <SpotlightCard className="py-10 text-center text-sm text-muted-foreground">
+          Nenhuma venda de produto encontrada.
+        </SpotlightCard>
+      ) : (
+        <>
+          {/* Mobile/tablet: cards (a tabela de 10 colunas não cabe nem com rolagem confortável). */}
+          <div className="flex flex-col gap-2 lg:hidden">
+            {filtered.map((sale) => (
+              <SpotlightCard key={sale.phone.id} className="flex flex-col gap-3 p-3 text-sm">
+                <div className="flex min-w-0 items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link href={`/contracts/${sale.contract.id}`} className="font-medium text-foreground hover:underline">
+                      {sale.client.name}
+                    </Link>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {sale.phone.model}
+                      {sale.phone.color ? ` · ${sale.phone.color}` : ""}
+                    </p>
+                  </div>
+                  <ContractStatusBadge status={sale.contract.status} />
+                </div>
+
+                {sale.phone.imei && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="font-mono">{sale.phone.imei}</span>
+                    <CopyButton value={sale.phone.imei} label="Copiar" />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                  <span className="text-muted-foreground">Custo: <span className="text-foreground">{formatCurrency(sale.phone.cost_amount)}</span></span>
+                  <span className="text-muted-foreground">Venda: <span className="text-foreground">{formatCurrency(sale.contract.principal_amount)}</span></span>
+                  <span className="text-muted-foreground">
+                    Lucro:{" "}
+                    <span className={sale.profit >= 0 ? "font-medium text-success" : "font-medium text-destructive"}>
+                      {formatCurrency(sale.profit)}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground">Recebido: <span className="text-foreground">{formatCurrency(sale.received)}</span></span>
+                  <span className="text-muted-foreground">Pendente: <span className="text-foreground">{formatCurrency(sale.pending)}</span></span>
+                </div>
+
+                <div className="flex flex-wrap gap-2 border-t border-border pt-2">
+                  <IphoneSaleEditDialog sale={sale} />
+                  <DeleteContractDialog
+                    contract={{
+                      id: sale.contract.id,
+                      type: "venda_iphone",
+                      principal_amount: sale.contract.principal_amount,
+                      installments_count: sale.contract.installments_count,
+                      total_amount: sale.contract.total_amount,
+                      status: sale.contract.status,
+                    }}
+                    clientName={sale.client.name}
+                  />
+                </div>
+              </SpotlightCard>
+            ))}
+          </div>
+
+          {/* Desktop largo: tabela completa. */}
+          <SpotlightCard className="hidden overflow-hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -59,13 +121,6 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
-                  Nenhuma venda de produto encontrada.
-                </TableCell>
-              </TableRow>
-            )}
             {filtered.map((sale) => (
               <TableRow key={sale.phone.id}>
                 <TableCell>
@@ -125,7 +180,9 @@ export function IphoneSalesTable({ sales }: { sales: IphoneSale[] }) {
             ))}
           </TableBody>
         </Table>
-      </SpotlightCard>
+          </SpotlightCard>
+        </>
+      )}
     </div>
   );
 }

@@ -30,12 +30,19 @@ export function StatTile({
   className?: string;
 }) {
   return (
-    <SpotlightCard className={cn("flex flex-col gap-3 p-4 sm:p-5", className)}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
-        <Icon className={cn("size-4", ACCENT_TEXT[accent])} />
+    <SpotlightCard className={cn("flex min-w-0 flex-col gap-3 p-4 sm:p-5", className)}>
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <span className="min-w-0 break-words text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+        <Icon className={cn("size-4 shrink-0", ACCENT_TEXT[accent])} />
       </div>
-      <span className={cn("text-2xl font-bold tracking-tight tabular-nums sm:text-3xl", ACCENT_TEXT[accent])}>
+      <span
+        className={cn(
+          "break-words text-2xl font-bold tracking-tight tabular-nums sm:text-3xl",
+          ACCENT_TEXT[accent],
+        )}
+      >
         {format === "currency" ? formatCurrency(value) : value.toLocaleString("pt-BR")}
       </span>
     </SpotlightCard>

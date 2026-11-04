@@ -21,7 +21,7 @@ export default function AppLoading() {
         <Block className="h-4 w-full max-w-md" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
           <Block key={i} className="h-[92px] sm:h-[108px]" />
         ))}
