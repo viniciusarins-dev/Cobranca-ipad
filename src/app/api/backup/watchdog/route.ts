@@ -33,6 +33,14 @@ export const dynamic = "force-dynamic";
  * também derruba aquele step, disparando o e-mail automático do GitHub
  * para execução agendada com falha — um SEGUNDO canal de alerta,
  * independente do WhatsApp enviado aqui dentro.
+ *
+ * O e-mail do GitHub dispara em TODA execução com problema (a cada hora,
+ * best-effort), mas o WhatsApp só é reenviado quando o problema muda —
+ * `backup_watchdog_state` guarda a "assinatura" do último problema já
+ * avisado (data do último sucesso + ids das execuções travadas). Enquanto o
+ * mesmo atraso continua (mesma assinatura), não manda WhatsApp de novo;
+ * assim que um novo backup bem-sucedido roda ou a lista de travados muda, a
+ * assinatura muda e o próximo problema real volta a avisar.
  */
 const STALE_SUCCESS_HOURS = 3;
 const STUCK_RUNNING_HOURS = 1;
@@ -79,9 +87,30 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   if (problems.length > 0) {
-    await sendBackupFailureAlert(supabase, `Watchdog detectou problema(s):\n\n${problems.join("\n")}`);
+    const signature = JSON.stringify({
+      lastSuccessAt: lastSuccess?.started_at ?? null,
+      stuckIds: stuck.map((r) => r.id).sort(),
+    });
+
+    const { data: state } = await supabase
+      .from("backup_watchdog_state")
+      .select("last_alert_signature")
+      .eq("id", "singleton")
+      .maybeSingle();
+
+    if (state?.last_alert_signature !== signature) {
+      await sendBackupFailureAlert(supabase, `Watchdog detectou problema(s):\n\n${problems.join("\n")}`);
+      await supabase
+        .from("backup_watchdog_state")
+        .upsert({ id: "singleton", last_alert_signature: signature, last_alerted_at: new Date().toISOString() });
+    }
+
     return NextResponse.json({ ok: false, problems }, { status: 500 });
   }
+
+  await supabase
+    .from("backup_watchdog_state")
+    .upsert({ id: "singleton", last_alert_signature: null, last_alerted_at: null });
 
   return NextResponse.json({ ok: true });
 }
