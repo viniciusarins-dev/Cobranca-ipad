@@ -3,6 +3,7 @@ import {
   allocateSettlement,
   calculateFinancedAmount,
   calculateLateInterest,
+  calculateRenewalInterest,
   daysLate,
   roundCents,
   splitPayment,
@@ -79,6 +80,76 @@ describe("calculateLateInterest", () => {
     const second = calculateLateInterest({ ...base, dueDate: "2026-01-15" }, REF);
     expect(first).toBe(second);
     expect(first).toBe(60);
+  });
+});
+
+describe("calculateRenewalInterest", () => {
+  const single = {
+    contractType: "emprestimo" as const,
+    principalAmount: 500,
+    installmentsCount: 1,
+    hasDownPayment: false,
+    downPaymentAmount: 0,
+    interestRatePercentPerInstallment: 30,
+    installmentAmount: 650,
+    paidInterestAmount: 0,
+  };
+
+  it("exatamente no vencimento: cobra o juros CONTRATUAL do período (nunca 0), caso do usuário (500→650, paga 150 e renova)", () => {
+    const result = calculateRenewalInterest({ ...single, dueDate: "2026-01-21", status: "pendente" }, REF);
+    expect(result).toBe(150);
+  });
+
+  it("antes do vencimento: não é possível renovar ainda", () => {
+    const result = calculateRenewalInterest({ ...single, dueDate: "2026-02-01", status: "pendente" }, REF);
+    expect(result).toBe(0);
+  });
+
+  it("depois do vencimento: soma o juros do período com o juros de atraso normal (1%/dia sobre o principal)", () => {
+    // 6 dias de atraso x 1% x 500 = 30, mais os 150 do período = 180.
+    const result = calculateRenewalInterest({ ...single, dueDate: "2026-01-15", status: "atrasado" }, REF);
+    expect(result).toBe(180);
+  });
+
+  it("desconta o que já foi pago de juros nesta parcela, do total combinado (nunca de um juros isolado)", () => {
+    const result = calculateRenewalInterest(
+      { ...single, dueDate: "2026-01-15", status: "atrasado", paidInterestAmount: 100 },
+      REF,
+    );
+    expect(result).toBe(roundCents(180 - 100));
+  });
+
+  it("parcela já paga nunca gera juros de renovação", () => {
+    const result = calculateRenewalInterest({ ...single, dueDate: "2026-01-15", status: "pago" }, REF);
+    expect(result).toBe(0);
+  });
+
+  it("venda de iPhone nunca tem renovação (regra exclusiva de empréstimo)", () => {
+    const result = calculateRenewalInterest(
+      { ...single, contractType: "venda_iphone", dueDate: "2026-01-15", status: "atrasado" },
+      REF,
+    );
+    expect(result).toBe(0);
+  });
+
+  it("parcelado: o juros contratual total do empréstimo é dividido igualmente entre as parcelas", () => {
+    // 1500 principal, 4 parcelas semanais de 7,5% cada = 30% total = 450 de juros / 4 = 112,5 por parcela.
+    const result = calculateRenewalInterest(
+      {
+        contractType: "emprestimo",
+        principalAmount: 1500,
+        installmentsCount: 4,
+        hasDownPayment: false,
+        downPaymentAmount: 0,
+        interestRatePercentPerInstallment: 7.5,
+        installmentAmount: 487.5,
+        paidInterestAmount: 0,
+        dueDate: "2026-01-21",
+        status: "pendente",
+      },
+      REF,
+    );
+    expect(result).toBe(112.5);
   });
 });
 

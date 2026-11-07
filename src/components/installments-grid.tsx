@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { InstallmentStatusBadge } from "@/components/status-badge";
 import { RegisterPaymentDialog } from "@/components/register-payment-dialog";
 import { RenewInstallmentDialog } from "@/components/renew-installment-dialog";
-import { calculateLateInterest } from "@/lib/financial-rules";
+import { calculateRenewalInterest } from "@/lib/financial-rules";
 import { type Client, type Contract, type Installment } from "@/lib/types";
 import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { buildWhatsAppReminderLink } from "@/lib/whatsapp-reminder-link";
@@ -37,19 +37,22 @@ function InstallmentRow({
 }) {
   const router = useRouter();
 
-  // Só pra decidir se mostra o botão "Renovar" — o servidor sempre
-  // recalcula este valor de novo antes de gravar qualquer coisa, nunca
-  // confia neste número calculado na tela.
-  const interestOwed =
-    installment.status !== "pago"
-      ? calculateLateInterest({
-          contractType: contract.type,
-          originalPrincipalAmount: contract.principal_amount,
-          dueDate: installment.due_date,
-          status: installment.status,
-          paidInterestAmount: installment.paid_interest_amount,
-        })
-      : 0;
+  // Só pra decidir se mostra o botão "Renovar" e o valor inicial exibido —
+  // o servidor sempre recalcula este valor de novo antes de gravar qualquer
+  // coisa, nunca confia neste número calculado na tela. Disponível a partir
+  // do próprio vencimento (não só depois de atrasar) — ver calculateRenewalInterest.
+  const renewalInterestOwed = calculateRenewalInterest({
+    contractType: contract.type,
+    principalAmount: contract.principal_amount,
+    installmentsCount: contract.installments_count,
+    hasDownPayment: contract.has_down_payment,
+    downPaymentAmount: contract.down_payment_amount,
+    interestRatePercentPerInstallment: contract.interest_rate_percent,
+    dueDate: installment.due_date,
+    status: installment.status,
+    installmentAmount: installment.amount,
+    paidInterestAmount: installment.paid_interest_amount,
+  });
 
   function handleSendReminder() {
     // Monta o link e abre o WhatsApp de forma síncrona, na mesma interação
@@ -109,11 +112,11 @@ function InstallmentRow({
           />
         )}
 
-        {contract.type === "emprestimo" && interestOwed > 0 && (
+        {contract.type === "emprestimo" && renewalInterestOwed > 0 && (
           <RenewInstallmentDialog
             installmentId={installment.id}
             installmentLabel={`parcela ${installment.number}/${contract.installments_count}`}
-            interestOwed={interestOwed}
+            interestOwed={renewalInterestOwed}
             dueDate={installment.due_date}
             periodicity={contract.periodicity}
           />

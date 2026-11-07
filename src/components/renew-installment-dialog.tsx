@@ -30,11 +30,14 @@ function newIdempotencyKey(): string {
 }
 
 /**
- * Renova uma parcela: paga só o juros de atraso pendente agora e empurra o
- * vencimento 1 período pra frente — o principal da parcela nunca é
- * reduzido aqui (continua integralmente em aberto). Uso típico: cliente que
- * só paga o juros todo mês, "rolando" a dívida, até decidir quitar o
- * principal de verdade (pagamento normal, separado).
+ * Renova uma parcela: paga só o juros (o juros contratual do período, mais
+ * eventual juros de atraso se já passou do vencimento há mais tempo) e
+ * empurra o vencimento 1 período pra frente — o principal da parcela nunca é
+ * reduzido aqui (continua integralmente em aberto). Uso típico: no
+ * vencimento, o cliente não tem o valor total, paga só o juros e "rola" a
+ * dívida por mais um período, até decidir quitar o principal de verdade
+ * (pagamento normal, separado). Só fica disponível a partir do vencimento —
+ * ver `calculateRenewalInterest`.
  */
 export function RenewInstallmentDialog({
   installmentId,
@@ -97,14 +100,14 @@ export function RenewInstallmentDialog({
         <DialogHeader>
           <DialogTitle>Renovar {installmentLabel}</DialogTitle>
           <DialogDescription>
-            Registra o pagamento de só o juros de atraso — o principal desta parcela continua integralmente em
-            aberto, cobrável normalmente depois.
+            Registra o pagamento de só o juros — o principal desta parcela continua integralmente em aberto,
+            cobrável normalmente depois.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-1 rounded-md bg-muted px-3 py-2 text-sm">
           <p className="text-muted-foreground">
-            Juros de atraso a pagar agora: <span className="font-medium text-foreground">{formatCurrency(interestOwed)}</span>
+            Juros a pagar para renovar: <span className="font-medium text-foreground">{formatCurrency(interestOwed)}</span>
           </p>
           <p className="text-muted-foreground">
             Novo vencimento: <span className="font-medium text-foreground">{formatDate(projectedNewDueDate)}</span>

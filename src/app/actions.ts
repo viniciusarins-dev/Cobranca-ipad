@@ -5,7 +5,7 @@ import { getISODay, parseISO } from "date-fns";
 
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit-log";
-import { businessDayRangeUTC, getBusinessToday } from "@/lib/date-utils";
+import { businessDayRangeUTC, daysBetweenDateStrings, getBusinessToday } from "@/lib/date-utils";
 import { detectSafeDocumentType } from "@/lib/file-validation";
 import { generateInstallments, nextDueDate, reflowSchedule } from "@/lib/installments";
 import { normalizeImei } from "@/lib/imei";
@@ -23,6 +23,7 @@ import {
   allocateSettlement,
   calculateFinancedAmount,
   calculateLateInterest,
+  calculateRenewalInterest,
   daysLate,
   roundCents,
   splitPayment,
@@ -710,6 +711,7 @@ export async function renewInstallment(installmentId: string, input: RenewInstal
   type RenewInstallmentRow = {
     id: string;
     contract_id: string;
+    amount: number;
     due_date: string;
     status: InstallmentStatus;
     paid_principal_amount: number;
@@ -719,6 +721,10 @@ export async function renewInstallment(installmentId: string, input: RenewInstal
       type: ContractType;
       status: ContractStatus;
       principal_amount: number;
+      installments_count: number;
+      has_down_payment: boolean;
+      down_payment_amount: number;
+      interest_rate_percent: number;
       periodicity: Periodicity;
     } | null;
   };
@@ -730,7 +736,7 @@ export async function renewInstallment(installmentId: string, input: RenewInstal
     supabase
       .from("installments")
       .select(
-        "id, contract_id, due_date, status, paid_principal_amount, paid_interest_amount, contract:contracts(client_id, type, status, principal_amount, periodicity)",
+        "id, contract_id, amount, due_date, status, paid_principal_amount, paid_interest_amount, contract:contracts(client_id, type, status, principal_amount, installments_count, has_down_payment, down_payment_amount, interest_rate_percent, periodicity)",
       )
       .eq("id", installmentId)
       .single(),
@@ -755,15 +761,24 @@ export async function renewInstallment(installmentId: string, input: RenewInstal
     return { ok: false, error: "Esta parcela já está totalmente paga." };
   }
 
-  const interestOwed = calculateLateInterest({
+  if (daysBetweenDateStrings(installment.due_date, getBusinessToday()) < 0) {
+    return { ok: false, error: "Esta parcela ainda não venceu — só é possível renovar a partir do vencimento." };
+  }
+
+  const interestOwed = calculateRenewalInterest({
     contractType: contract.type,
-    originalPrincipalAmount: contract.principal_amount,
+    principalAmount: contract.principal_amount,
+    installmentsCount: contract.installments_count,
+    hasDownPayment: contract.has_down_payment,
+    downPaymentAmount: contract.down_payment_amount,
+    interestRatePercentPerInstallment: contract.interest_rate_percent,
     dueDate: installment.due_date,
     status: installment.status,
+    installmentAmount: installment.amount,
     paidInterestAmount: installment.paid_interest_amount,
   });
   if (interestOwed <= 0) {
-    return { ok: false, error: "Esta parcela não tem juros de atraso pendente para renovar." };
+    return { ok: false, error: "Não há juros a cobrar para renovar esta parcela." };
   }
 
   const newDueDate = nextDueDate(installment.due_date, contract.periodicity);

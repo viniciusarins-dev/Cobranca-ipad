@@ -167,6 +167,65 @@ export function calculateLateInterest(
   return roundCents(Math.max(grossInterest - installment.paidInterestAmount, 0));
 }
 
+export interface RenewalInterestInstallmentInput {
+  contractType: ContractType;
+  /** `contracts.principal_amount` — mesma base usada em `calculateFinancedAmount` e no juros de atraso. */
+  principalAmount: number;
+  installmentsCount: number;
+  hasDownPayment: boolean;
+  downPaymentAmount: number;
+  /** `contracts.interest_rate_percent` — mesma taxa manual usada no cadastro do empréstimo. */
+  interestRatePercentPerInstallment: number;
+  dueDate: string;
+  status: InstallmentStatus;
+  /** `installments.amount` desta parcela — define a fatia do juros contratual total que ela carrega. */
+  installmentAmount: number;
+  paidInterestAmount: number;
+}
+
+/**
+ * Juros a pagar para RENOVAR uma parcela: o cliente chega no vencimento sem
+ * o valor total, paga só o juros e "rola" a dívida por mais um período (item
+ * pedido pelo usuário: "quando chega a data, se a pessoa não tem o total ela
+ * paga o juros e renova para mais 30 dias"). Diferente do juros de atraso
+ * (`calculateLateInterest`, que só nasce depois que a data já passou), este
+ * já existe a PARTIR do próprio vencimento — é o juros contratual daquele
+ * período (a fatia desta parcela no total de juros do empréstimo,
+ * `calculateFinancedAmount`), não uma penalidade por atraso.
+ *
+ * Só fica disponível a partir da due_date (nunca antes — não faz sentido
+ * "renovar" uma parcela que ainda nem venceu). Se o cliente demorar a voltar
+ * depois do vencimento, o juros de atraso normal (1%/dia) se soma ao juros
+ * contratual do período, e `paidInterestAmount` (sempre zerado a cada
+ * renovação, igual ao juros de atraso) é descontado do total — nunca dos
+ * dois juros calculados separadamente, para não descontar duas vezes.
+ */
+export function calculateRenewalInterest(
+  installment: RenewalInterestInstallmentInput,
+  referenceDate: Date = new Date(),
+): number {
+  if (installment.contractType !== "emprestimo") return 0;
+  if (installment.status === "pago") return 0;
+
+  const alreadyDue = daysBetweenDateStrings(installment.dueDate, getBusinessToday(referenceDate)) >= 0;
+  if (!alreadyDue) return 0;
+
+  const { markupAmount } = calculateFinancedAmount({
+    contractType: installment.contractType,
+    principalAmount: installment.principalAmount,
+    installmentsCount: installment.installmentsCount,
+    hasDownPayment: installment.hasDownPayment,
+    downPaymentAmount: installment.downPaymentAmount,
+    interestRatePercentPerInstallment: installment.interestRatePercentPerInstallment,
+  });
+  const periodInterest = roundCents(markupAmount / Math.max(installment.installmentsCount, 1));
+
+  const daysLateCount = daysLate(installment.dueDate, referenceDate);
+  const lateInterestGross = roundCents(installment.principalAmount * LATE_INTEREST_RATE_PER_DAY * daysLateCount);
+
+  return roundCents(Math.max(periodInterest + lateInterestGross - installment.paidInterestAmount, 0));
+}
+
 export interface SplitPaymentResult {
   /** Parte do pagamento aplicada aos juros em aberto. */
   interestPortion: number;
