@@ -5,7 +5,7 @@ import { getISODay, parseISO } from "date-fns";
 
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit-log";
-import { businessDayRangeUTC, daysBetweenDateStrings, getBusinessToday } from "@/lib/date-utils";
+import { businessDayRangeUTC, getBusinessToday } from "@/lib/date-utils";
 import { detectSafeDocumentType } from "@/lib/file-validation";
 import { generateInstallments, nextDueDate, reflowSchedule } from "@/lib/installments";
 import { normalizeImei } from "@/lib/imei";
@@ -759,10 +759,6 @@ export async function renewInstallment(installmentId: string, input: RenewInstal
   }
   if (installment.status === "pago") {
     return { ok: false, error: "Esta parcela já está totalmente paga." };
-  }
-
-  if (daysBetweenDateStrings(installment.due_date, getBusinessToday()) < 0) {
-    return { ok: false, error: "Esta parcela ainda não venceu — só é possível renovar a partir do vencimento." };
   }
 
   const interestOwed = calculateRenewalInterest({

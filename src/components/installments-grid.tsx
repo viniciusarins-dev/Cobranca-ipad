@@ -39,8 +39,9 @@ function InstallmentRow({
 
   // Só pra decidir se mostra o botão "Renovar" e o valor inicial exibido —
   // o servidor sempre recalcula este valor de novo antes de gravar qualquer
-  // coisa, nunca confia neste número calculado na tela. Disponível a partir
-  // do próprio vencimento (não só depois de atrasar) — ver calculateRenewalInterest.
+  // coisa, nunca confia neste número calculado na tela. Disponível a
+  // qualquer momento (antes, no dia ou depois do vencimento) — ver
+  // calculateRenewalInterest.
   const renewalInterestOwed = calculateRenewalInterest({
     contractType: contract.type,
     principalAmount: contract.principal_amount,

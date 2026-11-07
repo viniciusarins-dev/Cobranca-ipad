@@ -100,9 +100,9 @@ describe("calculateRenewalInterest", () => {
     expect(result).toBe(150);
   });
 
-  it("antes do vencimento: não é possível renovar ainda", () => {
+  it("disponível a qualquer momento: antes do vencimento também cobra o juros contratual cheio do período (cliente avisou antecipadamente que não vai pagar o total)", () => {
     const result = calculateRenewalInterest({ ...single, dueDate: "2026-02-01", status: "pendente" }, REF);
-    expect(result).toBe(0);
+    expect(result).toBe(150);
   });
 
   it("depois do vencimento: soma o juros do período com o juros de atraso normal (1%/dia sobre o principal)", () => {

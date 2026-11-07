@@ -36,8 +36,9 @@ function newIdempotencyKey(): string {
  * reduzido aqui (continua integralmente em aberto). Uso típico: no
  * vencimento, o cliente não tem o valor total, paga só o juros e "rola" a
  * dívida por mais um período, até decidir quitar o principal de verdade
- * (pagamento normal, separado). Só fica disponível a partir do vencimento —
- * ver `calculateRenewalInterest`.
+ * (pagamento normal, separado). Disponível a qualquer momento — inclusive
+ * antes do vencimento, quando o cliente já avisa antecipadamente que não vai
+ * pagar o total — ver `calculateRenewalInterest`.
  */
 export function RenewInstallmentDialog({
   installmentId,

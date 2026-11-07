@@ -184,21 +184,22 @@ export interface RenewalInterestInstallmentInput {
 }
 
 /**
- * Juros a pagar para RENOVAR uma parcela: o cliente chega no vencimento sem
- * o valor total, paga só o juros e "rola" a dívida por mais um período (item
- * pedido pelo usuário: "quando chega a data, se a pessoa não tem o total ela
- * paga o juros e renova para mais 30 dias"). Diferente do juros de atraso
- * (`calculateLateInterest`, que só nasce depois que a data já passou), este
- * já existe a PARTIR do próprio vencimento — é o juros contratual daquele
- * período (a fatia desta parcela no total de juros do empréstimo,
- * `calculateFinancedAmount`), não uma penalidade por atraso.
+ * Juros a pagar para RENOVAR uma parcela: o cliente avisa que não vai pagar
+ * o valor total, paga só o juros e "rola" a dívida por mais um período (ex.:
+ * emprestou 1000 com 300 de juros, paga os 300, renova por mais um mês
+ * devendo 1300 de novo — mesmo vencimento, um período pra frente: 11/11 →
+ * 11/12). Diferente do juros de atraso (`calculateLateInterest`, que só
+ * nasce depois que a data já passou), este é o juros CONTRATUAL do período
+ * (a fatia desta parcela no total de juros do empréstimo,
+ * `calculateFinancedAmount`) — disponível A QUALQUER MOMENTO, antes, no dia
+ * ou depois do vencimento (pedido explícito: o cliente pode avisar
+ * antecipadamente que não vai pagar o total).
  *
- * Só fica disponível a partir da due_date (nunca antes — não faz sentido
- * "renovar" uma parcela que ainda nem venceu). Se o cliente demorar a voltar
- * depois do vencimento, o juros de atraso normal (1%/dia) se soma ao juros
- * contratual do período, e `paidInterestAmount` (sempre zerado a cada
- * renovação, igual ao juros de atraso) é descontado do total — nunca dos
- * dois juros calculados separadamente, para não descontar duas vezes.
+ * Se a parcela já estiver em atraso de verdade quando a renovação acontece,
+ * o juros de atraso normal (1%/dia) se soma ao juros contratual do período,
+ * e `paidInterestAmount` (sempre zerado a cada renovação, igual ao juros de
+ * atraso) é descontado do total combinado — nunca dos dois juros calculados
+ * separadamente, para não descontar duas vezes.
  */
 export function calculateRenewalInterest(
   installment: RenewalInterestInstallmentInput,
@@ -206,9 +207,6 @@ export function calculateRenewalInterest(
 ): number {
   if (installment.contractType !== "emprestimo") return 0;
   if (installment.status === "pago") return 0;
-
-  const alreadyDue = daysBetweenDateStrings(installment.dueDate, getBusinessToday(referenceDate)) >= 0;
-  if (!alreadyDue) return 0;
 
   const { markupAmount } = calculateFinancedAmount({
     contractType: installment.contractType,
