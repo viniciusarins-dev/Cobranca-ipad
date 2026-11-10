@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getISODay, parseISO } from "date-fns";
 
 import { createClient } from "@/lib/supabase/server";
+import { recalculateContractStatus, syncWeeklyChargeStatus } from "@/lib/contract-status";
 import { logAudit } from "@/lib/audit-log";
 import { businessDayRangeUTC, getBusinessToday } from "@/lib/date-utils";
 import { detectSafeDocumentType } from "@/lib/file-validation";
@@ -61,7 +62,7 @@ import {
   type WhatsAppConsentInput,
   type FinancialReportRangeInput,
 } from "@/lib/validations";
-import type { ContractStatus, ContractType, InstallmentStatus, Periodicity, PaymentMethod, WeeklyChargeStatus } from "@/lib/types";
+import type { ContractStatus, ContractType, InstallmentStatus, Periodicity, PaymentMethod } from "@/lib/types";
 import { formatCurrency, onlyDigits } from "@/lib/utils";
 
 /**
@@ -321,56 +322,6 @@ export async function createTransaction(input: TransactionInput): Promise<Action
   return { ok: true, contractId: contract.id };
 }
 
-/**
- * Mantém `weekly_charges.status` sincronizado com o status do contrato.
- * O pagamento continua sendo controlado manualmente pelos toggles de
- * parcela — isto apenas reflete esse controle no campo que a fila de
- * disparo semanal checa em tempo real antes de cada envio.
- */
-async function syncWeeklyChargeStatus(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  contractId: string,
-  contractStatus: ContractStatus,
-) {
-  let weeklyStatus: WeeklyChargeStatus = "PENDENTE";
-  if (contractStatus === "quitado") weeklyStatus = "PAGO";
-  else if (contractStatus === "cancelado") weeklyStatus = "CANCELADO";
-
-  await supabase.from("weekly_charges").update({ status: weeklyStatus }).eq("contract_id", contractId);
-}
-
-async function recalculateContractStatus(supabase: Awaited<ReturnType<typeof createClient>>, contractId: string) {
-  // "Cancelado" é um estado terminal e manual (deleteContract) — nunca
-  // recalculado a partir das parcelas. Sem esta checagem, um pagamento
-  // registrado por engano num contrato já cancelado (a página do
-  // contrato continua acessível e os botões continuam ativos) fazia o
-  // contrato "reaparecer" como ativo/inadimplente/quitado, voltando a
-  // contar em qualquer lista/indicador de onde tinha sido
-  // intencionalmente removido.
-  const { data: currentContract } = await supabase.from("contracts").select("status").eq("id", contractId).single();
-  if (currentContract?.status === "cancelado") return;
-
-  const { data: installments } = await supabase
-    .from("installments")
-    .select("status")
-    .eq("contract_id", contractId);
-
-  if (!installments || installments.length === 0) return;
-
-  let status: ContractStatus = "ativo";
-  if (installments.every((installment) => installment.status === "pago")) {
-    status = "quitado";
-  } else if (installments.some((installment) => installment.status === "atrasado")) {
-    status = "inadimplente";
-  }
-
-  // As duas atualizações são independentes entre si (nenhuma lê o
-  // resultado da outra) — rodam em paralelo em vez de uma esperar a outra.
-  await Promise.all([
-    supabase.from("contracts").update({ status }).eq("id", contractId),
-    syncWeeklyChargeStatus(supabase, contractId, status),
-  ]);
-}
 
 /**
  * Exclui um empréstimo/venda cadastrado errado. Duas situações:

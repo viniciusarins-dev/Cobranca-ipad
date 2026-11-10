@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getBusinessToday } from "@/lib/date-utils";
 import { isAuthorizedBySecret } from "@/lib/cron-auth";
+import { recalculateContractStatus } from "@/lib/contract-status";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { sendCollectionReminder } from "@/lib/whatsapp";
-import type { ContractStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -22,38 +22,48 @@ export async function GET(request: NextRequest) {
   //    vencimento já passou (uma parcela paga em parte continua acumulando
   //    juros e deve aparecer como atrasada até ser quitada — o valor já
   //    pago fica preservado em paid_principal_amount, não é perdido).
-  const { data: newlyOverdue, error: overdueError } = await supabase
+  //    Nunca mexe em parcela de contrato já cancelado — achado real: um
+  //    contrato cancelado (deleteContract) nunca tinha suas parcelas
+  //    tocadas, então o PRÓPRIO job de amanhã marcava uma delas como
+  //    atrasada e "ressuscitava" o contrato de volta pra inadimplente (ver
+  //    `recalculateContractStatus`, que tem a mesma trava).
+  const { data: candidateInstallments, error: candidatesError } = await supabase
     .from("installments")
-    .update({ status: "atrasado" })
+    .select("id, contract_id, contract:contracts!inner(status)")
     .in("status", ["pendente", "parcial"])
     .lt("due_date", today)
-    .select("id, contract_id");
+    .neq("contract.status", "cancelado");
 
-  if (overdueError) {
+  if (candidatesError) {
     // Nunca repassa a mensagem crua do Postgres (pode conter nomes de
     // tabela/constraint) — o detalhe fica só no retorno interno da função,
     // que quem tem o CRON_SECRET pode ver via logs da Vercel, não na resposta.
     return NextResponse.json({ error: "Erro ao processar parcelas em atraso." }, { status: 500 });
   }
 
-  // 2. Recalcula o status geral dos contratos afetados
-  const contractIds = Array.from(new Set((newlyOverdue ?? []).map((i) => i.contract_id)));
-  for (const contractId of contractIds) {
-    const { data: installments } = await supabase
+  const idsToMarkOverdue = (candidateInstallments ?? []).map((i) => i.id);
+  let newlyOverdue: { id: string; contract_id: string }[] = [];
+  if (idsToMarkOverdue.length > 0) {
+    const { data: updated, error: overdueError } = await supabase
       .from("installments")
-      .select("status")
-      .eq("contract_id", contractId);
+      .update({ status: "atrasado" })
+      .in("id", idsToMarkOverdue)
+      .select("id, contract_id");
 
-    if (!installments?.length) continue;
-
-    let status: ContractStatus = "ativo";
-    if (installments.every((i) => i.status === "pago")) {
-      status = "quitado";
-    } else if (installments.some((i) => i.status === "atrasado")) {
-      status = "inadimplente";
+    if (overdueError) {
+      return NextResponse.json({ error: "Erro ao processar parcelas em atraso." }, { status: 500 });
     }
+    newlyOverdue = updated ?? [];
+  }
 
-    await supabase.from("contracts").update({ status }).eq("id", contractId);
+  // 2. Recalcula o status geral dos contratos afetados — reaproveita a
+  //    mesma função usada no resto do app, que já trava "cancelado" como
+  //    estado terminal (defesa em profundidade: o filtro acima já exclui
+  //    contratos cancelados, isto garante que nenhum outro caminho futuro
+  //    reintroduza o mesmo bug).
+  const contractIds = Array.from(new Set(newlyOverdue.map((i) => i.contract_id)));
+  for (const contractId of contractIds) {
+    await recalculateContractStatus(supabase, contractId);
   }
 
   // 3. Envia lembrete de cobrança para parcelas em atraso que ainda não
@@ -88,7 +98,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     checkedDate: today,
-    markedOverdue: newlyOverdue?.length ?? 0,
+    markedOverdue: newlyOverdue.length,
     remindersSent: sent,
     remindersFailed: failed,
   });
